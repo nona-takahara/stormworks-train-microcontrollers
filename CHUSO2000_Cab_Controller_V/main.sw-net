@@ -1,3 +1,5 @@
+import ch from "./control_handle.sw-net"
+
 module main
   port in "Seat Input" : composite
   port out "Main Handle Sound" : boolean
@@ -29,70 +31,23 @@ module main
   port out "ATS/C Reset Signal" : boolean
   port in "Rolling Stock Settings" : composite
 
-  # ================================================================
-  # メインハンドル軸入力 → ノッチカウンタ up/down 信号生成
-  # ================================================================
+  # マスコン(物理)位置。-4が加速最大、7がブレーキ最大
+  use ch.control_handle handle : seat_input="Seat Input", position_reset=eb_set_src, eb_q=eb_q, eb_not_q=eb_not_q -> mastercontroller_position=notch, handle_neg_rise=handle_neg_rise, center_ax_pos_rise=center_ax_pos_rise
 
-  inst COMPOSITE_READ_NUMBER seat_handle_ax_read (channel=2) : composite="Seat Input" -> out=handle_ax # [W][S]軸
-  inst THRESHOLD handle_pos_thr (min=0.5, max=1) : value=handle_ax -> out=handle_pos
-  inst THRESHOLD handle_neg_thr (min=-1, max=-0.5) : value=handle_ax -> out=handle_neg
-  inst PULSE handle_pos_rise_pulse (mode="rise") : a=handle_pos -> out=handle_pos_rise
-  inst PULSE handle_neg_rise_pulse (mode="rise") : a=handle_neg -> out=handle_neg_rise
-
-  # 押し続け時のリピートパルス生成 (pos 側 = ノッチup方向) ブレーキ方向
-  inst CAPACITOR pos_hold_cap (charge_time=0.3, discharge_time=0) : enable=handle_pos -> out=pos_hold_cap_out
-  inst BLINKER pos_hold_blink (on_time=0.1, off_time=0.1) : enable=pos_hold_cap_out -> out=pos_hold_blink_out
-  inst PULSE pos_hold_blink_pulse (mode="both") : a=pos_hold_blink_out -> out=pos_hold_blink_tick
-  inst AND pos_hold_tick_and : a=pos_hold_blink_tick, b=handle_pos -> out=pos_hold_tick
-
-  # 押し続け時のリピートパルス生成 (neg 側 = ノッチdown方向) 加速方向
-  inst CAPACITOR neg_hold_cap (charge_time=0.3, discharge_time=0) : enable=handle_neg -> out=neg_hold_cap_out
-  inst BLINKER neg_hold_blink (on_time=0.1, off_time=0.1) : enable=neg_hold_cap_out -> out=neg_hold_blink_out
-  inst PULSE neg_hold_blink_pulse (mode="both") : a=neg_hold_blink_out -> out=neg_hold_blink_tick
-  inst AND neg_hold_tick_and : a=neg_hold_blink_tick, b=handle_neg -> out=neg_hold_tick
-
-  # ~~センター戻し軸 (ch1): EB中にノッチを中立方向へ自動戻し~~ ニュートラル方向への移動
-  inst COMPOSITE_READ_NUMBER seat_center_ax_read (channel=1) : composite="Seat Input" -> out=center_ax # [A][D]軸
-  inst THRESHOLD center_ax_pos_thr (min=0.5, max=1) : value=center_ax -> out=center_ax_pos   # [D]
-  inst PULSE center_ax_pos_rise_pulse (mode="rise") : a=center_ax_pos -> out=center_ax_pos_rise # [D]パルス
-
-  inst CAPACITOR center_hold_cap (charge_time=0.3, discharge_time=0) : enable=center_ax_pos -> out=center_hold_cap_out
-  inst BLINKER center_hold_blink (on_time=0.1, off_time=0.1) : enable=center_hold_cap_out -> out=center_hold_blink_out
-  inst PULSE center_hold_blink_pulse (mode="both") : a=center_hold_blink_out -> out=center_hold_blink_tick
-  inst AND center_hold_tick_and : a=center_hold_blink_tick, b=center_ax_pos -> out=center_hold_tick
-
-  # ニュートラル方向判定、移動パルス生成
-  inst LESS_THAN notch_is_neg : a=notch -> out=notch_neg
-  inst GREATER_THAN notch_is_pos : a=notch -> out=notch_pos
-  inst BOOL_FUNC_4 center_notch_up_and (expression="(x|y)&z") : x=center_hold_tick, y=center_ax_pos_rise, z=notch_neg -> out=center_notch_up
-  inst BOOL_FUNC_4 center_notch_dn_and (expression="(x|y)&z") : x=center_hold_tick, y=center_ax_pos_rise, z=notch_pos -> out=center_notch_dn
-
-  # ノッチカウンタ up/down 合成
-  inst BOOL_FUNC_4 notch_dn_src (expression="x|y|z|w") : x=pos_hold_tick, y=handle_pos_rise, z=eb_not_q, w=center_notch_dn -> out=notch_dn
-  inst BOOL_FUNC_4 notch_up_src (expression="(x|y|z)&w") : x=neg_hold_tick, y=handle_neg_rise, z=center_notch_up, w=eb_q -> out=notch_up
-
-  # ニュートラルへ一発で飛ばす操作
-  inst OR eb_set_or : a=seat_eb_force, b=center_ax_neg -> out=eb_set_src # 強制ニュートラル操作
-  inst COMPOSITE_READ_BOOLEAN seat_eb_force_read (channel=31) : composite="Seat Input" -> out=seat_eb_force # 強制ニュートラル操作
-  inst THRESHOLD center_ax_neg_thr (min=-1, max=-0.5) : value=center_ax -> out=center_ax_neg # [A]。軸操作から移動
-
-  # マスコン(物理)位置。min, maxの値はミス？
-  inst COUNTER notch_counter (reset_value=0, increment=1, min=4, max=-7, m=1) : down=notch_dn, reset=eb_set_src, up=notch_up -> out=notch
-  
   # ================================================================
   # 非常ブレーキ関係
   # ================================================================
   inst COMPOSITE_READ_BOOLEAN seat_eb_reset_btn_read (channel=1) : composite="Seat Input" -> out=eb_reset_btn # resetではない。非常ブレーキ投入ためのボタン
-  inst COMPOSITE_READ_BOOLEAN seat_moterman2_key_read (channel=3) : composite="Seat Input" -> out=moterman2_key # 非常ブレーキ投入のためのボタン。moterman 3 keyが正確
+  #inst COMPOSITE_READ_BOOLEAN seat_eb_reset_key_read (channel=3) : composite="Seat Input" -> out=eb_reset_key # 非常ブレーキ投入のためのボタン。moterman 3 keyが正確
 
   # 「B7 -> EBを連続操作ではなく、一度離す必要がある」をするための操作
-  inst THRESHOLD notch_at_min_thr (min=-7, max=-7) : value=notch -> out=notch_at_min # 常用最大ブレーキかどうか判定
-  inst AND pos_at_min_and : a=handle_pos_rise, b=notch_at_min -> out=pos_at_min # 常用最大ブレーキのときに、pos(itive)を入力すると、ブレーキを一段アップ→これはEBに引き継ぎ
+  #inst THRESHOLD notch_at_min_thr (min=-7, max=-7) : value=notch -> out=notch_at_min # 常用最大ブレーキかどうか判定
+  #inst AND pos_at_min_and : a=handle_pos_rise, b=notch_at_min -> out=pos_at_min # 常用最大ブレーキのときに、pos(itive)を入力すると、ブレーキを一段アップ→これはEBに引き継ぎ
 
   # 非常ブレーキラッチ
   inst AND eb_reset_btn_pos_and : a=eb_reset_btn, b=handle_pos -> out=eb_reset_btn_pos # [W]+[1] すなわち非常ブレーキ投入操作
   inst BOOL_FUNC_4 eb_set_cond (expression="x|y|z|w") : x=handle_neg_rise, y=eb_set_src, z=center_ax_pos_rise -> out=eb_set # setなので非常ブレーキ解除
-  inst BOOL_FUNC_4 eb_reset_cond (expression="x|y|z|(!w)") : x=pos_at_min, y=eb_reset_btn_pos, z=moterman2_key, w=mascon_active -> out=eb_reset # resetなので非常ブレーキ投入
+  inst BOOL_FUNC_4 eb_reset_cond (expression="x|y|z|(!w)") : y=eb_reset_btn_pos, w=mascon_active -> out=eb_reset # resetなので非常ブレーキ投入
   inst SR_LATCH eb_latch : r=eb_reset, s=eb_set -> q=eb_q, not_q=eb_not_q
 
   # EB 時は物理ハンドル位置 -8 固定、通常はカウンタ値をそのまま使用
@@ -265,7 +220,9 @@ module main
   inst COMPOSITE_READ_BOOLEAN crew_r_b4_buzzer_read (channel=4) : composite="Crew Handle Right" -> out=crew_r_buzzer
   inst COMPOSITE_READ_BOOLEAN crew_l_b4_buzzer_read (channel=4) : composite="Crew Handle Left" -> out=crew_l_buzzer
   inst PULSE buzzer_rise_pulse (mode="rise") : a=buzzer -> out=buzzer_rise
+  # 自車高速フィードバック
   inst BOOL_FUNC_8 buzzer_or (expression="x|y|z|w|a|b|c|d") : x=si_eb, y=seat_buzzer_btn, z=sl_annc_a, w=sl_annc_b, a=dl_buzzer, b=crew_r_buzzer, c=crew_l_buzzer, d=buzzer_rise -> out=buzzer, out="Crew Buzzer"
+  # 送信専用
   inst BOOL_FUNC_8 buzzer_no_si_or (expression="x|y|z|w|a|b|c|d") : y=seat_buzzer_btn, z=sl_annc_a, w=sl_annc_b, a=dl_buzzer, b=crew_r_buzzer, c=crew_l_buzzer -> out=buzzer_no_si
 
   # ================================================================
@@ -293,16 +250,6 @@ module main
   # High beam (Drive Loop B4 ハイビーム/減光 の反転)
   inst COMPOSITE_READ_BOOLEAN dl_b4_highbeam_read (channel=4) : composite="Drive Loop" -> out=dl_highbeam
   inst NOT not_highbeam : a=dl_highbeam -> out="High beam"
-
-  # 未使用 SR ラッチ (Express Light 向けの旧実装残骸)
-  inst COMPOSITE_READ_BOOLEAN dl_b13_unused_read (channel=13) : composite="Drive Loop" -> out=dl_expr_unused
-  inst PULSE unused_expr_rise_pulse (mode="rise") : a=dl_expr_unused -> out=unused_expr_rise
-  inst PULSE unused_expr_fall_pulse (mode="fall") : a=dl_expr_unused -> out=unused_expr_fall
-  inst PULSE unused_form_fwd_fall_pulse (mode="fall") : a=form_is_fwd -> out=unused_form_fwd_fall
-  inst AND unused_sign_set_and : a=dl_expr_unused, b=form_is_fwd -> out=unused_sign_set_cond
-  inst OR unused_sign_set_or : a=unused_expr_rise, b=unused_sign_set_cond -> out=unused_sign_set
-  inst OR unused_sign_reset_or : a=unused_expr_fall, b=unused_form_fwd_fall -> out=unused_sign_reset
-  inst SR_LATCH unused_sign_latch : r=unused_sign_reset, s=unused_sign_set ->
 
   # ================================================================
   # NITS 0x60 パック / 締切コマンド

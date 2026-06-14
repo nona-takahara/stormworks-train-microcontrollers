@@ -1,0 +1,197 @@
+module main
+  port in "Phyics Sensor [+Z is front]" : composite
+  port in "Catenary Line Voltage [V]" : number
+  port in "SAP [atm]" : number
+  port out DANRYU : boolean
+  port out cam : boolean
+  port out W : number
+  port in "Controller Stop" : boolean
+  port in "BP [atm]" : number
+  port out "BC target [atm]" : number
+  port in "Simple IF" : composite
+  port in "Extended IF" : composite
+  port out "Momelink-A" : composite
+  port in "BC [atm abs]" : number
+  port in "Momelink inner unit" : composite
+  port in "MR [atm abs]" : number
+  port out "Rolling Stock Status" : composite
+
+  inst CONST n9 (value=1500) : -> value=n9_value
+  inst NUM_SWITCHBOX n10 : a="Catenary Line Voltage [V]", b=n9_value, switch=n123_out -> out=n10_out
+  inst PROPERTY_TOGGLE n11 (label="", on_label="On", off_label="Off", n="Catenary Line Voltage", v=true) : -> out=n11_out
+  inst THRESHOLD n60 (min=1, max=7) : value=n304_out -> out=n60_out
+  inst THRESHOLD n61 (min=2, max=7) : value=n304_out -> out=n61_out
+  inst THRESHOLD n62 (min=3, max=7) : value=n304_out -> out=n62_out
+  inst THRESHOLD n63 (min=0, max=1) : value=n468_out -> out=n63_out
+  inst THRESHOLD n65 (min=0, max=13) : value=n468_out -> out=n65_out
+  inst THRESHOLD n84 (min=14, max=20) : value=n468_out -> out=n84_out
+  inst NUM_SWITCHBOX n114 : a=n10_out, switch=n775_out -> out=n114_out
+  inst AND n123 : a=n11_out, b=n125_out -> out=n123_out
+  inst THRESHOLD n124 (min=0, max=1) : value="Catenary Line Voltage [V]" -> out=n124_out
+  inst NOT n125 : a=n124_out -> out=n125_out
+  inst GREATER_THAN n79 : a=n410_out -> out=n79_out
+  inst DELTA n211 : a=n603_out -> out=n211_out
+  inst THRESHOLD n215 (min=0, max=1) : value=n211_out -> out=n215_out
+  inst NOT n220 : a=n79_out -> out="DANRYU"
+  inst THRESHOLD n282 (min=4, max=7) : value=n304_out -> out=n282_out
+  inst THRESHOLD n283 (min=0, max=1) : value=n468_out -> out=n283_out
+  inst AND n284 : a=n616_q, b=n283_out -> out=n284_out
+  inst FUNC_NUM_3 n304 (expression="clamp(x,0,7)*y") : x=n777_out, y=n305_out -> out=n304_out
+  inst NUM_SWITCHBOX n305 : b=n306_value, switch=n566_out -> out=n305_out
+  inst CONST n306 (value=1) : -> value=n306_value
+  inst SR_LATCH n317 : r=n321_out, s=n554_out -> q=n317_q
+  inst THRESHOLD n319 (min=-200000, max=200000) : value=n410_out -> out=n319_out
+  inst THRESHOLD n320 (min=0, max=1) : value=n777_out -> out=n320_out
+  inst AND n321 : a=n320_out, b=n323_out -> out=n321_out
+  inst NOT n323 : a=n793_out -> out=n323_out
+  inst LUA n409 (script_ref="scripts/n409.lua") : composite=n413_out -> composite=n409_composite
+  inst COMPOSITE_READ_NUMBER n410 (channel=1) : composite=n411_out -> out=n410_out
+  inst COMPOSITE_SWITCHBOX n411 : a=n711_out, b=n409_composite, switch=n566_out -> out=n411_out
+  inst CAPACITOR n412 (charge_time=5, discharge_time=0) : -> out=n412_out
+  inst COMPOSITE_WRITE_NUMBER n413 (count=8, offset=1) : in1=n797_out, in2=n114_out, in3=n603_out, in4=n780_out, in5=n304_out, in6=n658_value, in7=n664_out, in8=n663_out, inc=n532_out -> out=n413_out
+  inst COMPOSITE_READ_NUMBER n426 (channel=3) : composite=n411_out -> out=n426_out
+  inst COMPOSITE_READ_NUMBER n427 (channel=4) : composite=n411_out -> out="W"
+  inst NOT n442 : a=n319_out -> out=n442_out
+  inst THRESHOLD n462 (min=14, max=14) : value=n468_out -> out=n462_out
+  inst COMPOSITE_READ_NUMBER n468 (channel=5) : composite=n411_out -> out=n468_out
+  inst COMPOSITE_WRITE_BOOLEAN n532 (count=6, offset=1) : in1=n610_q, in2=n616_q, in3=n626_q, in4=n60_out, in5=n709_out, in6=n657_out -> out=n532_out
+  inst PROPERTY_NUMBER n546 (value=210, n="Power Limit Current [A]") : -> out=n546_out
+  inst PROPERTY_NUMBER n548 (value=290, n="Brake Limit@320kPa [A]") : -> out=n548_out
+  inst FUNC_NUM_3 n549 (expression="(x*0.2)+(y*0.8)") : x=n426_out, y=n549_out -> out=n549_out
+  inst EQUAL n550 (epsilon=0.0001) : b=n468_out -> out=n550_out
+  inst NOT n551 : a=n550_out -> out=n551_out
+  inst OR n554 : a=n412_out, b=n442_out -> out=n554_out
+  inst GREATER_THAN n555 : a=n557_out, b=n556_out -> out=n555_out
+  inst PROPERTY_NUMBER n556 (value=32, n="Over Speed Th. [m/s]") : -> out=n556_out
+  inst ABS n557 : a=n797_out -> out=n557_out
+  inst THRESHOLD n560 (min=0, max=1) : value=n780_out -> out=n560_out
+  inst LESS_THAN n564 : a=n778_out, b=n565_value -> out=n564_out
+  inst CONST n565 (value=4) : -> value=n565_value
+  inst BOOL_FUNC_8 n566 (expression="x|y|z|w|a|b|c|d") : x="Controller Stop", y=n317_q, z=n560_out, w=n555_out, a=n564_out -> out=n566_out
+  inst NOT n567 : a=n215_out -> out="cam"
+  inst COMPOSITE_READ_NUMBER n578 (channel=6) : composite=n411_out -> out=n578_out
+  inst COMPOSITE_READ_NUMBER n598 (channel=7) : composite=n411_out -> out=n598_out
+  inst FUNC_NUM_3 n603 (expression="(x+y)%21") : x=n603_out, y=n604_out -> out=n603_out
+  inst NUM_SWITCHBOX n604 : a=n607_value, b=n608_value, switch=n605_out -> out=n604_out
+  inst PULSE n605 (mode="rise") : a=n606_out -> out=n605_out
+  inst BLINKER n606 (on_time=0.1, off_time=0.1) : enable=n609_out -> out=n606_out
+  inst CONST n607 (value=1) : -> value=n607_value
+  inst CONST n608 (value=0) : -> value=n608_value
+  inst BOOL_FUNC_8 n609 (expression="x|y|z|w|a|b|c|d") : x=n614_out, y=n617_out, z=n632_out, w=n643_out -> out=n609_out
+  inst SR_LATCH n610 : r=n639_out, s=n636_out -> q=n610_q, not_q=n610_not_q
+  inst BOOL_FUNC_4 n614 (expression="x&y&z&w") : x=n61_out, y=n65_out, z=n623_out, w=n621_out -> out=n614_out
+  inst SR_LATCH n616 : r=n697_out, s=n618_out -> q=n616_q, not_q=n616_not_q
+  inst BOOL_FUNC_4 n617 (expression="x&y&z&w") : x=n62_out, y=n84_out, z=n622_out, w=n621_out -> out=n617_out
+  inst BOOL_FUNC_4 n618 (expression="x&y&z") : x=n62_out, y=n462_out, z=n621_out -> out=n618_out
+  inst LESS_THAN n620 : a=n410_out, b=n695_out -> out=n620_out
+  inst CAPACITOR n621 (charge_time=0.1, discharge_time=0) : enable=n620_out -> out=n621_out
+  inst CAPACITOR n622 (charge_time=0.1, discharge_time=0) : enable=n616_q -> out=n622_out
+  inst CAPACITOR n623 (charge_time=0.1, discharge_time=0) : enable=n610_q -> out=n623_out
+  inst SR_LATCH n626 : r=n628_out, s=n284_out -> q=n626_q, not_q=n626_not_q
+  inst AND n627 : a=n610_q, b=n60_out -> out=n627_out
+  inst OR n628 : a=n627_out, b=n631_out -> out=n628_out
+  inst NOT n629 : a=n462_out -> out=n629_out
+  inst NOT n630 : a=n63_out -> out=n630_out
+  inst AND n631 : a=n610_not_q, b=n616_not_q -> out=n631_out
+  inst AND n632 : a=n630_out, b=n631_out -> out=n632_out
+  inst AND n634 : a=n610_q, b=n629_out -> out=n634_out
+  inst GREATER_THAN n635 : a=n578_out, b=n671_out -> out=n635_out
+  inst BOOL_FUNC_4 n636 (expression="(x&y)|(z&w)") : x=n650_out, y=n616_not_q, z=n662_out, w=n616_q -> out=n636_out
+  inst BOOL_FUNC_4 n639 (expression="x|(y&z)|w") : x=n705_out, y=n662_out, z=n623_out, w=n618_out -> out=n639_out
+  inst CONST n642 (value=300) : -> value=n642_value
+  inst AND n643 : a=n634_out, b=n626_q -> out=n643_out
+  inst AND n644 : a=n646_out, b=n626_not_q -> out=n644_out
+  inst THRESHOLD n645 (min=-50, max=50) : value=n410_out -> out=n645_out
+  inst AND n646 : a=n645_out, b=n647_out -> out=n646_out
+  inst NOR n647 : a=n60_out, b=n709_out -> out=n647_out
+  inst LESS_THAN n648 : a=n663_out, b=n649_value -> out=n648_out
+  inst CONST n649 (value=-0.05) : -> value=n649_value
+  inst AND n650 : a=n60_out, b=n63_out -> out=n650_out
+  inst NOT n652 : a=n60_out -> out=n652_out
+  inst AND n657 : a=n635_out, b=n652_out -> out=n657_out
+  inst CONST n658 (value=200) : -> value=n658_value
+  inst BLINKER n661 (on_time=0.1, off_time=0.4) : enable=n657_out -> out=n661_out
+  inst PULSE n662 (mode="rise") : a=n661_out -> out=n662_out
+  inst FUNC_NUM_1 n663 (expression="-floor((x-1)*2)/7.2") : x=n779_out -> out=n663_out
+  inst FUNC_NUM_3 n664 (expression="min(clamp(x,y-0.1,y+0.02),0)") : x=n681_out, y=n664_out -> out=n664_out
+  inst GREATER_THAN n666 : a=n578_out, b=n669_value -> out=n666_out
+  inst CONST n669 (value=300) : -> value=n669_value
+  inst NUM_SWITCHBOX n671 : a=n673_value, b=n642_value, switch=n672_out -> out=n671_out
+  inst AND n672 : a=n610_q, b=n700_out -> out=n672_out
+  inst CONST n673 (value=400) : -> value=n673_value
+  inst AND n677 : a=n666_out, b=n623_out -> out=n677_out
+  inst NUM_SWITCHBOX n681 : a=n682_value, b=n663_out, switch=n708_out -> out=n681_out
+  inst CONST n682 (value=0) : -> value=n682_value
+  inst CAPACITOR n688 (charge_time=0.5, discharge_time=10) : enable=n677_out -> out=n688_out
+  inst NUM_SWITCHBOX n695 : a=n696_out, b=n546_out, switch=n616_q -> out=n695_out
+  inst FUNC_NUM_1 n696 (expression="x-20") : x=n546_out -> out=n696_out
+  inst BOOL_FUNC_4 n697 (expression="x|(y&!(z&w))") : x=n705_out, y=n610_q, z=n62_out, w=n462_out -> out=n697_out
+  inst CONST n699 (value=-0.1) : -> value=n699_value
+  inst LESS_THAN n700 : a=n664_out, b=n699_value -> out=n700_out
+  inst OR n705 : a=n644_out, b=n706_out -> out=n705_out
+  inst AND n706 : a=n662_out, b=n323_out -> out=n706_out
+  inst OR n708 : a=n688_out, b=n323_out -> out=n708_out
+  inst AND n709 : a=n648_out, b=n793_out -> out=n709_out
+  inst FUNC_NUM_1 n710 (expression="x*3.6+1") : x=n598_out -> out=n710_out
+  inst COMPOSITE_WRITE_NUMBER n711 (count=1, offset=7) : in1=n712_out -> out=n711_out
+  inst FUNC_NUM_1 n712 (expression="max(-x,0)") : x=n663_out -> out=n712_out
+  inst SR_LATCH n713 : r=n723_out, s=n722_out -> q=n713_q, not_q=n713_not_q
+  inst SR_LATCH n714 : r=n725_out, s=n724_out -> q=n714_q, not_q=n714_not_q
+  inst SR_LATCH n715 : r=n721_out, s=n717_out -> q=n715_q
+  inst SR_LATCH n716 : r=n721_out, s=n719_out -> q=n716_q
+  inst AND n717 : a=n713_not_q, b=n720_out -> out=n717_out
+  inst AND n719 : a=n714_not_q, b=n720_out -> out=n719_out
+  inst COMPOSITE_READ_BOOLEAN n720 (channel=6) : composite="Extended IF" -> out=n720_out
+  inst COMPOSITE_READ_BOOLEAN n721 (channel=7) : composite="Extended IF" -> out=n721_out
+  inst COMPOSITE_READ_BOOLEAN n722 (channel=4) : composite="Extended IF" -> out=n722_out
+  inst COMPOSITE_READ_BOOLEAN n723 (channel=5) : composite="Extended IF" -> out=n723_out
+  inst COMPOSITE_READ_BOOLEAN n724 (channel=8) : composite="Extended IF" -> out=n724_out
+  inst COMPOSITE_READ_BOOLEAN n725 (channel=9) : composite="Extended IF" -> out=n725_out
+  inst NUM_SWITCHBOX n726 : a=n733_out, b=n727_value, switch=n729_out -> out=n726_out
+  inst CONST n727 (value=0.02) : -> value=n727_value
+  inst NUM_SWITCHBOX n728 : a=n733_out, b=n727_value, switch=n730_out -> out=n728_out
+  inst AND n729 : a=n715_q, b=n762_out -> out=n729_out
+  inst AND n730 : a=n716_q, b=n762_out -> out=n730_out
+  inst PROPERTY_DROPDOWN n733 (name="Panta Height (Type)") : -> out=n733_out
+  inst COMPOSITE_WRITE_NUMBER n742 (count=2, offset=1) : in1=n745_out, in2=n549_out, inc=n752_out -> out=n742_out
+  inst FUNC_NUM_1 n745 (expression="max(x-1.45,0)/3.02") : x="BC [atm abs]" -> out=n745_out
+  inst THRESHOLD n749 (min=1911, max=1911) : value=n750_out -> out=n749_out
+  inst COMPOSITE_READ_NUMBER n750 (channel=15) : composite="Momelink inner unit" -> out=n750_out
+  inst CONST n751 (value=1911) : -> value=n751_value
+  inst COMPOSITE_WRITE_NUMBER n752 (count=1, offset=1) : in1=n745_out, in2=n757_out, in15=n751_value, in22=n759_value, in23=n114_out, in24=n410_out, in25=n710_out, in26=n549_out -> out=n752_out
+  inst COMPOSITE_SWITCHBOX n753 : a=n752_out, b=n742_out, switch=n755_out -> out="Momelink-A"
+  inst PROPERTY_TOGGLE n754 (label="", on_label="1900", off_label="1800", n="M type") : -> out=n754_out
+  inst AND n755 : a=n749_out, b=n754_out -> out=n755_out
+  inst COMPOSITE_READ_NUMBER n757 (channel=26) : composite="Momelink inner unit" -> out=n757_out
+  inst CONST n759 (value=35) : -> value=n759_value
+  inst COMPOSITE_WRITE_BOOLEAN n760 (count=8, offset=1) : in1=n317_q, in5=n761_out, in6=n729_out, in7=n763_out, in8=n730_out -> out=n760_out
+  inst AND n761 : a=n713_q, b=n762_out -> out=n761_out
+  inst NOT n762 : a=n754_out -> out=n762_out
+  inst AND n763 : a=n714_q, b=n762_out -> out=n763_out
+  inst COMPOSITE_WRITE_NUMBER n764 (count=8, offset=1) : in2=n765_out, in3=n767_out, in5=n769_out, in6=n726_out, in7=n728_out, in8="MR [atm abs]", inc=n760_out -> out="Rolling Stock Status"
+  inst FUNC_NUM_1 n765 (expression="max((x-1)*101.315,0)") : x="BC [atm abs]" -> out=n765_out
+  inst COMPOSITE_READ_NUMBER n767 (channel=24) : composite=n768_out -> out=n767_out
+  inst COMPOSITE_SWITCHBOX n768 : a="Momelink inner unit", b=n752_out, switch=n755_out -> out=n768_out
+  inst COMPOSITE_READ_NUMBER n769 (channel=23) : composite=n768_out -> out=n769_out
+  inst OR n775 : a=n729_out, b=n730_out -> out=n775_out
+  inst PROPERTY_TOGGLE n776 (label="", on_label="SAP", off_label="ECB", n="SAP or ECB") : -> out=n776_out
+  inst COMPOSITE_READ_NUMBER n777 (channel=2) : composite="Simple IF" -> out=n777_out
+  inst NUM_SWITCHBOX n778 : a="BP [atm]", b=n787_out, switch=n776_out -> out=n778_out
+  inst NUM_SWITCHBOX n779 : a="SAP [atm]", b=n796_out, switch=n776_out -> out=n779_out
+  inst SUBTRACT n780 : a=n781_out, b=n782_out -> out=n780_out
+  inst NUM_SWITCHBOX n781 : a=n783_value, b=n784_value, switch=n785_out -> out=n781_out
+  inst NUM_SWITCHBOX n782 : a=n783_value, b=n784_value, switch=n786_out -> out=n782_out
+  inst CONST n783 (value=1) : -> value=n783_value
+  inst CONST n784 (value=0) : -> value=n784_value
+  inst COMPOSITE_READ_BOOLEAN n785 (channel=16) : composite="Simple IF" -> out=n785_out
+  inst COMPOSITE_READ_BOOLEAN n786 (channel=17) : composite="Simple IF" -> out=n786_out
+  inst NUM_SWITCHBOX n787 : a=n789_value, b=n790_value, switch=n788_out -> out=n787_out
+  inst COMPOSITE_READ_BOOLEAN n788 (channel=1) : composite="Simple IF" -> out=n788_out
+  inst CONST n789 (value=0) : -> value=n789_value
+  inst CONST n790 (value=5) : -> value=n790_value
+  inst COMPOSITE_READ_NUMBER n791 (channel=1) : composite="Simple IF" -> out=n791_out
+  inst COMPOSITE_READ_BOOLEAN n793 (channel=18) : composite="Simple IF" -> out=n793_out
+  inst COMPOSITE_READ_NUMBER n794 (channel=25) : composite=n768_out -> out="BC target [atm]"
+  inst FUNC_NUM_3 n796 (expression="clamp(x+(5-y)*7,0,36)/8+1") : x=n791_out, y=n787_out -> out=n796_out
+  inst COMPOSITE_READ_NUMBER n797 (channel=9) : -> out=n797_out
+end
