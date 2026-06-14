@@ -1,0 +1,1481 @@
+{
+  "formatVersion": "stormworks-sw-mcl-v1",
+  "sourceName": "CHUSO_2000_Onecar_Control.xml",
+  "moduleId": "main",
+  "ports": [
+    {
+      "name": "Control Commands Type 3 from Back",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -8,
+        "y": -1
+      }
+    },
+    {
+      "name": "Control Commands Type 3 from Front",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -8,
+        "y": 2.25
+      }
+    },
+    {
+      "name": "Simple IF RX",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -8.25,
+        "y": -11
+      }
+    },
+    {
+      "name": "Control Commands Type 3",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": -0.5,
+        "y": 13.5
+      }
+    },
+    {
+      "name": "Simple IF RX inverted",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": -3.25,
+        "y": -10.75
+      }
+    }
+  ],
+  "instances": [
+    {
+      "id": "n13",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": -1.75,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "n14",
+      "type": "COMPOSITE_SWITCHBOX",
+      "position": {
+        "x": -5.5,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "n15",
+      "type": "COMPOSITE_SWITCHBOX",
+      "position": {
+        "x": -5.5,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n16",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -8,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n17",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -8,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "n18",
+      "type": "NOT",
+      "position": {
+        "x": -8,
+        "y": -2
+      }
+    },
+    {
+      "id": "n19",
+      "type": "NOT",
+      "position": {
+        "x": -8,
+        "y": 1.25
+      }
+    },
+    {
+      "id": "n20",
+      "type": "AND",
+      "position": {
+        "x": -6.75,
+        "y": 1.5
+      }
+    },
+    {
+      "id": "n21",
+      "type": "AND",
+      "position": {
+        "x": -6.75,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "n22",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": 2.25
+      }
+    },
+    {
+      "id": "n23",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": -1
+      }
+    },
+    {
+      "id": "n24",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "n25",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n26",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": -2
+      }
+    },
+    {
+      "id": "n27",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": 1.25
+      }
+    },
+    {
+      "id": "n28",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -3,
+        "y": 3.25
+      }
+    },
+    {
+      "id": "n29",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -3,
+        "y": 2.75
+      }
+    },
+    {
+      "id": "n30",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -10.5,
+        "y": -4.25
+      }
+    },
+    {
+      "id": "n31",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -10.5,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n32",
+      "type": "ADD",
+      "position": {
+        "x": -3,
+        "y": 2
+      }
+    },
+    {
+      "id": "n33",
+      "type": "ADD",
+      "position": {
+        "x": -3,
+        "y": 1.25
+      }
+    },
+    {
+      "id": "n34",
+      "type": "ADD",
+      "position": {
+        "x": -3,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "n36",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n37",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": -3
+      }
+    },
+    {
+      "id": "n39",
+      "type": "NUMBER_TO_COMPOSITE",
+      "position": {
+        "x": -3,
+        "y": -1
+      }
+    },
+    {
+      "id": "n40",
+      "type": "NUMBER_TO_COMPOSITE",
+      "position": {
+        "x": -3,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n41",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -1
+      }
+    },
+    {
+      "id": "n42",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n43",
+      "type": "OR",
+      "position": {
+        "x": -0.5,
+        "y": -1.25
+      }
+    },
+    {
+      "id": "n44",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 4.25,
+        "y": -4.5
+      }
+    },
+    {
+      "id": "n45",
+      "type": "COMPOSITE_TO_NUMBER",
+      "position": {
+        "x": 5.5,
+        "y": -0.75
+      }
+    },
+    {
+      "id": "n46",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -2
+      }
+    },
+    {
+      "id": "n47",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n48",
+      "type": "OR",
+      "position": {
+        "x": -0.5,
+        "y": -2.25
+      }
+    },
+    {
+      "id": "n49",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -3.25
+      }
+    },
+    {
+      "id": "n50",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n51",
+      "type": "OR",
+      "position": {
+        "x": -0.5,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n52",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -4.25
+      }
+    },
+    {
+      "id": "n53",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n54",
+      "type": "OR",
+      "position": {
+        "x": -0.5,
+        "y": -4.5
+      }
+    },
+    {
+      "id": "n55",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "n56",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -6
+      }
+    },
+    {
+      "id": "n57",
+      "type": "OR",
+      "position": {
+        "x": -0.5,
+        "y": -5.75
+      }
+    },
+    {
+      "id": "n58",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -6.75
+      }
+    },
+    {
+      "id": "n59",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": -7.25
+      }
+    },
+    {
+      "id": "n60",
+      "type": "OR",
+      "position": {
+        "x": -0.5,
+        "y": -7
+      }
+    },
+    {
+      "id": "n61",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n62",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -2
+      }
+    },
+    {
+      "id": "n63",
+      "type": "OR",
+      "position": {
+        "x": 2,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "n64",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -0.75
+      }
+    },
+    {
+      "id": "n65",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "n66",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n67",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -4
+      }
+    },
+    {
+      "id": "n68",
+      "type": "OR",
+      "position": {
+        "x": 2,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n69",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -4.5
+      }
+    },
+    {
+      "id": "n70",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -5
+      }
+    },
+    {
+      "id": "n71",
+      "type": "OR",
+      "position": {
+        "x": 2,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n72",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -5.75
+      }
+    },
+    {
+      "id": "n73",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -6.25
+      }
+    },
+    {
+      "id": "n74",
+      "type": "OR",
+      "position": {
+        "x": 2,
+        "y": -6
+      }
+    },
+    {
+      "id": "n75",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -6.75
+      }
+    },
+    {
+      "id": "n76",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -7.25
+      }
+    },
+    {
+      "id": "n77",
+      "type": "OR",
+      "position": {
+        "x": 2,
+        "y": -7
+      }
+    },
+    {
+      "id": "n78",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -8
+      }
+    },
+    {
+      "id": "n79",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -8.5
+      }
+    },
+    {
+      "id": "n80",
+      "type": "OR",
+      "position": {
+        "x": 2,
+        "y": -8.25
+      }
+    },
+    {
+      "id": "n81",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -9.25
+      }
+    },
+    {
+      "id": "n82",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 0.75,
+        "y": -9.75
+      }
+    },
+    {
+      "id": "n83",
+      "type": "OR",
+      "position": {
+        "x": 2,
+        "y": -9.5
+      }
+    },
+    {
+      "id": "n84",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -1.75,
+        "y": 5.5
+      }
+    },
+    {
+      "id": "n85",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 13.75
+      }
+    },
+    {
+      "id": "n86",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 13.25
+      }
+    },
+    {
+      "id": "n87",
+      "type": "OR",
+      "position": {
+        "x": -10.5,
+        "y": 13.5
+      }
+    },
+    {
+      "id": "n88",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 12.75
+      }
+    },
+    {
+      "id": "n89",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 12.25
+      }
+    },
+    {
+      "id": "n90",
+      "type": "OR",
+      "position": {
+        "x": -10.5,
+        "y": 12.5
+      }
+    },
+    {
+      "id": "n91",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 11.75
+      }
+    },
+    {
+      "id": "n92",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 11.25
+      }
+    },
+    {
+      "id": "n93",
+      "type": "OR",
+      "position": {
+        "x": -10.5,
+        "y": 11.5
+      }
+    },
+    {
+      "id": "n94",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 10.75
+      }
+    },
+    {
+      "id": "n95",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 10.25
+      }
+    },
+    {
+      "id": "n96",
+      "type": "OR",
+      "position": {
+        "x": -10.5,
+        "y": 10.5
+      }
+    },
+    {
+      "id": "n97",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 9.75
+      }
+    },
+    {
+      "id": "n98",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 9.25
+      }
+    },
+    {
+      "id": "n99",
+      "type": "OR",
+      "position": {
+        "x": -10.5,
+        "y": 9.5
+      }
+    },
+    {
+      "id": "n100",
+      "type": "OR",
+      "position": {
+        "x": -11.75,
+        "y": 8.5
+      }
+    },
+    {
+      "id": "n101",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -8,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "n102",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -8,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n103",
+      "type": "OR",
+      "position": {
+        "x": -11.75,
+        "y": 7.75
+      }
+    },
+    {
+      "id": "n104",
+      "type": "AND",
+      "position": {
+        "x": -11.75,
+        "y": 7
+      }
+    },
+    {
+      "id": "n105",
+      "type": "OR",
+      "position": {
+        "x": -10.5,
+        "y": 7
+      }
+    },
+    {
+      "id": "n106",
+      "type": "AND",
+      "position": {
+        "x": -11.75,
+        "y": 6.25
+      }
+    },
+    {
+      "id": "n107",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 5.75
+      }
+    },
+    {
+      "id": "n108",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": 5.25
+      }
+    },
+    {
+      "id": "n109",
+      "type": "OR",
+      "position": {
+        "x": -10.5,
+        "y": 5.5
+      }
+    },
+    {
+      "id": "n110",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 13.75
+      }
+    },
+    {
+      "id": "n111",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 13.25
+      }
+    },
+    {
+      "id": "n112",
+      "type": "OR",
+      "position": {
+        "x": -8,
+        "y": 13.5
+      }
+    },
+    {
+      "id": "n113",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 12.75
+      }
+    },
+    {
+      "id": "n114",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 12.25
+      }
+    },
+    {
+      "id": "n115",
+      "type": "OR",
+      "position": {
+        "x": -8,
+        "y": 12.5
+      }
+    },
+    {
+      "id": "n116",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 11.75
+      }
+    },
+    {
+      "id": "n117",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 11.25
+      }
+    },
+    {
+      "id": "n118",
+      "type": "OR",
+      "position": {
+        "x": -8,
+        "y": 11.5
+      }
+    },
+    {
+      "id": "n119",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 10.75
+      }
+    },
+    {
+      "id": "n120",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 10.25
+      }
+    },
+    {
+      "id": "n121",
+      "type": "OR",
+      "position": {
+        "x": -8,
+        "y": 10.5
+      }
+    },
+    {
+      "id": "n122",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 9.75
+      }
+    },
+    {
+      "id": "n123",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 9.25
+      }
+    },
+    {
+      "id": "n124",
+      "type": "OR",
+      "position": {
+        "x": -8,
+        "y": 9.5
+      }
+    },
+    {
+      "id": "n125",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 8.75
+      }
+    },
+    {
+      "id": "n126",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 8.25
+      }
+    },
+    {
+      "id": "n127",
+      "type": "OR",
+      "position": {
+        "x": -8,
+        "y": 8.5
+      }
+    },
+    {
+      "id": "n128",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 7.5
+      }
+    },
+    {
+      "id": "n129",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 7
+      }
+    },
+    {
+      "id": "n130",
+      "type": "OR",
+      "position": {
+        "x": -8,
+        "y": 7.25
+      }
+    },
+    {
+      "id": "n131",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 6.5
+      }
+    },
+    {
+      "id": "n132",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 6
+      }
+    },
+    {
+      "id": "n133",
+      "type": "OR",
+      "position": {
+        "x": -8,
+        "y": 6.25
+      }
+    },
+    {
+      "id": "n134",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 5.25
+      }
+    },
+    {
+      "id": "n135",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 4.75
+      }
+    },
+    {
+      "id": "n140",
+      "type": "AND",
+      "position": {
+        "x": -8,
+        "y": 5
+      }
+    },
+    {
+      "id": "n141",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 4.25
+      }
+    },
+    {
+      "id": "n142",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -9.25,
+        "y": 3.75
+      }
+    },
+    {
+      "id": "n143",
+      "type": "OR",
+      "position": {
+        "x": -8,
+        "y": 4
+      }
+    },
+    {
+      "id": "n144",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 13.75
+      }
+    },
+    {
+      "id": "n145",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 13.25
+      }
+    },
+    {
+      "id": "n146",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 13.5
+      }
+    },
+    {
+      "id": "n147",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 12.75
+      }
+    },
+    {
+      "id": "n148",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 12.25
+      }
+    },
+    {
+      "id": "n149",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 12.5
+      }
+    },
+    {
+      "id": "n150",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 11.75
+      }
+    },
+    {
+      "id": "n151",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 11.25
+      }
+    },
+    {
+      "id": "n152",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 11.5
+      }
+    },
+    {
+      "id": "n153",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 10.75
+      }
+    },
+    {
+      "id": "n154",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 10.25
+      }
+    },
+    {
+      "id": "n155",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 10.5
+      }
+    },
+    {
+      "id": "n156",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 9.75
+      }
+    },
+    {
+      "id": "n157",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 9.25
+      }
+    },
+    {
+      "id": "n158",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 9.5
+      }
+    },
+    {
+      "id": "n159",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 8.75
+      }
+    },
+    {
+      "id": "n160",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 8.25
+      }
+    },
+    {
+      "id": "n161",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 8.5
+      }
+    },
+    {
+      "id": "n162",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 7.75
+      }
+    },
+    {
+      "id": "n163",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 7.25
+      }
+    },
+    {
+      "id": "n164",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 7.5
+      }
+    },
+    {
+      "id": "n165",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 6.5
+      }
+    },
+    {
+      "id": "n166",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 6
+      }
+    },
+    {
+      "id": "n167",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 6.25
+      }
+    },
+    {
+      "id": "n168",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 5.5
+      }
+    },
+    {
+      "id": "n169",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 5
+      }
+    },
+    {
+      "id": "n170",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 5.25
+      }
+    },
+    {
+      "id": "n171",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 4.5
+      }
+    },
+    {
+      "id": "n172",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 4
+      }
+    },
+    {
+      "id": "n173",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 4.25
+      }
+    },
+    {
+      "id": "n174",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 3.5
+      }
+    },
+    {
+      "id": "n175",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.75,
+        "y": 3
+      }
+    },
+    {
+      "id": "n176",
+      "type": "OR",
+      "position": {
+        "x": -5.5,
+        "y": 3.25
+      }
+    },
+    {
+      "id": "n177",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -4.25,
+        "y": 13.75
+      }
+    },
+    {
+      "id": "n178",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -4.25,
+        "y": 13.25
+      }
+    },
+    {
+      "id": "n179",
+      "type": "OR",
+      "position": {
+        "x": -3,
+        "y": 13.5
+      }
+    },
+    {
+      "id": "n180",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -4.25,
+        "y": 12.75
+      }
+    },
+    {
+      "id": "n181",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -4.25,
+        "y": 12.25
+      }
+    },
+    {
+      "id": "n182",
+      "type": "OR",
+      "position": {
+        "x": -3,
+        "y": 12.5
+      }
+    },
+    {
+      "id": "n186",
+      "type": "AND",
+      "position": {
+        "x": -3,
+        "y": 11.5
+      }
+    },
+    {
+      "id": "n187",
+      "type": "OR",
+      "position": {
+        "x": -4.25,
+        "y": 11.25
+      }
+    },
+    {
+      "id": "n188",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": -5.75,
+        "y": -11.25
+      }
+    },
+    {
+      "id": "n189",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -7,
+        "y": -11
+      }
+    },
+    {
+      "id": "n190",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -7,
+        "y": -11.5
+      }
+    },
+    {
+      "id": "n192",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -4.5,
+        "y": -11.25
+      }
+    },
+    {
+      "id": "n195",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -5.75,
+        "y": -11.75
+      }
+    },
+    {
+      "id": "n196",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -5.75,
+        "y": -12.25
+      }
+    },
+    {
+      "id": "n197",
+      "type": "AND",
+      "position": {
+        "x": -10.5,
+        "y": 8.5
+      }
+    },
+    {
+      "id": "n198",
+      "type": "AND",
+      "position": {
+        "x": -10.5,
+        "y": 7.75
+      }
+    },
+    {
+      "id": "n199",
+      "type": "NOT",
+      "position": {
+        "x": -10.5,
+        "y": 6.5
+      }
+    },
+    {
+      "id": "n200",
+      "type": "LUA",
+      "position": {
+        "x": -8,
+        "y": -4.5
+      }
+    },
+    {
+      "id": "n201",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": -9.25,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n202",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -6.75,
+        "y": -4.25
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 188 nodes, 300 links, and 1 submodules from XML."
+  ]
+}

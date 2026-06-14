@@ -1,0 +1,277 @@
+{
+  "formatVersion": "stormworks-project-json-v10",
+  "sourceName": "CHUSO2000_Cab_Display_IV.xml",
+  "name": "CHUSO Series 2000 Cab Display",
+  "description": "v0.4.0",
+  "width": 2,
+  "length": 3,
+  "nodes": [
+    {
+      "id": "Main Monitor",
+      "type": "video_out",
+      "label": "Main Monitor",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 2
+      },
+      "position": {
+        "x": 4,
+        "y": 5
+      }
+    },
+    {
+      "id": "Monitor Status",
+      "type": "composite_in",
+      "label": "Monitor Status",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      },
+      "position": {
+        "x": -9.75,
+        "y": 1.5
+      }
+    },
+    {
+      "id": "Loop Start, ATS/C Settings",
+      "type": "composite_out",
+      "label": "Loop Start, ATS/C Settings",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": 2.75,
+        "y": 2.5
+      }
+    },
+    {
+      "id": "ATS/ATC",
+      "type": "composite_in",
+      "label": "ATS/ATC",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": -1,
+        "y": 5.75
+      }
+    },
+    {
+      "id": "ARC",
+      "type": "number_out",
+      "label": "ARC",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": 10.5,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "ATP Switch",
+      "type": "video_out",
+      "label": "ATP Switch",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      },
+      "position": {
+        "x": 1.5,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "Electricity Display",
+      "type": "video_out",
+      "label": "Electricity Display",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      },
+      "position": {
+        "x": -3.5,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "Rolling Stock Status",
+      "type": "composite_in",
+      "label": "Rolling Stock Status",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 2
+      },
+      "position": {
+        "x": -6,
+        "y": 6.25
+      }
+    },
+    {
+      "id": "ATP Monitor Touch Composite",
+      "type": "composite_in",
+      "label": "ATP Monitor Touch Composite",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      },
+      "position": {
+        "x": -8.5,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "ATC Train Length",
+      "type": "number_out",
+      "label": "ATC Train Length",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": 0.25,
+        "y": -1.5
+      }
+    }
+  ],
+  "constants": [],
+  "submodules": [
+    {
+      "id": "main",
+      "name": "main",
+      "relativePath": "main.sw-net",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Main Monitor"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Main Monitor"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Monitor Status"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Monitor Status"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Loop Start, ATS/C Settings"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Loop Start, ATS/C Settings"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "ATS/ATC"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "ATS/ATC"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "ARC"
+      },
+      "to": {
+        "kind": "node",
+        "id": "ARC"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "ATP Switch"
+      },
+      "to": {
+        "kind": "node",
+        "id": "ATP Switch"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Electricity Display"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Electricity Display"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Rolling Stock Status"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Rolling Stock Status"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "ATP Monitor Touch Composite"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "ATP Monitor Touch Composite"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "ATC Train Length"
+      },
+      "to": {
+        "kind": "node",
+        "id": "ATC Train Length"
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 93 nodes, 129 links, and 1 submodules from XML."
+  ]
+}

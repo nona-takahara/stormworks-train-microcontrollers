@@ -1,0 +1,51 @@
+module main
+  port in "Phys. Input" : composite
+  port in "Phys. Input" : composite
+  port out "Door is Open" : boolean
+  port out "Chime Low" : boolean
+  port out "Chime High" : boolean
+  port in "Other Inputs" : composite
+  port in "NITS Ext. Input" : composite
+  port out Input : number
+
+  inst OR door_open_or : a=door_open, b=in_door_zone_out -> out="Door is Open"
+  inst COMPOSITE_READ_NUMBER sensor_a_ch1 (channel=1) : composite="Phys. Input" -> out=sensor_a_x
+  inst COMPOSITE_READ_NUMBER sensor_a_ch2 (channel=2) : composite="Phys. Input" -> out=sensor_a_y
+  inst COMPOSITE_READ_NUMBER sensor_a_ch3 (channel=3) : composite="Phys. Input" -> out=sensor_a_z
+  inst COMPOSITE_READ_NUMBER sensor_b_ch1 (channel=1) : composite="Phys. Input" -> out=sensor_b_x
+  inst COMPOSITE_READ_NUMBER sensor_b_ch2 (channel=2) : composite="Phys. Input" -> out=sensor_b_y
+  inst COMPOSITE_READ_NUMBER sensor_b_ch3 (channel=3) : composite="Phys. Input" -> out=sensor_b_z
+  inst FUNC_NUM_8 dist_sq_calc (expression="(x-a)^2+(y-b)^2+(z-c)^2") : x=sensor_a_x, y=sensor_a_y, z=sensor_a_z, a=sensor_b_x, b=sensor_b_y, c=sensor_b_z -> out=dist_sq
+  inst GREATER_THAN dist_gt_lower : a=dist_sq, b=lower_thresh -> out=dist_gt_lower_out
+  inst LESS_THAN dist_lt_upper : a=dist_sq, b=upper_thresh -> out=dist_lt_upper_out
+  inst NAND in_door_zone : a=dist_lt_upper_out, b=dist_gt_lower_out -> out=in_door_zone_out
+  inst PROPERTY_NUMBER prop_length (value=1.25, n="Length") : -> out=length
+  inst PROPERTY_NUMBER prop_width (value=0.1, n="Width") : -> out=width
+  inst FUNC_NUM_3 lower_thresh_sq (expression="(x-y)^2") : x=length, y=width -> out=lower_thresh
+  inst FUNC_NUM_3 upper_thresh_sq (expression="(x+y)^2") : x=length, y=width -> out=upper_thresh
+  inst COMPOSITE_READ_BOOLEAN door_side_rx (channel=-1) : channel_input=door_side_ch, composite=nits_composite -> out=door_side_signal
+  inst PROPERTY_DROPDOWN prop_door_side (name="Door Side", v=16) : -> out=door_side_ch
+  inst FUNC_NUM_1 door_side_opp_ch (expression="x+1") : x=door_side_ch -> out=door_side_opp
+  inst COMPOSITE_READ_BOOLEAN nits_opp_side_rx (channel=-1) : channel_input=door_side_opp, composite="NITS Ext. Input" -> out=nits_opp_signal
+  inst SR_LATCH door_open_latch : r=door_close_reset_out, s=door_side_signal -> q=door_open
+  inst BOOL_FUNC_4 door_close_reset (expression="(!x)&y") : x=door_side_signal, y=nits_opp_signal -> out=door_close_reset_out
+  inst PULSE door_change_pulse (mode="both") : a=door_open -> out=door_change
+  inst CONST_BOOL const_false : -> out=const_false_out
+  inst COUNTER chime_counter (reset_value=0, increment=1, min=0, max=120, m=1) : reset=door_change, up=const_false_out -> out=chime_tick
+  inst OR chime_high_or : a=chime_high_open_out, b=chime_high_close_out -> out="Chime High"
+  inst OR chime_low_or : a=chime_low_open_out, b=chime_low_close_out -> out="Chime Low"
+  inst THRESHOLD chime_high_open (min=1, max=79) : value=chime_tick -> out=chime_high_open_out
+  inst THRESHOLD chime_low_open (min=21, max=99) : value=chime_tick -> out=chime_low_open_out
+  inst THRESHOLD chime_high_close (min=81, max=120) : value=chime_tick -> out=chime_high_close_out
+  inst THRESHOLD chime_low_close (min=101, max=120) : value=chime_tick -> out=chime_low_close_out
+  inst NUM_SWITCHBOX door_dir_sw : a=open_dir, b=close_dir, switch=door_open -> out=door_dir
+  inst CONST const_open_dir (value=1) : -> value=open_dir
+  inst CONST const_close_dir (value=-1) : -> value=close_dir
+  inst MULTIPLY door_speed_out : a=door_dir, b=door_speed -> out="Input"
+  inst NUM_SWITCHBOX speed_mode_sw : a=speed_normal, b=speed_slow, switch=door_moving -> out=door_speed
+  inst CONST const_speed_normal (value=0.4) : -> value=speed_normal
+  inst CONST const_speed_slow (value=0.2) : -> value=speed_slow
+  inst CAPACITOR door_moving_cap (charge_time=0, discharge_time=1) : enable=door_change -> out=door_moving
+  inst COMPOSITE_READ_BOOLEAN other_in_ch10 (channel=10) : composite="Other Inputs" -> out=nits_ext_switch
+  inst COMPOSITE_SWITCHBOX nits_composite_sw : b="NITS Ext. Input", switch=nits_ext_switch -> out=nits_composite
+end

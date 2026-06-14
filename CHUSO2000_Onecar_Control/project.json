@@ -1,0 +1,152 @@
+{
+  "formatVersion": "stormworks-project-json-v10",
+  "sourceName": "CHUSO_2000_Onecar_Control.xml",
+  "name": "CHUSO 2200 NITS Gateway for One-car IV",
+  "description": "No description set.",
+  "width": 5,
+  "length": 1,
+  "nodes": [
+    {
+      "id": "Control Commands Type 3 from Front",
+      "type": "composite_in",
+      "label": "Control Commands Type 3 from Front",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": -8,
+        "y": 2.25
+      }
+    },
+    {
+      "id": "Control Commands Type 3 from Back",
+      "type": "composite_in",
+      "label": "Control Commands Type 3 from Back",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      },
+      "position": {
+        "x": -8,
+        "y": -1
+      }
+    },
+    {
+      "id": "Control Commands Type 3",
+      "type": "composite_out",
+      "label": "Control Commands Type 3",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 0
+      },
+      "position": {
+        "x": -0.5,
+        "y": 13.5
+      }
+    },
+    {
+      "id": "Simple IF RX",
+      "type": "composite_in",
+      "label": "Simple IF RX",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 0
+      },
+      "position": {
+        "x": -8.25,
+        "y": -11
+      }
+    },
+    {
+      "id": "Simple IF RX inverted",
+      "type": "composite_out",
+      "label": "Simple IF RX inverted",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 4,
+        "y": 0
+      },
+      "position": {
+        "x": -3.25,
+        "y": -10.75
+      }
+    }
+  ],
+  "constants": [],
+  "submodules": [
+    {
+      "id": "main",
+      "name": "main",
+      "relativePath": "main.sw-net",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": {
+        "kind": "node",
+        "id": "Control Commands Type 3 from Front"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Control Commands Type 3 from Front"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Control Commands Type 3 from Back"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Control Commands Type 3 from Back"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Control Commands Type 3"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Control Commands Type 3"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Simple IF RX"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Simple IF RX"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Simple IF RX inverted"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Simple IF RX inverted"
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 188 nodes, 300 links, and 1 submodules from XML."
+  ]
+}

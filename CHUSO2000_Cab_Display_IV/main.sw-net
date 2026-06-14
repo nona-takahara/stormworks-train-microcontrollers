@@ -1,0 +1,156 @@
+module main
+  port out "Main Monitor" : video
+  port in "Monitor Status" : composite
+  port out "Loop Start, ATS/C Settings" : composite
+  port in "ATS/ATC" : composite
+  port out ARC : number
+  port out "ATP Switch" : video
+  port out "Electricity Display" : video
+  port in "Rolling Stock Status" : composite
+  port in "ATP Monitor Touch Composite" : composite
+  port out "ATC Train Length" : number
+
+  # ================================================================
+  # Monitor Status 読み込み - Boolean
+  # ================================================================
+
+  inst COMPOSITE_READ_BOOLEAN ms_b2_high_beam_read (channel=2) : composite="Monitor Status" -> out=ms_b2_high_beam
+  inst COMPOSITE_READ_BOOLEAN ms_b3_atsc_disable_read (channel=3) : composite="Monitor Status" -> out=ms_b3_atsc_disable
+  inst COMPOSITE_READ_BOOLEAN ms_b4_eb_pos_read (channel=4) : composite="Monitor Status" -> out=ms_b4_eb_pos
+  inst COMPOSITE_READ_BOOLEAN ms_b5_mascon_active_read (channel=5) : composite="Monitor Status" -> out=ms_b5_mascon_active
+  inst COMPOSITE_READ_BOOLEAN ms_b6_eb_active_read (channel=6) : composite="Monitor Status" -> out=ms_b6_eb_active
+  inst COMPOSITE_READ_BOOLEAN ms_b7_stop_lamp_read (channel=7) : composite="Monitor Status" -> out=ms_b7_stop_lamp
+  inst COMPOSITE_READ_BOOLEAN ms_b8_boost_active_read (channel=8) : composite="Monitor Status" -> out=ms_b8_boost_active
+  inst COMPOSITE_READ_BOOLEAN ms_b11_nits_ext_read (channel=11) : composite="Monitor Status" -> out=ms_b11_nits_ext
+  inst COMPOSITE_READ_BOOLEAN ms_b12_door_a_read (channel=12) : composite="Monitor Status" -> out=ms_b12_door_a
+  inst COMPOSITE_READ_BOOLEAN ms_b13_door_b_read (channel=13) : composite="Monitor Status" -> out=ms_b13_door_b
+  inst COMPOSITE_READ_BOOLEAN ms_b14_doorcut_self_read (channel=14) : composite="Monitor Status" -> out=ms_b14_doorcut_self
+  inst COMPOSITE_READ_BOOLEAN ms_b15_doorcut_other_read (channel=15) : composite="Monitor Status" -> out=ms_b15_doorcut_other
+  inst COMPOSITE_READ_BOOLEAN ms_b16_direction_read (channel=16) : composite="Monitor Status" -> out=ms_b16_direction
+
+  # ================================================================
+  # Monitor Status 読み込み - Number
+  # ================================================================
+
+  inst COMPOSITE_READ_NUMBER ms_n1_km_read (channel=1) : composite="Monitor Status" -> out=ms_n1_km
+  inst COMPOSITE_READ_NUMBER ms_n2_km_read (channel=2) : composite="Monitor Status" -> out=ms_n2_km
+  inst COMPOSITE_READ_NUMBER ms_n9_brake_read (channel=9) : composite="Monitor Status" -> out=ms_n9_brake
+  inst COMPOSITE_READ_NUMBER ms_n10_power_read (channel=10) : composite="Monitor Status" -> out=ms_n10_power
+  inst COMPOSITE_READ_NUMBER ms_n11_reverser_read (channel=11) : composite="Monitor Status" -> out=ms_n11_reverser
+  inst COMPOSITE_READ_NUMBER ms_n12_formation_dir_read (channel=12) : composite="Monitor Status" -> out=ms_n12_formation_dir
+  inst COMPOSITE_READ_NUMBER ms_n13_speed_read (channel=13) : composite="Monitor Status" -> out=ms_n13_speed
+  inst COMPOSITE_READ_NUMBER ms_n27_packed_traction_read (channel=27) : composite="Monitor Status" -> out=ms_n27_packed_traction
+  inst COMPOSITE_READ_NUMBER ms_n29_packed_door_read (channel=29) : composite="Monitor Status" -> out=ms_n29_packed_door
+  inst COMPOSITE_READ_NUMBER ms_n31_front_cars_read (channel=31) : composite="Monitor Status" -> out=ms_n31_front_cars
+  inst COMPOSITE_READ_NUMBER ms_n32_back_cars_read (channel=32) : composite="Monitor Status" -> out=ms_n32_back_cars
+
+  # ================================================================
+  # Rolling Stock Status 読み込み
+  # ================================================================
+
+  inst COMPOSITE_READ_NUMBER rs_n2_bc_press_read (channel=2) : composite="Rolling Stock Status" -> out=rs_n2_bc_press
+  inst COMPOSITE_READ_NUMBER rs_n3_motor_current_read (channel=3) : composite="Rolling Stock Status" -> out=rs_n3_motor_current
+  inst COMPOSITE_READ_NUMBER rs_n5_line_voltage_read (channel=5) : composite="Rolling Stock Status" -> out=rs_n5_line_voltage
+  inst COMPOSITE_READ_NUMBER rs_n8_mr_press_read (channel=8) : composite="Rolling Stock Status" -> out=rs_n8_mr_press
+
+  # ================================================================
+  # ATP Monitor Touch 読み込みとページ切り替えロジック
+  # ================================================================
+
+  inst COMPOSITE_READ_BOOLEAN atp_touch_b1_read (channel=1) : composite="ATP Monitor Touch Composite" -> out=atp_touch_b1
+  inst PULSE atp_touch_fall_pulse (mode="fall") : a=atp_touch_b1 -> out=atp_touch_fall
+  inst AND atp_touch_gate : a=atp_touch_fall, b=ms_b4_eb_pos -> out=atp_touch_gated
+  inst TOGGLE atp_page_toggle : a=atp_touch_gated -> out=atp_page_toggled
+  inst CONST const_atp_page_1 (value=1) : -> value=const_atp_page_1_val
+  inst CONST const_atp_page_2 (value=2) : -> value=const_atp_page_2_val
+  inst NUM_SWITCHBOX atp_page_sw : a=const_atp_page_1_val, b=const_atp_page_2_val, switch=atp_page_toggled -> out=atp_page
+  inst NUM_SWITCHBOX atp_toggle_sw : b=atp_page, switch=ms_b3_atsc_disable -> out=atp_toggle_page
+
+  # ================================================================
+  # ATP Switch ビデオ出力
+  # ================================================================
+
+  inst COMPOSITE_WRITE_NUMBER atp_switch_num_write (count=1, offset=1) : in1=atp_page -> out=atp_switch_composite
+  inst LUA lua_atp_switch (script_ref="scripts/n390.lua") : composite=atp_switch_composite -> video="ATP Switch"
+
+  # ================================================================
+  # ハイビーム/ライト位置
+  # ================================================================
+
+  inst PROPERTY_NUMBER prop_high_beam_x (value=0, n="High Beam X") : -> out=prop_high_beam_x_val
+  inst PROPERTY_NUMBER prop_low_beam_x (value=0, n="Low Beam X") : -> out=prop_low_beam_x_val
+  inst PROPERTY_NUMBER prop_high_beam_y (value=0, n="High Beam Y") : -> out=prop_high_beam_y_val
+  inst PROPERTY_NUMBER prop_low_beam_y (value=-0.5, n="Low Beam Y") : -> out=prop_low_beam_y_val
+  inst NUM_SWITCHBOX beam_x_sw : a=prop_high_beam_x_val, b=prop_low_beam_x_val, switch=ms_b2_high_beam -> out=beam_x
+  inst NUM_SWITCHBOX beam_pos_sw : a=prop_high_beam_y_val, b=prop_low_beam_y_val, switch=ms_b2_high_beam -> out=beam_pos
+
+  # ================================================================
+  # ARC (走行距離計) 計算
+  # ================================================================
+
+  inst FUNC_NUM_3 arc_calc (expression="((floor(x)%100000)+(floor(y)*100000))*z") : x=ms_n2_km, y=ms_n1_km, z=formation_dir_clamped -> out="ARC"
+  inst FUNC_NUM_1 formation_dir_clamp (expression="max(x,0)") : x=ms_n12_formation_dir -> out=formation_dir_clamped
+
+  # ================================================================
+  # ATC 列車長計算
+  # ================================================================
+
+  inst FUNC_NUM_3 atc_train_length_calc (expression="(x+y+1)*18") : x=ms_n31_front_cars, y=ms_n32_back_cars -> out="ATC Train Length"
+
+  # ================================================================
+  # Loop Start, ATS/C Settings 出力
+  # ================================================================
+
+  inst CONST const_1 (value=1) : -> value=const_1_val
+  inst NUM_SWITCHBOX formation_dir_sw : a=atp_toggle_page, switch=ms_b5_mascon_active -> out=formation_dir_gated
+  inst NUM_SWITCHBOX mascon_active_sw : a=const_1_val, switch=ms_b4_eb_pos -> out=mascon_active_gated
+  inst COMPOSITE_WRITE_BOOLEAN loop_start_bool_write (count=10, offset=18) : in1=ms_b14_doorcut_self, in2=ms_b15_doorcut_other, in5=ms_b12_door_a, in10=ms_b13_door_b -> out=loop_start_bool
+  inst COMPOSITE_WRITE_NUMBER loop_start_num_write (count=6, offset=1) : in1=beam_x, in2=beam_pos, in3=ms_n11_reverser, in4=ms_n12_formation_dir, in5=formation_dir_gated, in6=mascon_active_gated, inc=loop_start_bool -> out="Loop Start, ATS/C Settings"
+
+  # ================================================================
+  # 架線電圧・電流スムージング (指数平滑)
+  # ================================================================
+
+  inst CONST const_euler (value=2.71828182846) : -> value=euler_val
+  inst CONST const_smooth_factor (value=0.4) : -> value=smooth_factor_val
+  inst FUNC_NUM_8 line_voltage_smooth (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=rs_n5_line_voltage, y=line_voltage_smoothed, z=euler_val, w=line_voltage_diff, a=smooth_factor_val -> out=line_voltage_smoothed
+  inst DELTA line_voltage_delta : a=line_voltage_smoothed -> out=line_voltage_diff
+  inst FUNC_NUM_8 motor_current_smooth (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=rs_n3_motor_current, y=motor_current_smoothed, z=euler_val, w=motor_current_diff, a=smooth_factor_val -> out=motor_current_smoothed
+  inst DELTA motor_current_delta : a=motor_current_smoothed -> out=motor_current_diff
+
+  # ================================================================
+  # Electricity Display ビデオ出力
+  # ================================================================
+
+  inst COMPOSITE_WRITE_BOOLEAN elec_disp_bool_write (count=1, offset=1) : in1=ms_b16_direction -> out=elec_disp_bool_composite
+  inst COMPOSITE_WRITE_NUMBER elec_disp_num_write (count=4, offset=1) : in1=ms_n27_packed_traction, in2=ms_n29_packed_door, in3=line_voltage_smoothed, in4=motor_current_smoothed, inc=elec_disp_bool_composite -> out=elec_disp_composite
+  inst LUA lua_elec_disp (script_ref="scripts/n576.lua") : composite=elec_disp_composite -> video="Electricity Display"
+
+  # ================================================================
+  # ATS/C 画面用コンポジット組み立て
+  # ================================================================
+
+  inst COMPOSITE_WRITE_NUMBER ats_screen_notch_write (count=2, offset=1) : in1=ms_n9_brake, in2=ms_n10_power -> out=ats_screen_notch_composite
+  inst COMPOSITE_WRITE_BOOLEAN ats_screen_bool_write (count=8, offset=1) : in1=ms_b6_eb_active, in2=ms_b11_nits_ext, in3=ms_b5_mascon_active, in4=ms_b12_door_a, in5=ms_b13_door_b, in6=ms_b8_boost_active, in7=ms_b7_stop_lamp, inc=ats_screen_notch_composite -> out=ats_screen_bool_composite
+  inst COMPOSITE_WRITE_NUMBER ats_screen_num_write (count=3, offset=4) : in1=ms_n13_speed, in2=rs_n2_bc_press, in3=rs_n8_mr_press, inc=ats_screen_bool_composite -> out=ats_screen_composite
+
+  # ================================================================
+  # メイン画面用コンポジット組み立て
+  # ================================================================
+
+  inst COMPOSITE_WRITE_BOOLEAN main_screen_bool_write (count=1, offset=1) : in1=ms_b16_direction, inc="Monitor Status" -> out=main_screen_composite
+
+  # ================================================================
+  # ビデオレンダリングパイプライン (背景 → ATS画面 → ATS overlay → メイン画面 → ルート)
+  # ================================================================
+
+  inst LUA lua_dummy (script_ref="scripts/n417.lua") : ->
+  inst LUA lua_bg_draw (script_ref="scripts/n347.lua") : -> video=bg_draw_video
+  inst LUA lua_top_screen (script_ref="scripts/n81.lua") : composite=ats_screen_composite, video=bg_draw_video -> video=top_screen_video
+  inst LUA lua_ats_screen (script_ref="scripts/n334.lua") : composite="ATS/ATC", video=root_video -> video=ats_screen_video
+  inst LUA lua_ats_overlay (script_ref="scripts/n349.lua") : composite=ats_screen_bool_composite, video=ats_screen_video -> video=ats_overlay_video
+  inst LUA lua_main_screen (script_ref="scripts/n419.lua") : composite=main_screen_composite, video=ats_overlay_video -> video=main_screen_video
+  inst LUA lua_main_monitor (script_ref="scripts/n415.lua") : composite="Monitor Status", video=main_screen_video -> video="Main Monitor"
+  inst LUA lua_root (script_ref="scripts/n4.lua") : video=top_screen_video -> video=root_video
+
+end

@@ -1,0 +1,227 @@
+{
+  "formatVersion": "stormworks-project-json-v10",
+  "sourceName": "CHUSO_2000_Door_Min.xml",
+  "name": "CHUSO 2000 Door Mini",
+  "description": "No description set.",
+  "width": 2,
+  "length": 2,
+  "nodes": [
+    {
+      "id": "Phys. Input",
+      "type": "composite_in",
+      "label": "Phys. Input",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": -5.5,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "Phys. Input_2",
+      "type": "composite_in",
+      "label": "Phys. Input",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": -5.5,
+        "y": 0
+      }
+    },
+    {
+      "id": "Door is Open",
+      "type": "boolean_out",
+      "label": "Door is Open",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      },
+      "position": {
+        "x": 2.25,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "Chime Low",
+      "type": "boolean_out",
+      "label": "Chime Low",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": 3.5,
+        "y": -6.5
+      }
+    },
+    {
+      "id": "Chime High",
+      "type": "boolean_out",
+      "label": "Chime High",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": 3.5,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "Other Inputs",
+      "type": "composite_in",
+      "label": "Other Inputs",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      },
+      "position": {
+        "x": -8,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "NITS Ext. Input",
+      "type": "composite_in",
+      "label": "NITS Ext. Input",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      },
+      "position": {
+        "x": -6.75,
+        "y": -3
+      }
+    },
+    {
+      "id": "Input",
+      "type": "number_out",
+      "label": "Input",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      },
+      "position": {
+        "x": 3.5,
+        "y": -3.25
+      }
+    }
+  ],
+  "constants": [],
+  "submodules": [
+    {
+      "id": "main",
+      "name": "main",
+      "relativePath": "main.sw-net",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": {
+        "kind": "node",
+        "id": "Phys. Input"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Phys. Input"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Phys. Input_2"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Phys. Input"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Door is Open"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Door is Open"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Chime Low"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Chime Low"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Chime High"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Chime High"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Other Inputs"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Other Inputs"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "NITS Ext. Input"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "NITS Ext. Input"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Input"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Input"
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 56 nodes, 68 links, and 1 submodules from XML."
+  ]
+}

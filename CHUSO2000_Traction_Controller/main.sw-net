@@ -1,0 +1,271 @@
+module main
+  port in "Physics Input" : composite
+  port in Voltage : number
+  port out "Output (Watt)" : number
+  port in "Simple IF" : composite
+  port in "Momelink Line from inner Unit" : composite
+  port out "To Momelink Input & Advanced" : composite
+  port out "Rolling Stock Status" : composite
+  port out "Brake sound" : number
+  port in "Extended Commands RX" : composite
+  port in "Inertia Composite Input" : composite
+  port in BC : number
+  port out "BC Target" : number
+  port in MR : number
+  port in "Rolling Stock Settings" : composite
+
+  # ================================================================
+  # 物理センサ読み取り (Physics Input ch9 = 速度)
+  # ================================================================
+
+  inst COMPOSITE_READ_NUMBER velocity_read (channel=9) : composite="Physics Input" -> out=velocity
+
+  # ================================================================
+  # Simple IF 読み取り / 方向・マスコン信号
+  # ================================================================
+
+  inst COMPOSITE_READ_NUMBER si_n1_brake_read (channel=2) : composite="Simple IF" -> out=brake_notch
+  inst COMPOSITE_READ_NUMBER si_n2_power_read (channel=1) : composite="Simple IF" -> out=power_notch
+  inst COMPOSITE_READ_BOOLEAN si_b1_mascon_read (channel=1) : composite="Simple IF" -> out=mascon_active
+  inst COMPOSITE_READ_BOOLEAN si_b16_fwd_read (channel=16) : composite="Simple IF" -> out=dir_fwd
+  inst COMPOSITE_READ_BOOLEAN si_b17_rev_read (channel=17) : composite="Simple IF" -> out=dir_rev
+  inst COMPOSITE_READ_BOOLEAN si_b18_db_auto_read (channel=18) : composite="Simple IF" -> out=db_auto
+
+  # 方向信号生成 (+1=前進, -1=後退, 0=中立)
+  inst CONST const_pos1 (value=1) : -> value=pos1_val
+  inst CONST const_neg1 (value=-1) : -> value=neg1_val
+  inst NUM_SWITCHBOX direction_pos_sw : a=pos1_val, switch=dir_fwd -> out=direction_pos
+  inst NUM_SWITCHBOX direction_neg_sw : a=neg1_val, switch=dir_rev -> out=direction_neg
+  inst ADD direction_add : a=direction_neg, b=direction_pos -> out=direction
+
+  inst NOT db_auto_not : a=db_auto -> out=db_auto_not_out
+
+  # ================================================================
+  # Extended Commands RX 読み取り / パンタ・DB 制御コマンド
+  # ================================================================
+
+  inst COMPOSITE_READ_BOOLEAN ext_b4_panta_fwd_lock_read (channel=4) : composite="Extended Commands RX" -> out=panta_fwd_lock_cmd
+  inst COMPOSITE_READ_BOOLEAN ext_b5_panta_fwd_unlock_read (channel=5) : composite="Extended Commands RX" -> out=panta_fwd_unlock_cmd
+  inst COMPOSITE_READ_BOOLEAN ext_b6_panta_up_read (channel=6) : composite="Extended Commands RX" -> out=panta_up_cmd
+  inst COMPOSITE_READ_BOOLEAN ext_b7_panta_dn_read (channel=7) : composite="Extended Commands RX" -> out=panta_dn_cmd
+  inst COMPOSITE_READ_BOOLEAN ext_b8_panta_rev_lock_read (channel=8) : composite="Extended Commands RX" -> out=panta_rev_lock_cmd
+  inst COMPOSITE_READ_BOOLEAN ext_b9_panta_rev_unlock_read (channel=9) : composite="Extended Commands RX" -> out=panta_rev_unlock_cmd
+  inst COMPOSITE_READ_BOOLEAN ext_b14_high_accel_read (channel=14) : composite="Extended Commands RX" -> out=high_accel_cmd
+
+  # パンタグラフ ロック/解除 SR ラッチ
+  inst SR_LATCH panta_fwd_latch : r=panta_fwd_unlock_cmd, s=panta_fwd_lock_cmd -> q=panta_fwd_q, not_q=panta_fwd_not_q
+  inst SR_LATCH panta_rev_latch : r=panta_rev_unlock_cmd, s=panta_rev_lock_cmd -> q=panta_rev_q, not_q=panta_rev_not_q
+
+  # DB (ダイナミックブレーキ) SR ラッチ (パンタ上昇/下降コマンドでセット/リセット)
+  inst AND db_fwd_set_and : a=panta_fwd_not_q, b=panta_up_cmd -> out=db_fwd_set
+  inst AND db_rev_set_and : a=panta_rev_not_q, b=panta_up_cmd -> out=db_rev_set
+  inst SR_LATCH db_fwd_latch : r=panta_dn_cmd, s=db_fwd_set -> q=db_fwd_q
+  inst SR_LATCH db_rev_latch : r=panta_dn_cmd, s=db_rev_set -> q=db_rev_q
+
+  # M 車フラグ適用 (is_m_car=FALSE なら DB/パンタ状態を無効)
+  inst AND panta_fwd_and : a=panta_fwd_q, b=is_m_car -> out=panta_fwd
+  inst AND panta_rev_and : a=panta_rev_q, b=is_m_car -> out=panta_rev
+  inst AND db_fwd_and : a=db_fwd_q, b=is_m_car -> out=db_fwd
+  inst AND db_rev_and : a=db_rev_q, b=is_m_car -> out=db_rev
+
+  # 締切 (カットアウト) 有効判定: 前または後 DB 動作中
+  inst OR cutout_enable_or : a=db_fwd, b=db_rev -> out=cutout_enable
+
+  # ================================================================
+  # Inertia Composite / Rolling Stock Settings 読み取り
+  # ================================================================
+
+  inst COMPOSITE_READ_NUMBER inertia_a_read (channel=1) : composite="Inertia Composite Input" -> out=inertia_a
+  inst COMPOSITE_READ_NUMBER inertia_b_read (channel=2) : composite="Inertia Composite Input" -> out=inertia_b
+  inst COMPOSITE_READ_NUMBER inertia_c_read (channel=3) : composite="Inertia Composite Input" -> out=inertia_c
+  inst COMPOSITE_READ_NUMBER inertia_d_read (channel=4) : composite="Inertia Composite Input" -> out=inertia_d
+
+  inst COMPOSITE_READ_BOOLEAN is_m_car_read (channel=1) : composite="Rolling Stock Settings" -> out=is_m_car
+
+  # ================================================================
+  # BC 速度 (velocity_eff) / BC シミュレーション
+  # ================================================================
+
+  # BC Mode プロパティ: Simulated=シミュレーション BC, Real=実際の BC 入力
+  inst PROPERTY_TOGGLE bc_mode_prop (label="", on_label="Simulated", off_label="Real", n="BC Mode") : -> out=bc_mode
+  inst NUM_SWITCHBOX bc_mode_sw : a=bc_sim, b="BC", switch=bc_mode -> out=bc_input
+
+  # 低速時は初期値 4 m/s を使い、その後 LPF でスムージング
+  inst CONST const_v_init (value=4) : -> value=v_init_val
+  inst LESS_THAN velocity_below_init_lt : a=bc_input, b=v_init_val -> out=velocity_below_init
+  inst CAPACITOR mascon_hold_cap (charge_time=1, discharge_time=0) : enable=mascon_active -> out=mascon_hold
+  inst AND velocity_real_cond : a=velocity_below_init, b=mascon_hold -> out=velocity_real_cond_out
+  inst NUM_SWITCHBOX velocity_sw : a=v_init_val, b=bc_input, switch=velocity_real_cond_out -> out=velocity_eff
+  inst FUNC_NUM_3 bc_sim_lpf (expression="clamp(x,y*0.6-0.03,6)*0.07+0.93*y") : x=bc_press_calc_out, y=bc_sim -> out=bc_sim
+
+  # BC 圧力 [kPa] 計算: velocity_eff から換算
+  inst FUNC_NUM_1 bc_press_kpa_calc (expression="max((x-1)*101.325,0)") : x=velocity_eff -> out=bc_press_kpa
+
+  # ================================================================
+  # 定速制御 (CV: Constant Velocity)
+  # ================================================================
+
+  # ブレーキノッチ 2 段でのラッチ → 速度記憶
+  inst THRESHOLD brake_notch2_thr (min=2, max=2) : value=brake_notch -> out=brake_at_notch2
+  inst NOT brake_notch2_not : a=brake_at_notch2 -> out=brake_notch2_not_out
+  inst CAPACITOR brake_notch2_cap (charge_time=1, discharge_time=0) : enable=brake_at_notch2 -> out=brake_notch2_cap_out
+  inst PULSE cv_store_pulse (mode="rise") : a=brake_notch2_cap_out -> out=cv_store_pulse_out
+
+  # 力行ノッチ有効判定 (Simple IF 側)
+  inst THRESHOLD power_notch_pos_thr (min=0, max=1) : value=power_notch -> out=si_power_pos
+  inst NOT power_notch_zero_not : a=si_power_pos -> out=power_notch_zero
+
+  inst THRESHOLD mascon_pos_thr (min=0, max=1) : value=brake_notch -> out=mascon_pos
+  inst AND cv_latch_set_and : a=mascon_pos, b=si_power_pos -> out=cv_latch_set
+  inst SR_LATCH cv_latch : r=power_notch_zero, s=cv_latch_set -> q=cv_latch_q
+
+  inst FUNC_NUM_1 velocity_abs (expression="abs(x)") : x=velocity -> out=velocity_abs_out
+  inst AND cv_set_and : a=cv_store_pulse_out, b=cv_latch_q -> out=cv_set
+  inst OR cv_reset_or : a=brake_notch2_not_out, b=power_notch_zero -> out=cv_reset
+  inst MEMORY_REGISTER cv_reg (reset_value=0) : reset=cv_reset, set=cv_set, value=velocity_abs_out -> out=cv
+
+  # 定速 CV の入力元: マスコン有効時=ブレーキノッチから換算, 無効時=デフォルト定数
+  inst CONST const_cv_default (value=1.32) : -> value=cv_default_val
+  inst FUNC_NUM_1 cv_from_brake_calc (expression="x/8/3.6") : x=brake_notch -> out=cv_from_brake
+  inst NUM_SWITCHBOX cv_src_sw : a=cv_default_val, b=cv_from_brake, switch=mascon_active -> out=cv_src
+
+  # ================================================================
+  # VVVF Lua コントローラ
+  # ================================================================
+
+  # Lua 入力: ブール (mascon_active, high_accel, db_auto_not, is_m_car) + Momelink 有効
+  inst COMPOSITE_WRITE_BOOLEAN vvvf_lua_in_bool (count=4, offset=1) : in1=mascon_active, in2=high_accel_cmd, in3=db_auto_not_out, in4=is_m_car, inc=momelink_valid -> out=vvvf_lua_in_bool_out
+
+  # Lua 入力コンポジット: 速度, 電圧, ノッチ, 方向, CV 等
+  inst COMPOSITE_WRITE_NUMBER vvvf_lua_in (count=9, offset=1) : in1=velocity, in2=enabled_voltage, in3=brake_notch, in4=power_notch, in5=direction, in6=cv, in7=cv_default_val, in8=traction_param1_val, in9=traction_param2_val, inc=vvvf_lua_in_bool_out -> out=vvvf_lua_in_out
+
+  inst LUA vvvf_lua (script_ref="scripts/n485.lua") : composite=vvvf_lua_in_out -> composite=vvvf_lua_composite
+
+  # VVVF データセレクタ: マスコン有効中=Lua出力, 無効中=Momelink CV データ
+  inst COMPOSITE_SWITCHBOX vvvf_data_sw : a=momelink_cv_out, b=vvvf_lua_composite, switch=mascon_enable_comb -> out=vvvf_data_sw_out
+
+  # Lua 出力から必要な信号を読み取る
+  inst COMPOSITE_READ_BOOLEAN nits_watchdog_read (channel=17) : composite=vvvf_lua_composite -> out=nits_watchdog
+  inst COMPOSITE_READ_NUMBER brake_notch_lua_read (channel=2) : composite=vvvf_data_sw_out -> out=brake_notch_lua
+  inst COMPOSITE_READ_NUMBER power_notch_read (channel=1) : composite=vvvf_data_sw_out -> out=power_notch_lua
+  inst COMPOSITE_READ_NUMBER motor_current_read (channel=29) : composite=vvvf_data_sw_out -> out=motor_current
+  inst COMPOSITE_READ_NUMBER pan_current_read (channel=24) : composite=vvvf_data_sw_out -> out=pan_current
+  inst COMPOSITE_READ_NUMBER pan_voltage_read (channel=23) : composite=vvvf_data_sw_out -> out=pan_voltage
+
+  # Mascon 有効化ラッチ: NITS watchdog 信号変化を検出して mascon_enable を生成
+  inst OR mascon_init_or : a=nits_watchdog -> out=mascon_init_or_out
+  inst XOR mascon_init_xor : a=nits_watchdog, b=mascon_init_or_out -> out=mascon_init_xor_out
+  inst NOT mascon_init_not : a=mascon_init_xor_out -> out=mascon_init_not_out
+  inst CAPACITOR mascon_enable_cap (charge_time=0.1, discharge_time=0) : enable=mascon_init_not_out -> out=mascon_enable
+  inst OR mascon_enable_or : a=mascon_hold, b=mascon_enable -> out=mascon_enable_comb
+
+  # BC Target 出力: Lua ch1 の力行ノッチから BC 圧力目標値を計算
+  inst CONST const_bc_offset (value=0.45) : -> value=bc_offset_val
+  inst GREATER_THAN power_notch_pos_gt : a=power_notch_lua -> out=lua_power_pos
+  inst COMPOSITE_READ_BOOLEAN regen_brake_flag_read (channel=20) : composite=vvvf_data_sw_out -> out=regen_brake_flag
+  inst OR bc_offset_cond_or : a=lua_power_pos, b=regen_brake_flag -> out=bc_offset_cond
+  inst NUM_SWITCHBOX bc_offset_sw : a=bc_offset_val, switch=bc_offset_cond -> out=bc_offset
+  inst FUNC_NUM_3 bc_press_calc (expression="(x*3.02)+y+1") : x=power_notch_lua, y=bc_offset -> out=bc_press_calc_out, out="BC Target"
+
+  # ================================================================
+  # Momelink 制御 (編成内データ転送)
+  # ================================================================
+
+  # Momelink ID 識別 (1911 = 有効な Momelink 信号)
+  inst COMPOSITE_READ_NUMBER momelink_id_read (channel=15) : composite="Momelink Line from inner Unit" -> out=momelink_id
+  inst THRESHOLD momelink_id_thr (min=1911, max=1911) : value=momelink_id -> out=momelink_id_match
+  inst COMPOSITE_SWITCHBOX momelink_sw : a="Momelink Line from inner Unit", switch=momelink_id_match -> out=momelink_valid
+
+  # 牽引パラメータ定数
+  inst CONST const_momelink_id (value=1911) : -> value=momelink_id_val
+  inst CONST const_traction_param1 (value=1) : -> value=traction_param1_val
+  inst CONST const_traction_param2 (value=3.5) : -> value=traction_param2_val
+
+  # Momelink ID フレーム構築 (ch30-31 にパラメータ埋め込み)
+  inst COMPOSITE_WRITE_NUMBER momelink_id_build (count=2, offset=30) : in1=traction_param1_val, in2=traction_param2_val, inc=momelink_id_write_out -> out=momelink_id_build_out
+
+  # CV データを Momelink フレームに乗せる (ch1)
+  inst COMPOSITE_WRITE_NUMBER momelink_cv_build (count=1, offset=1) : in1=cv_src, inc=momelink_id_build_out -> out=momelink_cv_out
+
+  # M 車: パンタ電圧を Momelink に乗せる (ch23)、T 車: Momelink 転送のみ
+  inst COMPOSITE_WRITE_NUMBER momelink_pv_build (count=1, offset=23) : in1=enabled_voltage -> out=momelink_pv_out
+  inst COMPOSITE_SWITCHBOX momelink_out_sw : a=momelink_pv_out, b=momelink_valid, switch=is_m_car -> out=momelink_out
+
+  # Momelink ID をフレームに書き込む (ch15 = 1911)
+  inst COMPOSITE_WRITE_NUMBER momelink_id_write (count=1, offset=15) : in1=momelink_id_val, inc=momelink_out -> out=momelink_id_write_out
+
+  # To Momelink Input & Advanced: 正規化速度 (ch1) + vvvf_data
+  inst FUNC_NUM_1 normalized_speed_calc (expression="max(x-1.45,0)/3.02") : x=velocity_eff -> out=normalized_speed
+  inst COMPOSITE_WRITE_NUMBER momelink_output_build (count=1, offset=1) : in1=normalized_speed, inc=vvvf_data_sw_out -> out="To Momelink Input & Advanced"
+
+  # ================================================================
+  # Boost (高加速) 検知ラッチ
+  # ================================================================
+
+  # マスコン有効中、ブリンカーで速度をサンプリングして加速中かどうかを検知
+  inst BLINKER boost_blink (on_time=0.5, off_time=0.5) : enable=mascon_active -> out=boost_blink_out
+  inst PULSE boost_blink_pulse (mode="rise") : a=boost_blink_out -> out=boost_blink_tick
+  inst CAPACITOR mascon_active_cap (charge_time=3, discharge_time=0) : enable=mascon_active -> out=mascon_active_latch
+  inst ABS velocity_abs2 : a=velocity -> out=velocity_abs2_out
+  inst OR boost_set_or : a=boost_blink_tick -> out=boost_set
+  inst MEMORY_REGISTER boost_vel_prev (reset_value=0) : set=boost_set, value=velocity_abs2_out -> out=boost_vel_prev_out
+  inst MEMORY_REGISTER boost_vel_snap (reset_value=0) : set=boost_blink_tick, value=boost_vel_prev_out -> out=boost_vel_snap_out
+  inst GREATER_THAN boost_accel_gt : a=boost_vel_prev_out, b=boost_vel_snap_out -> out=boost_accel
+  inst CAPACITOR boost_accel_cap (charge_time=0, discharge_time=0.1) : enable=boost_accel -> out=boost_accel_latch
+  inst AND boost_set_and : a=boost_accel_latch, b=mascon_active_latch -> out=boost_set_cond
+  inst PULSE mascon_fall_pulse (mode="fall") : a=mascon_active -> out=mascon_fall
+  inst SR_LATCH boost_latch : r=mascon_fall, s=boost_set_cond -> q=boost_q
+  inst CONST const_boost1 (value=1) : -> value=boost1_val
+  inst NUM_SWITCHBOX boost_enable_sw : b=boost1_val, switch=boost_q -> out=boost_coef
+
+  # ================================================================
+  # 電圧・電力出力 (Output Watt)
+  # ================================================================
+
+  # 電圧源: 実電圧があれば使用、なければ定数 1500V
+  inst CONST const_1500 (value=1500) : -> value=v1500_val
+  inst THRESHOLD voltage_valid_thr (min=0, max=1) : value="Voltage" -> out=voltage_valid
+  inst NUM_SWITCHBOX voltage_src_sw : a=v1500_val, b="Voltage", switch=voltage_valid -> out=voltage_src
+
+  # カットアウト時は電圧を 0 にする
+  inst NUM_SWITCHBOX voltage_enable_sw : a=voltage_src, switch=cutout_enable -> out=enabled_voltage
+
+  # 消費電力 = モータ電流 × 電圧
+  inst FUNC_NUM_3 power_watt_mul (expression="x*y") : x=motor_current, y=enabled_voltage -> out="Output (Watt)"
+
+  # ================================================================
+  # 牽引力計算 / トルク係数
+  # ================================================================
+
+  # トルク係数 (DB 動作中は高係数、通常は低係数)
+  inst CONST const_coef_hi (value=0.3) : -> value=coef_hi_val
+  inst CONST const_coef_lo (value=0.02) : -> value=coef_lo_val
+  inst NUM_SWITCHBOX traction_coef_fwd_sw : a=coef_hi_val, b=coef_lo_val, switch=db_fwd -> out=traction_coef_fwd
+  inst NUM_SWITCHBOX traction_coef_rev_sw : a=coef_hi_val, b=coef_lo_val, switch=db_rev -> out=traction_coef_rev
+
+  # パン電流 ×4 (モータ数相当)
+  inst FUNC_NUM_1 motor_current_x4 (expression="x*4") : x=pan_current -> out=motor_current_4x
+
+  # 牽引力計算: ((v*abs(v))*a + v*b + brake_notch_lua*c) * boost_coef
+  inst FUNC_NUM_8 traction_force_calc (expression="((x*abs(x))*a+x*b+y*c)*d") : x=velocity, y=brake_notch_lua, a=inertia_a, b=inertia_b, c=inertia_c, d=boost_coef -> out=traction_force
+
+  # 不足ブレーキ計算 (velocity_eff に応じたブレーキ不足量)
+  inst FUNC_NUM_3 lack_brake_calc (expression="(max(y-1.45,0)/3.02)*z/abs(x)") : x=velocity, y=velocity_eff, z=inertia_d -> out=lack_brake
+
+  # 未使用 AND (旧実装残骸)
+  inst AND unused_and : -> out=unused_out
+
+  # ================================================================
+  # Rolling Stock Status 出力
+  # ================================================================
+
+  inst COMPOSITE_WRITE_NUMBER rss_num_build (count=8, offset=1) : in2=bc_press_kpa, in3=motor_current_4x, in5=pan_voltage, in6=traction_coef_fwd, in7=traction_coef_rev, in8="MR" -> out=rss_num_out
+  inst COMPOSITE_WRITE_BOOLEAN rss_bool_build (count=8, offset=1) : in1=mascon_enable, in5=panta_fwd, in6=db_fwd, in7=panta_rev, in8=db_rev, inc=rss_num_out -> out="Rolling Stock Status"
+
+  # ================================================================
+  # ブレーキ音出力
+  # ================================================================
+
+  inst DELTA velocity_delta : a=velocity_eff -> out=velocity_delta_out
+  inst FUNC_NUM_1 brake_snd_calc (expression="clamp(-x/0.03,0,1)") : x=velocity_delta_out -> out="Brake sound"
+end

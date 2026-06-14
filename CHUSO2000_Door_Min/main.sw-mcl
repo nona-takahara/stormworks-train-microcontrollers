@@ -1,0 +1,404 @@
+{
+  "formatVersion": "stormworks-sw-mcl-v1",
+  "sourceName": "CHUSO_2000_Door_Min.xml",
+  "moduleId": "main",
+  "ports": [
+    {
+      "name": "NITS Ext. Input",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -6.75,
+        "y": -3
+      }
+    },
+    {
+      "name": "Other Inputs",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -8,
+        "y": -2.75
+      }
+    },
+    {
+      "name": "Phys. Input",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -5.5,
+        "y": -1.5
+      }
+    },
+    {
+      "name": "Phys. Input",
+      "direction": "in",
+      "occurrence": 2,
+      "position": {
+        "x": -5.5,
+        "y": 0
+      }
+    },
+    {
+      "name": "Chime High",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 3.5,
+        "y": -5.5
+      }
+    },
+    {
+      "name": "Chime Low",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 3.5,
+        "y": -6.5
+      }
+    },
+    {
+      "name": "Door is Open",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 2.25,
+        "y": 0.75
+      }
+    },
+    {
+      "name": "Input",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 3.5,
+        "y": -3.25
+      }
+    }
+  ],
+  "instances": [
+    {
+      "id": "n8",
+      "type": "OR",
+      "position": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "n9",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": 0
+      }
+    },
+    {
+      "id": "n10",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "n11",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": -1
+      }
+    },
+    {
+      "id": "n12",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n13",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": -2
+      }
+    },
+    {
+      "id": "n14",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.25,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n16",
+      "type": "FUNC_NUM_8",
+      "position": {
+        "x": -2.75,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "n17",
+      "type": "GREATER_THAN",
+      "position": {
+        "x": -1.5,
+        "y": -1
+      }
+    },
+    {
+      "id": "n18",
+      "type": "LESS_THAN",
+      "position": {
+        "x": -1.5,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "n19",
+      "type": "NAND",
+      "position": {
+        "x": -0.25,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "n20",
+      "type": "PROPERTY_NUMBER",
+      "position": {
+        "x": -1.5,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n21",
+      "type": "PROPERTY_NUMBER",
+      "position": {
+        "x": -1.5,
+        "y": -2
+      }
+    },
+    {
+      "id": "n22",
+      "type": "FUNC_NUM_3",
+      "position": {
+        "x": -0.25,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n23",
+      "type": "FUNC_NUM_3",
+      "position": {
+        "x": -0.25,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n35",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -4.25,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n36",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": -6.75,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n38",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": -5.5,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n39",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -4.25,
+        "y": -4.25
+      }
+    },
+    {
+      "id": "n40",
+      "type": "SR_LATCH",
+      "position": {
+        "x": -1.5,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n41",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": -2.75,
+        "y": -4.5
+      }
+    },
+    {
+      "id": "n42",
+      "type": "PULSE",
+      "position": {
+        "x": -1.5,
+        "y": -6
+      }
+    },
+    {
+      "id": "n43",
+      "type": "CONST_BOOL",
+      "position": {
+        "x": -1.5,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "n44",
+      "type": "COUNTER",
+      "position": {
+        "x": -0.25,
+        "y": -6
+      }
+    },
+    {
+      "id": "n45",
+      "type": "OR",
+      "position": {
+        "x": 2.25,
+        "y": -5.75
+      }
+    },
+    {
+      "id": "n46",
+      "type": "OR",
+      "position": {
+        "x": 2.25,
+        "y": -6.75
+      }
+    },
+    {
+      "id": "n47",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 1,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "n48",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 1,
+        "y": -6.5
+      }
+    },
+    {
+      "id": "n49",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 1,
+        "y": -6
+      }
+    },
+    {
+      "id": "n50",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 1,
+        "y": -7
+      }
+    },
+    {
+      "id": "n51",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 1,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n52",
+      "type": "CONST",
+      "position": {
+        "x": -0.25,
+        "y": -3.25
+      }
+    },
+    {
+      "id": "n53",
+      "type": "CONST",
+      "position": {
+        "x": -0.25,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n54",
+      "type": "MULTIPLY",
+      "position": {
+        "x": 2.25,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n55",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 1,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n56",
+      "type": "CONST",
+      "position": {
+        "x": -0.25,
+        "y": -4.25
+      }
+    },
+    {
+      "id": "n57",
+      "type": "CONST",
+      "position": {
+        "x": -0.25,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n58",
+      "type": "CAPACITOR",
+      "position": {
+        "x": -1.5,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n59",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -8,
+        "y": -3.25
+      }
+    },
+    {
+      "id": "n60",
+      "type": "COMPOSITE_SWITCHBOX",
+      "position": {
+        "x": -5.5,
+        "y": -3.25
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 56 nodes, 68 links, and 1 submodules from XML."
+  ]
+}

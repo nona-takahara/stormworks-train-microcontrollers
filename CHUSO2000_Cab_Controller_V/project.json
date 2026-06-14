@@ -1,0 +1,752 @@
+{
+  "formatVersion": "stormworks-project-json-v10",
+  "sourceName": "CHUSO2000_Cab_Controller_IV.xml",
+  "name": "CHUSO Series 2000 Cab Controller",
+  "description": "v0.3.0",
+  "width": 4,
+  "length": 4,
+  "nodes": [
+    {
+      "id": "Seat Input",
+      "type": "composite_in",
+      "label": "Seat Input",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 3
+      },
+      "position": {
+        "x": -12.25,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "Main Handle Sound",
+      "type": "boolean_out",
+      "label": "Main Handle Sound",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      },
+      "position": {
+        "x": -1,
+        "y": 1
+      }
+    },
+    {
+      "id": "Main Handle Angle",
+      "type": "number_out",
+      "label": "Main Handle Angle",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": -3.5,
+        "y": 3.5
+      }
+    },
+    {
+      "id": "Mas-con Key",
+      "type": "boolean_in",
+      "label": "Mas-con Key",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 3
+      },
+      "position": {
+        "x": -8.5,
+        "y": -3
+      }
+    },
+    {
+      "id": "Simple Interface RX",
+      "type": "composite_in",
+      "label": "Simple Interface RX",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      },
+      "position": {
+        "x": 6,
+        "y": -2
+      }
+    },
+    {
+      "id": "Control Commands TX",
+      "type": "composite_out",
+      "label": "Control Commands TX",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 0
+      },
+      "position": {
+        "x": 17.25,
+        "y": 7
+      }
+    },
+    {
+      "id": "Reverser Sound",
+      "type": "boolean_out",
+      "label": "Reverser Sound",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      },
+      "position": {
+        "x": 14.75,
+        "y": 2.75
+      }
+    },
+    {
+      "id": "Drive Loop",
+      "type": "composite_in",
+      "label": "Drive Loop",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 2
+      },
+      "position": {
+        "x": -12.25,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "Settings Loop",
+      "type": "composite_in",
+      "label": "Settings Loop",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 2
+      },
+      "position": {
+        "x": 7.25,
+        "y": 5
+      }
+    },
+    {
+      "id": "Crew Buzzer",
+      "type": "boolean_out",
+      "label": "Crew Buzzer",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 2
+      },
+      "position": {
+        "x": 12.25,
+        "y": 10.25
+      }
+    },
+    {
+      "id": "Formation Lever",
+      "type": "number_out",
+      "label": "Formation Lever",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 2
+      },
+      "position": {
+        "x": 13.5,
+        "y": 4.5
+      }
+    },
+    {
+      "id": "ATS/ATC",
+      "type": "composite_in",
+      "label": "ATS/ATC",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": -1,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "Crew Handle Right",
+      "type": "composite_in",
+      "label": "Crew Handle Right",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 3
+      },
+      "position": {
+        "x": 7.25,
+        "y": 8.75
+      }
+    },
+    {
+      "id": "Crew Handle Left",
+      "type": "composite_in",
+      "label": "Crew Handle Left",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 3
+      },
+      "position": {
+        "x": 7.25,
+        "y": 8.25
+      }
+    },
+    {
+      "id": "Conductor Switch Interlock Release",
+      "type": "boolean_in",
+      "label": "Conductor Switch Interlock Release",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 3
+      },
+      "position": {
+        "x": -16,
+        "y": -2
+      }
+    },
+    {
+      "id": "Drive Support",
+      "type": "composite_in",
+      "label": "Drive Support",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      },
+      "position": {
+        "x": 9.75,
+        "y": -6
+      }
+    },
+    {
+      "id": "Front Sign",
+      "type": "boolean_out",
+      "label": "Front Sign",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 0
+      },
+      "position": {
+        "x": 18.5,
+        "y": 13
+      }
+    },
+    {
+      "id": "Tail Sign",
+      "type": "boolean_out",
+      "label": "Tail Sign",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 1
+      },
+      "position": {
+        "x": 18.5,
+        "y": 8.25
+      }
+    },
+    {
+      "id": "Conductor Em brake 1",
+      "type": "boolean_in",
+      "label": "Conductor Em brake 1",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 3
+      },
+      "position": {
+        "x": 0.25,
+        "y": 1.5
+      }
+    },
+    {
+      "id": "Monitor Status",
+      "type": "composite_out",
+      "label": "Monitor Status",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 1
+      },
+      "position": {
+        "x": -0.75,
+        "y": -8.75
+      }
+    },
+    {
+      "id": "Express Light (UMI)",
+      "type": "boolean_out",
+      "label": "Express Light (UMI)",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 1
+      },
+      "position": {
+        "x": -14.75,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "Physics Sensor [+Z = front]",
+      "type": "composite_in",
+      "label": "Physics Sensor [+Z = front]",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": 6,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "Extended Commands RX",
+      "type": "composite_in",
+      "label": "Extended Commands RX",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 0
+      },
+      "position": {
+        "x": -5.75,
+        "y": -8.5
+      }
+    },
+    {
+      "id": "Conductor Em brake 2",
+      "type": "boolean_in",
+      "label": "Conductor Em brake 2",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 3
+      },
+      "position": {
+        "x": 0.25,
+        "y": 1
+      }
+    },
+    {
+      "id": "Express Light (YAMA)",
+      "type": "boolean_out",
+      "label": "Express Light (YAMA)",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 2
+      },
+      "position": {
+        "x": -14.75,
+        "y": -0.75
+      }
+    },
+    {
+      "id": "Reverser Position",
+      "type": "number_out",
+      "label": "Reverser Position",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": 11,
+        "y": 3.25
+      }
+    },
+    {
+      "id": "High beam",
+      "type": "boolean_out",
+      "label": "High beam",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 0
+      },
+      "position": {
+        "x": -5.75,
+        "y": -11.5
+      }
+    },
+    {
+      "id": "ATS/C Reset Signal",
+      "type": "boolean_out",
+      "label": "ATS/C Reset Signal",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 2
+      },
+      "position": {
+        "x": -3.5,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "Rolling Stock Settings",
+      "type": "composite_in",
+      "label": "Rolling Stock Settings",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 3
+      },
+      "position": {
+        "x": -7,
+        "y": -13.5
+      }
+    }
+  ],
+  "constants": [],
+  "submodules": [
+    {
+      "id": "main",
+      "name": "main",
+      "relativePath": "main.sw-net",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": {
+        "kind": "node",
+        "id": "Seat Input"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Seat Input"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Main Handle Sound"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Main Handle Sound"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Main Handle Angle"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Main Handle Angle"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Mas-con Key"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Mas-con Key"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Simple Interface RX"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Simple Interface RX"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Control Commands TX"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Control Commands TX"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Reverser Sound"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Reverser Sound"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Drive Loop"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Drive Loop"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Settings Loop"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Settings Loop"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Crew Buzzer"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Crew Buzzer"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Formation Lever"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Formation Lever"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "ATS/ATC"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "ATS/ATC"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Crew Handle Right"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Crew Handle Right"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Crew Handle Left"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Crew Handle Left"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Conductor Switch Interlock Release"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Conductor Switch Interlock Release"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Drive Support"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Drive Support"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Front Sign"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Front Sign"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Tail Sign"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Tail Sign"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Conductor Em brake 1"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Conductor Em brake 1"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Monitor Status"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Monitor Status"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Express Light (UMI)"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Express Light (UMI)"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Physics Sensor [+Z = front]"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Physics Sensor [+Z = front]"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Extended Commands RX"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Extended Commands RX"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Conductor Em brake 2"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Conductor Em brake 2"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Express Light (YAMA)"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Express Light (YAMA)"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Reverser Position"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Reverser Position"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "High beam"
+      },
+      "to": {
+        "kind": "node",
+        "id": "High beam"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "ATS/C Reset Signal"
+      },
+      "to": {
+        "kind": "node",
+        "id": "ATS/C Reset Signal"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Rolling Stock Settings"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Rolling Stock Settings"
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 262 nodes, 390 links, and 1 submodules from XML."
+  ]
+}

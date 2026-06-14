@@ -1,0 +1,686 @@
+{
+  "formatVersion": "stormworks-sw-mcl-v1",
+  "sourceName": "CHUSO2000_Cab_Display_IV.xml",
+  "moduleId": "main",
+  "ports": [
+    {
+      "name": "ATP Monitor Touch Composite",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -8.5,
+        "y": 0.25
+      }
+    },
+    {
+      "name": "ATS/ATC",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -1,
+        "y": 5.75
+      }
+    },
+    {
+      "name": "Monitor Status",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -9.75,
+        "y": 1.5
+      }
+    },
+    {
+      "name": "Rolling Stock Status",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -6,
+        "y": 6.25
+      }
+    },
+    {
+      "name": "ARC",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 10.5,
+        "y": 0.75
+      }
+    },
+    {
+      "name": "ATC Train Length",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 0.25,
+        "y": -1.5
+      }
+    },
+    {
+      "name": "ATP Switch",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 1.5,
+        "y": -0.5
+      }
+    },
+    {
+      "name": "Electricity Display",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": -3.5,
+        "y": -1.5
+      }
+    },
+    {
+      "name": "Loop Start, ATS/C Settings",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 2.75,
+        "y": 2.5
+      }
+    },
+    {
+      "name": "Main Monitor",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 4,
+        "y": 5
+      }
+    }
+  ],
+  "instances": [
+    {
+      "id": "n4",
+      "type": "LUA",
+      "position": {
+        "x": -2.25,
+        "y": 5
+      }
+    },
+    {
+      "id": "n81",
+      "type": "LUA",
+      "position": {
+        "x": -3.5,
+        "y": 5
+      }
+    },
+    {
+      "id": "n129",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 1.5,
+        "y": 1
+      }
+    },
+    {
+      "id": "n131",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": -1,
+        "y": 2
+      }
+    },
+    {
+      "id": "n132",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -2.25,
+        "y": 2
+      }
+    },
+    {
+      "id": "n334",
+      "type": "LUA",
+      "position": {
+        "x": -1,
+        "y": 5
+      }
+    },
+    {
+      "id": "n347",
+      "type": "LUA",
+      "position": {
+        "x": -4.75,
+        "y": 5
+      }
+    },
+    {
+      "id": "n349",
+      "type": "LUA",
+      "position": {
+        "x": 0.25,
+        "y": 5
+      }
+    },
+    {
+      "id": "n385",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": -2.25,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n386",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n387",
+      "type": "PULSE",
+      "position": {
+        "x": -6,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n388",
+      "type": "AND",
+      "position": {
+        "x": -4.75,
+        "y": 0
+      }
+    },
+    {
+      "id": "n389",
+      "type": "CONST",
+      "position": {
+        "x": -3.5,
+        "y": 1.25
+      }
+    },
+    {
+      "id": "n390",
+      "type": "LUA",
+      "position": {
+        "x": 0.25,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "n391",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": -1,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "n407",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0.25,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "n411",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 1.5,
+        "y": 0
+      }
+    },
+    {
+      "id": "n415",
+      "type": "LUA",
+      "position": {
+        "x": 2.75,
+        "y": 6.25
+      }
+    },
+    {
+      "id": "n417",
+      "type": "LUA",
+      "position": {
+        "x": 1.5,
+        "y": 4.25
+      }
+    },
+    {
+      "id": "n419",
+      "type": "LUA",
+      "position": {
+        "x": 1.5,
+        "y": 6.25
+      }
+    },
+    {
+      "id": "n497",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 2.75,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "n498",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 4,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "n499",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 4,
+        "y": 1.25
+      }
+    },
+    {
+      "id": "n510",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 4,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n511",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 4,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "n517",
+      "type": "FUNC_NUM_3",
+      "position": {
+        "x": 9.25,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n523",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "n524",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n526",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": -1,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "n527",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -2.25,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "n538",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.75,
+        "y": 6.25
+      }
+    },
+    {
+      "id": "n551",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": -3.5,
+        "y": 5.75
+      }
+    },
+    {
+      "id": "n552",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 0.25,
+        "y": 5.75
+      }
+    },
+    {
+      "id": "n553",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 7.75
+      }
+    },
+    {
+      "id": "n567",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "n568",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -5.5,
+        "y": 3
+      }
+    },
+    {
+      "id": "n569",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -5.5,
+        "y": 2.5
+      }
+    },
+    {
+      "id": "n570",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.75,
+        "y": 6.75
+      }
+    },
+    {
+      "id": "n572",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 8,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "n573",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 7.25
+      }
+    },
+    {
+      "id": "n576",
+      "type": "LUA",
+      "position": {
+        "x": -4.75,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n577",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": -6,
+        "y": -2.25
+      }
+    },
+    {
+      "id": "n578",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -7.25,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "n579",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -7.25,
+        "y": -2.25
+      }
+    },
+    {
+      "id": "n580",
+      "type": "CONST",
+      "position": {
+        "x": -8.5,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n581",
+      "type": "FUNC_NUM_8",
+      "position": {
+        "x": -7.25,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n582",
+      "type": "DELTA",
+      "position": {
+        "x": -6,
+        "y": -3
+      }
+    },
+    {
+      "id": "n583",
+      "type": "CONST",
+      "position": {
+        "x": -8.5,
+        "y": -4
+      }
+    },
+    {
+      "id": "n585",
+      "type": "FUNC_NUM_8",
+      "position": {
+        "x": -7.25,
+        "y": -7.25
+      }
+    },
+    {
+      "id": "n586",
+      "type": "DELTA",
+      "position": {
+        "x": -6,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "n588",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -8.5,
+        "y": -3
+      }
+    },
+    {
+      "id": "n589",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -8.5,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "n590",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 8.25
+      }
+    },
+    {
+      "id": "n593",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 6.75
+      }
+    },
+    {
+      "id": "n594",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 6.25
+      }
+    },
+    {
+      "id": "n597",
+      "type": "TOGGLE",
+      "position": {
+        "x": -3.5,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n598",
+      "type": "CONST",
+      "position": {
+        "x": 0.25,
+        "y": -1
+      }
+    },
+    {
+      "id": "n599",
+      "type": "CONST",
+      "position": {
+        "x": -3.5,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "n600",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 1.5,
+        "y": 7
+      }
+    },
+    {
+      "id": "n601",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -8.5,
+        "y": -1
+      }
+    },
+    {
+      "id": "n604",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": -1.25
+      }
+    },
+    {
+      "id": "n605",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.75,
+        "y": 5.75
+      }
+    },
+    {
+      "id": "n606",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": -3.5,
+        "y": 7.5
+      }
+    },
+    {
+      "id": "n607",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.75,
+        "y": 7.75
+      }
+    },
+    {
+      "id": "n608",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.75,
+        "y": 7.25
+      }
+    },
+    {
+      "id": "n609",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": -1,
+        "y": 3.5
+      }
+    },
+    {
+      "id": "n611",
+      "type": "PROPERTY_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": 3.5
+      }
+    },
+    {
+      "id": "n612",
+      "type": "PROPERTY_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": 4
+      }
+    },
+    {
+      "id": "n613",
+      "type": "PROPERTY_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": 2.5
+      }
+    },
+    {
+      "id": "n614",
+      "type": "PROPERTY_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": 3
+      }
+    },
+    {
+      "id": "n618",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n619",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": -2
+      }
+    },
+    {
+      "id": "n620",
+      "type": "FUNC_NUM_3",
+      "position": {
+        "x": -1,
+        "y": -2
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 93 nodes, 129 links, and 1 submodules from XML."
+  ]
+}

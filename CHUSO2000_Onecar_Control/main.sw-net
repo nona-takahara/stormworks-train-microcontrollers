@@ -1,0 +1,315 @@
+module main
+  port in "Control Commands Type 3 from Front" : composite
+  port in "Control Commands Type 3 from Back" : composite
+  port out "Control Commands Type 3" : composite
+  port in "Simple IF RX" : composite
+  port out "Simple IF RX inverted" : composite
+
+  # ================================================================
+  # 運転台選択: 前後方向ビット(ch6)によりアクティブ運転台を判定
+  # 前方運転台起動 = 前方がfront_cab かつ 後方がfront_cabでない
+  # ================================================================
+
+  inst COMPOSITE_READ_BOOLEAN cc3_front_is_front_cab (channel=6) : composite="Control Commands Type 3 from Front" -> out=cc3_front_is_front_cab_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_is_front_cab (channel=6) : composite="Control Commands Type 3 from Back" -> out=cc3_back_is_front_cab_out
+  inst NOT not_back_is_front_cab : a=cc3_back_is_front_cab_out -> out=not_back_is_front_cab_out
+  inst NOT not_front_is_front_cab : a=cc3_front_is_front_cab_out -> out=not_front_is_front_cab_out
+  inst AND front_cab_active : a=cc3_front_is_front_cab_out, b=not_back_is_front_cab_out -> out=front_cab_active_out
+  inst AND back_cab_active : a=cc3_back_is_front_cab_out, b=not_front_is_front_cab_out -> out=back_cab_active_out
+  inst OR any_cab_active : a=cc3_front_is_front_cab_out, b=cc3_back_is_front_cab_out -> out=any_cab_active_out
+  inst OR either_cab_active : a=front_cab_active_out, b=back_cab_active_out -> out=either_cab_active_out
+
+  # アクティブ運転台の信号のみを通すSwitchbox
+  inst COMPOSITE_SWITCHBOX cc3_front_sw : a="Control Commands Type 3 from Front", switch=front_cab_active_out -> out=cc3_front_sw_out
+  inst COMPOSITE_SWITCHBOX cc3_back_sw : a="Control Commands Type 3 from Back", switch=back_cab_active_out -> out=cc3_back_sw_out
+
+  # ================================================================
+  # 数値チャンネル読み出し: N1-N3はswitchbox経由、N4-N7は直接
+  # ================================================================
+
+  # N1: ブレーキノッチ (switchbox経由で前後合算)
+  inst COMPOSITE_READ_NUMBER brake_front (channel=1) : composite=cc3_front_sw_out -> out=brake_front_out
+  inst COMPOSITE_READ_NUMBER brake_back (channel=1) : composite=cc3_back_sw_out -> out=brake_back_out
+  inst ADD brake_sum : a=brake_front_out, b=brake_back_out -> out=brake_sum_out
+
+  # N2: 力行ノッチ (switchbox経由で前後合算)
+  inst COMPOSITE_READ_NUMBER powering_front (channel=2) : composite=cc3_front_sw_out -> out=powering_front_out
+  inst COMPOSITE_READ_NUMBER powering_back (channel=2) : composite=cc3_back_sw_out -> out=powering_back_out
+  inst ADD powering_sum : a=powering_front_out, b=powering_back_out -> out=powering_sum_out
+
+  # N3: ダイナミックブレーキ (switchbox経由で前後合算、前後逆転あり)
+  inst COMPOSITE_READ_NUMBER dyn_brake_front (channel=3) : composite=cc3_front_sw_out -> out=dyn_brake_front_out
+  inst COMPOSITE_READ_NUMBER dyn_brake_back (channel=3) : composite=cc3_back_sw_out -> out=dyn_brake_back_out
+  inst ADD dyn_brake_sum : a=dyn_brake_front_out, b=dyn_brake_back_out -> out=dyn_brake_sum_out
+
+  # N4: ブレーキ力[kPa] / N5: 力行パラメータ (前方のみ参照)
+  inst COMPOSITE_READ_NUMBER brake_force_front (channel=4) : composite="Control Commands Type 3 from Front" -> out=brake_force_front_out
+  inst COMPOSITE_READ_NUMBER powering_param_front (channel=5) : composite="Control Commands Type 3 from Front" -> out=powering_param_front_out
+
+  # N6: NITS情報 (前後両方からFIFOへ)
+  inst COMPOSITE_READ_NUMBER nits_front (channel=6) : composite="Control Commands Type 3 from Front" -> out=nits_front_out
+  inst COMPOSITE_READ_NUMBER nits_back (channel=6) : composite="Control Commands Type 3 from Back" -> out=nits_back_out
+
+  # ================================================================
+  # N7 packed bool展開: B1-B15 (前後反転対応してOR合成)
+  # B3/B4, B7/B9(ch7/ch8位置), B10/B11, B12/B13 は前後で入れ替え
+  # ================================================================
+
+  inst COMPOSITE_READ_NUMBER cc3_front_b_packed_num (channel=7) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b_packed_num_out
+  inst COMPOSITE_READ_NUMBER cc3_back_b_packed_num (channel=7) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b_packed_num_out
+  inst NUMBER_TO_COMPOSITE cc3_b_packed_front_comp : number=cc3_front_b_packed_num_out -> out=cc3_b_packed_front_comp_out
+  inst NUMBER_TO_COMPOSITE cc3_b_packed_back_comp : number=cc3_back_b_packed_num_out -> out=cc3_b_packed_back_comp_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b1 (channel=1) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b1_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b1 (channel=1) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b1_out
+  inst OR b1_packed_or : a=packed_front_b1_out, b=packed_back_b1_out -> out=b1_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b2 (channel=2) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b2_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b2 (channel=2) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b2_out
+  inst OR b2_packed_or : a=packed_front_b2_out, b=packed_back_b2_out -> out=b2_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b3 (channel=3) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b3_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b3 (channel=4) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b3_out
+  inst OR b3_packed_or : a=packed_front_b3_out, b=packed_back_b3_out -> out=b3_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b4 (channel=4) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b4_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b4 (channel=3) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b4_out
+  inst OR b4_packed_or : a=packed_front_b4_out, b=packed_back_b4_out -> out=b4_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b5 (channel=5) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b5_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b5 (channel=5) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b5_out
+  inst OR b5_packed_or : a=packed_front_b5_out, b=packed_back_b5_out -> out=b5_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b6 (channel=6) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b6_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b6 (channel=6) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b6_out
+  inst OR b6_packed_or : a=packed_front_b6_out, b=packed_back_b6_out -> out=b6_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b7 (channel=7) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b7_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b7 (channel=7) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b7_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b8 (channel=8) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b8_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b8 (channel=8) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b8_out
+  inst OR b8_packed_or : a=packed_front_b8_out, b=packed_back_b8_out -> out=b8_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b10 (channel=10) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b10_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b10 (channel=11) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b10_out
+  inst OR b10_packed_or : a=packed_front_b10_out, b=packed_back_b10_out -> out=b10_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b11 (channel=11) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b11_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b11 (channel=10) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b11_out
+  inst OR b11_packed_or : a=packed_front_b11_out, b=packed_back_b11_out -> out=b11_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b12 (channel=12) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b12_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b12 (channel=13) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b12_out
+  inst OR b12_packed_or : a=packed_front_b12_out, b=packed_back_b12_out -> out=b12_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b13 (channel=13) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b13_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b13 (channel=12) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b13_out
+  inst OR b13_packed_or : a=packed_front_b13_out, b=packed_back_b13_out -> out=b13_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b14 (channel=14) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b14_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b14 (channel=14) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b14_out
+  inst OR b14_packed_or : a=packed_front_b14_out, b=packed_back_b14_out -> out=b14_packed_or_out
+
+  inst COMPOSITE_READ_BOOLEAN packed_front_b15 (channel=15) : composite=cc3_b_packed_front_comp_out -> out=packed_front_b15_out
+  inst COMPOSITE_READ_BOOLEAN packed_back_b15 (channel=15) : composite=cc3_b_packed_back_comp_out -> out=packed_back_b15_out
+  inst OR b15_packed_or : a=packed_front_b15_out, b=packed_back_b15_out -> out=b15_packed_or_out
+
+  # packed bool → compositeへシリアライズ → 数値へ変換 (N7として出力)
+  inst COMPOSITE_WRITE_BOOLEAN cc3_b_packed_builder (count=15, offset=1) : in1=b1_packed_or_out, in2=b2_packed_or_out, in3=b3_packed_or_out, in4=b4_packed_or_out, in5=b5_packed_or_out, in6=b6_packed_or_out, in7=packed_front_b7_out, in8=b8_packed_or_out, in9=packed_back_b7_out, in10=b10_packed_or_out, in11=b11_packed_or_out, in12=b12_packed_or_out, in13=b13_packed_or_out, in14=b14_packed_or_out, in15=b15_packed_or_out -> out=cc3_b_packed_builder_out
+  inst COMPOSITE_TO_NUMBER cc3_b_packed_num : composite=cc3_b_packed_builder_out -> out=cc3_b_packed_num_out
+
+  # ================================================================
+  # 前後選択 / 締切ゲート判定
+  # B7 = 前後選択コマンド。前方運転台から後方へ、または後方から前方への
+  # クロス送信が発生した場合は締切状態 (door_isolated)
+  # ================================================================
+
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b7 (channel=7) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b7_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b7 (channel=7) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b7_out
+  inst OR any_fwd_back_cmd : a=cc3_front_b7_out, b=cc3_back_b7_out -> out=any_fwd_back_cmd_out
+
+  # クロス: 前方がfront_cab かつ 後方がB7 → 締切
+  inst AND fwd_back_cross_front : a=cc3_front_is_front_cab_out, b=cc3_back_b7_out -> out=fwd_back_cross_front_out
+  inst AND fwd_back_cross_back : a=cc3_back_is_front_cab_out, b=cc3_front_b7_out -> out=fwd_back_cross_back_out
+  inst OR door_isolated : a=fwd_back_cross_front_out, b=fwd_back_cross_back_out -> out=door_isolated_out
+  inst NOT not_door_isolated : a=door_isolated_out -> out=not_door_isolated_out
+
+  # 締切状態でない場合のみ前後選択・運転台アクティブ信号を有効化
+  inst AND any_cab_active_gated : a=any_cab_active_out, b=not_door_isolated_out -> out=any_cab_active_gated_out
+  inst AND any_fwd_back_cmd_gated : a=any_fwd_back_cmd_out, b=not_door_isolated_out -> out=any_fwd_back_cmd_gated_out
+
+  # ================================================================
+  # Boolean チャンネル直接読み出し (B1-B32) と前後OR合成
+  # ================================================================
+
+  # B1: 非常ブレーキ
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b1 (channel=1) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b1_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b1 (channel=1) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b1_out
+  inst OR b1_or : a=cc3_front_b1_out, b=cc3_back_b1_out -> out=b1_or_out
+
+  # B2: 連絡ブザー
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b2 (channel=2) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b2_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b2 (channel=2) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b2_out
+  inst OR b2_or : a=cc3_front_b2_out, b=cc3_back_b2_out -> out=b2_or_out
+
+  # B3: 故障
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b3 (channel=3) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b3_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b3 (channel=3) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b3_out
+  inst OR b3_or : a=cc3_front_b3_out, b=cc3_back_b3_out -> out=b3_or_out
+
+  # B4: 扉A状態(前方B4 OR 後方B5で前後反転)
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b4 (channel=4) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b4_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b5_for_b4 (channel=5) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b5_for_b4_out
+  inst OR b4_or : a=cc3_front_b4_out, b=cc3_back_b5_for_b4_out -> out=b4_or_out
+
+  # B5: 扉B状態(前方B5 OR 後方B4で前後反転)
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b5 (channel=5) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b5_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b5 (channel=4) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b5_out
+  inst OR b5_or : a=cc3_front_b5_out, b=cc3_back_b5_out -> out=b5_or_out
+
+  # B9: 前後選択短絡(パン下げなど)
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b9 (channel=9) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b9_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b9 (channel=9) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b9_out
+  inst OR b9_or : a=cc3_front_b9_out, b=cc3_back_b9_out -> out=b9_or_out
+
+  # B10: パン上げ
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b10 (channel=10) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b10_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b10 (channel=10) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b10_out
+  inst OR b10_or : a=cc3_front_b10_out, b=cc3_back_b10_out -> out=b10_or_out
+
+  # B11: パン下げ
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b11 (channel=11) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b11_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b11 (channel=11) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b11_out
+  inst OR b11_or : a=cc3_front_b11_out, b=cc3_back_b11_out -> out=b11_or_out
+
+  # B12: エンジン始動
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b12 (channel=12) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b12_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b12 (channel=12) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b12_out
+  inst OR b12_or : a=cc3_front_b12_out, b=cc3_back_b12_out -> out=b12_or_out
+
+  # B13: エンジン停止
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b13 (channel=13) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b13_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b13 (channel=13) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b13_out
+  inst OR b13_or : a=cc3_front_b13_out, b=cc3_back_b13_out -> out=b13_or_out
+
+  # B14: バッテリ起動
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b14 (channel=14) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b14_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b14 (channel=14) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b14_out
+  inst OR b14_or : a=cc3_front_b14_out, b=cc3_back_b14_out -> out=b14_or_out
+
+  # B15: バッテリ停止
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b15 (channel=15) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b15_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b15 (channel=15) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b15_out
+  inst OR b15_or : a=cc3_front_b15_out, b=cc3_back_b15_out -> out=b15_or_out
+
+  # B16: 前進 / B17: 後退 (switchbox経由で前後反転)
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b16_sw (channel=16) : composite=cc3_front_sw_out -> out=cc3_front_b16_sw_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b16_sw (channel=17) : composite=cc3_back_sw_out -> out=cc3_back_b16_sw_out
+  inst OR b16_or : a=cc3_front_b16_sw_out, b=cc3_back_b16_sw_out -> out=b16_or_out
+
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b17_sw (channel=17) : composite=cc3_front_sw_out -> out=cc3_front_b17_sw_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b17_sw (channel=16) : composite=cc3_back_sw_out -> out=cc3_back_b17_sw_out
+  inst OR b17_or : a=cc3_front_b17_sw_out, b=cc3_back_b17_sw_out -> out=b17_or_out
+
+  # B18: ダイナミックブレーキ自動 (AND: 前後両方がONの場合のみ)
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b18 (channel=18) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b18_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b18 (channel=18) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b18_out
+  inst AND b18_and : a=cc3_front_b18_out, b=cc3_back_b18_out -> out=b18_and_out
+
+  # B19: 案内表示 起動
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b19 (channel=19) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b19_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b19 (channel=19) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b19_out
+  inst OR b19_or : a=cc3_front_b19_out, b=cc3_back_b19_out -> out=b19_or_out
+
+  # B20: 案内表示 停止
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b20 (channel=20) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b20_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b20 (channel=20) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b20_out
+  inst OR b20_or : a=cc3_front_b20_out, b=cc3_back_b20_out -> out=b20_or_out
+
+  # B21: チャイム 開始
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b21 (channel=21) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b21_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b21 (channel=21) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b21_out
+  inst OR b21_or : a=cc3_front_b21_out, b=cc3_back_b21_out -> out=b21_or_out
+
+  # B22: チャイム 停止
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b22 (channel=22) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b22_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b22 (channel=22) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b22_out
+  inst OR b22_or : a=cc3_front_b22_out, b=cc3_back_b22_out -> out=b22_or_out
+
+  # B23: 室内灯 点灯
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b23 (channel=23) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b23_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b23 (channel=23) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b23_out
+  inst OR b23_or : a=cc3_front_b23_out, b=cc3_back_b23_out -> out=b23_or_out
+
+  # B24: 室内灯 消灯
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b24 (channel=24) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b24_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b24 (channel=24) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b24_out
+  inst OR b24_or : a=cc3_front_b24_out, b=cc3_back_b24_out -> out=b24_or_out
+
+  # B25: ヒータ 起動
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b25 (channel=25) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b25_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b25 (channel=25) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b25_out
+  inst OR b25_or : a=cc3_front_b25_out, b=cc3_back_b25_out -> out=b25_or_out
+
+  # B26: ヒータ 停止
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b26 (channel=26) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b26_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b26 (channel=26) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b26_out
+  inst OR b26_or : a=cc3_front_b26_out, b=cc3_back_b26_out -> out=b26_or_out
+
+  # B27/B28: 扉A開閉操作 (前後反転: 前B27↔後B29, 前B28↔後B30)
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b27 (channel=27) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b27_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b27 (channel=29) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b27_out
+  inst OR b27_or : a=cc3_front_b27_out, b=cc3_back_b27_out -> out=b27_or_out
+
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b28 (channel=28) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b28_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b28 (channel=30) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b28_out
+  inst OR b28_or : a=cc3_front_b28_out, b=cc3_back_b28_out -> out=b28_or_out
+
+  # B29/B30: 扉B開閉操作 (前後反転: 前B29↔後B27, 前B30↔後B28)
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b29 (channel=29) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b29_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b29 (channel=27) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b29_out
+  inst OR b29_or : a=cc3_front_b29_out, b=cc3_back_b29_out -> out=b29_or_out
+
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b30 (channel=30) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b30_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b30 (channel=28) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b30_out
+  inst OR b30_or : a=cc3_front_b30_out, b=cc3_back_b30_out -> out=b30_or_out
+
+  # B31: ID送信(0x47)
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b31 (channel=31) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b31_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b31 (channel=31) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b31_out
+  inst OR b31_or : a=cc3_front_b31_out, b=cc3_back_b31_out -> out=b31_or_out
+
+  # B32: 前後選択前かつ運転台起動 (ID送信ゲート)
+  inst COMPOSITE_READ_BOOLEAN cc3_front_b32 (channel=32) : composite="Control Commands Type 3 from Front" -> out=cc3_front_b32_out
+  inst COMPOSITE_READ_BOOLEAN cc3_back_b32 (channel=32) : composite="Control Commands Type 3 from Back" -> out=cc3_back_b32_out
+  inst OR id_tx_raw : a=cc3_front_b32_out, b=cc3_back_b32_out -> out=id_tx_raw_out
+  inst AND id_tx_gated : a=id_tx_raw_out, b=either_cab_active_out -> out=id_tx_gated_out
+
+  # ================================================================
+  # Simple IF RX 処理: N4/N5 を前後入れ替えてそのまま出力
+  # ================================================================
+
+  inst COMPOSITE_READ_NUMBER sifrx_n_ch5 (channel=5) : composite="Simple IF RX" -> out=sifrx_n_ch5_out
+  inst COMPOSITE_READ_NUMBER sifrx_n_ch4 (channel=4) : composite="Simple IF RX" -> out=sifrx_n_ch4_out
+  inst COMPOSITE_WRITE_NUMBER sifrx_num_builder (count=2, offset=4) : in1=sifrx_n_ch5_out, in2=sifrx_n_ch4_out, inc="Simple IF RX" -> out=sifrx_num_builder_out
+
+  inst COMPOSITE_READ_BOOLEAN sifrx_b_ch5 (channel=5) : composite="Simple IF RX" -> out=sifrx_b_ch5_out
+  inst COMPOSITE_READ_BOOLEAN sifrx_b_ch4 (channel=4) : composite="Simple IF RX" -> out=sifrx_b_ch4_out
+  inst COMPOSITE_WRITE_BOOLEAN sifrx_inv_builder (count=2, offset=4) : in1=sifrx_b_ch5_out, in2=sifrx_b_ch4_out, inc=sifrx_num_builder_out -> out="Simple IF RX inverted"
+
+  # ================================================================
+  # NITS FIFOキュー: 前後からのNITS情報をLuaでキュー管理
+  # ================================================================
+
+  inst COMPOSITE_WRITE_NUMBER nits_queue_in_builder (count=2, offset=1) : in1=nits_front_out, in2=nits_back_out -> out=nits_queue_in_builder_out
+  inst LUA nits_fifo (script_ref="scripts/n200.lua") : composite=nits_queue_in_builder_out -> composite=nits_fifo_composite
+  inst COMPOSITE_READ_NUMBER nits_queue_out (channel=1) : composite=nits_fifo_composite -> out=nits_queue_out_out
+
+  # ================================================================
+  # 最終出力構築: CC3 Number (N1-N7) + Boolean (B1-B32)
+  # ================================================================
+
+  inst COMPOSITE_WRITE_NUMBER cc3_num_builder (count=7, offset=1) : in1=brake_sum_out, in2=powering_sum_out, in3=dyn_brake_sum_out, in4=brake_force_front_out, in5=powering_param_front_out, in6=nits_queue_out_out, in7=cc3_b_packed_num_out -> out=cc3_num_builder_out
+  inst COMPOSITE_WRITE_BOOLEAN cc3_bool_builder (count=1, offset=1) : in1=b1_or_out, in2=b2_or_out, in3=b3_or_out, in4=b4_or_out, in5=b5_or_out, in6=any_cab_active_gated_out, in7=any_fwd_back_cmd_gated_out, in8=door_isolated_out, in9=b9_or_out, in10=b10_or_out, in11=b11_or_out, in12=b12_or_out, in13=b13_or_out, in14=b14_or_out, in15=b15_or_out, in16=b16_or_out, in17=b17_or_out, in18=b18_and_out, in19=b19_or_out, in20=b20_or_out, in21=b21_or_out, in22=b22_or_out, in23=b23_or_out, in24=b24_or_out, in25=b25_or_out, in26=b26_or_out, in27=b27_or_out, in28=b28_or_out, in29=b29_or_out, in30=b30_or_out, in31=b31_or_out, in32=id_tx_gated_out, inc=cc3_num_builder_out -> out="Control Commands Type 3"
+end

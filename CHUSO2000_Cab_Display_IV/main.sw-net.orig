@@ -1,0 +1,86 @@
+module main
+  port out "Main Monitor" : video
+  port in "Monitor Status" : composite
+  port out "Loop Start, ATS/C Settings" : composite
+  port in "ATS/ATC" : composite
+  port out ARC : number
+  port out "ATP Switch" : video
+  port out "Electricity Display" : video
+  port in "Rolling Stock Status" : composite
+  port in "ATP Monitor Touch Composite" : composite
+  port out "ATC Train Length" : number
+
+  inst LUA n4 (script_ref="scripts/n4.lua") : video=n81_video -> video=n4_video
+  inst LUA n81 (script_ref="scripts/n81.lua") : composite=n551_out, video=n347_video -> video=n81_video
+  inst COMPOSITE_WRITE_NUMBER n129 (count=6, offset=1) : in1=n609_out, in2=n131_out, in3=n568_out, in4=n569_out, in5=n407_out, in6=n411_out, inc=n497_out -> out="Loop Start, ATS/C Settings"
+  inst NUM_SWITCHBOX n131 : a=n614_out, b=n613_out, switch=n132_out -> out=n131_out
+  inst COMPOSITE_READ_BOOLEAN n132 (channel=2) : composite="Monitor Status" -> out=n132_out
+  inst LUA n334 (script_ref="scripts/n334.lua") : composite="ATS/ATC", video=n4_video -> video=n334_video
+  inst LUA n347 (script_ref="scripts/n347.lua") : -> video=n347_video
+  inst LUA n349 (script_ref="scripts/n349.lua") : composite=n552_out, video=n334_video -> video=n349_video
+  inst NUM_SWITCHBOX n385 : a=n389_value, b=n599_value, switch=n597_out -> out=n385_out
+  inst COMPOSITE_READ_BOOLEAN n386 (channel=1) : composite="ATP Monitor Touch Composite" -> out=n386_out
+  inst PULSE n387 (mode="fall") : a=n386_out -> out=n387_out
+  inst AND n388 : a=n387_out, b=n567_out -> out=n388_out
+  inst CONST n389 (value=1) : -> value=n389_value
+  inst LUA n390 (script_ref="scripts/n390.lua") : composite=n391_out -> video="ATP Switch"
+  inst COMPOSITE_WRITE_NUMBER n391 (count=1, offset=1) : in1=n385_out -> out=n391_out
+  inst NUM_SWITCHBOX n407 : a=n526_out, switch=n573_out -> out=n407_out
+  inst NUM_SWITCHBOX n411 : a=n598_value, switch=n567_out -> out=n411_out
+  inst LUA n415 (script_ref="scripts/n415.lua") : composite="Monitor Status", video=n419_video -> video="Main Monitor"
+  inst LUA n417 (script_ref="scripts/n417.lua") : ->
+  inst LUA n419 (script_ref="scripts/n419.lua") : composite=n600_out, video=n349_video -> video=n419_video
+  inst COMPOSITE_WRITE_BOOLEAN n497 (count=10, offset=18) : in1=n498_out, in2=n499_out, in5=n510_out, in10=n511_out -> out=n497_out
+  inst COMPOSITE_READ_BOOLEAN n498 (channel=14) : composite="Monitor Status" -> out=n498_out
+  inst COMPOSITE_READ_BOOLEAN n499 (channel=15) : composite="Monitor Status" -> out=n499_out
+  inst COMPOSITE_READ_BOOLEAN n510 (channel=12) : composite="Monitor Status" -> out=n510_out
+  inst COMPOSITE_READ_BOOLEAN n511 (channel=13) : composite="Monitor Status" -> out=n511_out
+  inst FUNC_NUM_3 n517 (expression="((floor(x)%100000)+(floor(y)*100000))*z") : x=n523_out, y=n524_out, z=n572_out -> out="ARC"
+  inst COMPOSITE_READ_NUMBER n523 (channel=2) : composite="Monitor Status" -> out=n523_out
+  inst COMPOSITE_READ_NUMBER n524 (channel=1) : composite="Monitor Status" -> out=n524_out
+  inst NUM_SWITCHBOX n526 : b=n385_out, switch=n527_out -> out=n526_out
+  inst COMPOSITE_READ_BOOLEAN n527 (channel=3) : composite="Monitor Status" -> out=n527_out
+  inst COMPOSITE_WRITE_NUMBER n551 (count=3, offset=4) : in1=n570_out, in2=n538_out, in3=n605_out, inc=n552_out -> out=n551_out
+  inst COMPOSITE_WRITE_BOOLEAN n552 (count=8, offset=1) : in1=n590_out, in2=n553_out, in3=n573_out, in4=n510_out, in5=n511_out, in6=n593_out, in7=n594_out, inc=n606_out -> out=n552_out
+  inst COMPOSITE_READ_BOOLEAN n553 (channel=11) : composite="Monitor Status" -> out=n553_out
+  inst COMPOSITE_READ_NUMBER n538 (channel=2) : composite="Rolling Stock Status" -> out=n538_out
+  inst COMPOSITE_READ_BOOLEAN n567 (channel=4) : composite="Monitor Status" -> out=n567_out
+  inst COMPOSITE_READ_NUMBER n568 (channel=11) : composite="Monitor Status" -> out=n568_out
+  inst COMPOSITE_READ_NUMBER n569 (channel=12) : composite="Monitor Status" -> out=n569_out
+  inst COMPOSITE_READ_NUMBER n570 (channel=13) : composite="Monitor Status" -> out=n570_out
+  inst FUNC_NUM_1 n572 (expression="max(x,0)") : x=n569_out -> out=n572_out
+  inst COMPOSITE_READ_BOOLEAN n573 (channel=5) : composite="Monitor Status" -> out=n573_out
+  inst LUA n576 (script_ref="scripts/n576.lua") : composite=n577_out -> video="Electricity Display"
+  inst COMPOSITE_WRITE_NUMBER n577 (count=4, offset=1) : in1=n578_out, in2=n579_out, in3=n581_out, in4=n585_out, inc=n604_out -> out=n577_out
+  inst COMPOSITE_READ_NUMBER n578 (channel=27) : composite="Monitor Status" -> out=n578_out
+  inst COMPOSITE_READ_NUMBER n579 (channel=29) : composite="Monitor Status" -> out=n579_out
+  inst CONST n580 (value=2.71828182846) : -> value=n580_value
+  inst FUNC_NUM_8 n581 (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=n588_out, y=n581_out, z=n580_value, w=n582_out, a=n583_value -> out=n581_out
+  inst DELTA n582 : a=n581_out -> out=n582_out
+  inst CONST n583 (value=0.4) : -> value=n583_value
+  inst FUNC_NUM_8 n585 (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=n589_out, y=n585_out, z=n580_value, w=n586_out, a=n583_value -> out=n585_out
+  inst DELTA n586 : a=n585_out -> out=n586_out
+  inst COMPOSITE_READ_NUMBER n588 (channel=5) : composite="Rolling Stock Status" -> out=n588_out
+  inst COMPOSITE_READ_NUMBER n589 (channel=3) : composite="Rolling Stock Status" -> out=n589_out
+  inst COMPOSITE_READ_BOOLEAN n590 (channel=6) : composite="Monitor Status" -> out=n590_out
+  inst COMPOSITE_READ_BOOLEAN n593 (channel=8) : composite="Monitor Status" -> out=n593_out
+  inst COMPOSITE_READ_BOOLEAN n594 (channel=7) : composite="Monitor Status" -> out=n594_out
+  inst TOGGLE n597 : a=n388_out -> out=n597_out
+  inst CONST n598 (value=1) : -> value=n598_value
+  inst CONST n599 (value=2) : -> value=n599_value
+  inst COMPOSITE_WRITE_BOOLEAN n600 (count=1, offset=1) : in1=n601_out, inc="Monitor Status" -> out=n600_out
+  inst COMPOSITE_READ_BOOLEAN n601 (channel=16) : composite="Monitor Status" -> out=n601_out
+  inst COMPOSITE_WRITE_BOOLEAN n604 (count=1, offset=1) : in1=n601_out -> out=n604_out
+  inst COMPOSITE_READ_NUMBER n605 (channel=8) : composite="Rolling Stock Status" -> out=n605_out
+  inst COMPOSITE_WRITE_NUMBER n606 (count=2, offset=1) : in1=n607_out, in2=n608_out -> out=n606_out
+  inst COMPOSITE_READ_NUMBER n607 (channel=9) : composite="Monitor Status" -> out=n607_out
+  inst COMPOSITE_READ_NUMBER n608 (channel=10) : composite="Monitor Status" -> out=n608_out
+  inst NUM_SWITCHBOX n609 : a=n612_out, b=n611_out, switch=n132_out -> out=n609_out
+  inst PROPERTY_NUMBER n611 (value=0, n="Low Beam X") : -> out=n611_out
+  inst PROPERTY_NUMBER n612 (value=0, n="High Beam X") : -> out=n612_out
+  inst PROPERTY_NUMBER n613 (value=-0.5, n="Low Beam Y") : -> out=n613_out
+  inst PROPERTY_NUMBER n614 (value=0, n="High Beam Y") : -> out=n614_out
+  inst COMPOSITE_READ_NUMBER n618 (channel=31) : composite="Monitor Status" -> out=n618_out
+  inst COMPOSITE_READ_NUMBER n619 (channel=32) : composite="Monitor Status" -> out=n619_out
+  inst FUNC_NUM_3 n620 (expression="(x+y+1)*18") : x=n618_out, y=n619_out -> out="ATC Train Length"
+end

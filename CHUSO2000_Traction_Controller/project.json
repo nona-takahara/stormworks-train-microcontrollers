@@ -1,0 +1,377 @@
+{
+  "formatVersion": "stormworks-project-json-v10",
+  "sourceName": "CHUSO_2000_Traction_Controller.xml",
+  "name": "CHUSO 2000 Traction Controller",
+  "description": "No description set.",
+  "width": 2,
+  "length": 5,
+  "nodes": [
+    {
+      "id": "Voltage",
+      "type": "number_in",
+      "label": "Voltage",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": -3.75,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "Output (Watt)",
+      "type": "number_out",
+      "label": "Output (Watt)",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": 1.25,
+        "y": -2.25
+      }
+    },
+    {
+      "id": "Simple IF",
+      "type": "composite_in",
+      "label": "Simple IF",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 2
+      },
+      "position": {
+        "x": -8.75,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "To Momelink Input & Advanced",
+      "type": "composite_out",
+      "label": "To Momelink Input & Advanced",
+      "description": null,
+      "nodePosition": {
+        "x": 1,
+        "y": 4
+      },
+      "position": {
+        "x": 3.75,
+        "y": 3.25
+      }
+    },
+    {
+      "id": "Momelink Line from inner Unit",
+      "type": "composite_in",
+      "label": "Momelink Line from inner Unit",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 4
+      },
+      "position": {
+        "x": -5,
+        "y": 4.25
+      }
+    },
+    {
+      "id": "Rolling Stock Status",
+      "type": "composite_out",
+      "label": "Rolling Stock Status",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 3
+      },
+      "position": {
+        "x": 2.5,
+        "y": -10.75
+      }
+    },
+    {
+      "id": "Brake sound",
+      "type": "number_out",
+      "label": "Brake sound",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 2
+      },
+      "position": {
+        "x": -2.5,
+        "y": -9
+      }
+    },
+    {
+      "id": "Extended Commands RX",
+      "type": "composite_in",
+      "label": "Extended Commands RX",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 3
+      },
+      "position": {
+        "x": 6.25,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "Inertia Composite Input",
+      "type": "composite_in",
+      "label": "Inertia Composite Input",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 2
+      },
+      "position": {
+        "x": 5,
+        "y": 3.25
+      }
+    },
+    {
+      "id": "BC",
+      "type": "number_in",
+      "label": "BC",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      },
+      "position": {
+        "x": -6.25,
+        "y": -10
+      }
+    },
+    {
+      "id": "BC Target",
+      "type": "number_out",
+      "label": "BC Target",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      },
+      "position": {
+        "x": -3.75,
+        "y": -7.75
+      }
+    },
+    {
+      "id": "MR",
+      "type": "number_in",
+      "label": "MR",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 3
+      },
+      "position": {
+        "x": 0,
+        "y": -10.25
+      }
+    },
+    {
+      "id": "Rolling Stock Settings",
+      "type": "composite_in",
+      "label": "Rolling Stock Settings",
+      "description": "B1: this is M car",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": -3.75,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "Physics Input",
+      "type": "composite_in",
+      "label": "Physics Input",
+      "description": "+Z is front",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": -1.25,
+        "y": 3.75
+      }
+    }
+  ],
+  "constants": [],
+  "submodules": [
+    {
+      "id": "main",
+      "name": "main",
+      "relativePath": "main.sw-net",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": {
+        "kind": "node",
+        "id": "Voltage"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Voltage"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Output (Watt)"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Output (Watt)"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Simple IF"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Simple IF"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "To Momelink Input & Advanced"
+      },
+      "to": {
+        "kind": "node",
+        "id": "To Momelink Input & Advanced"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Momelink Line from inner Unit"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Momelink Line from inner Unit"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Rolling Stock Status"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Rolling Stock Status"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Brake sound"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Brake sound"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Extended Commands RX"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Extended Commands RX"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Inertia Composite Input"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Inertia Composite Input"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "BC"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "BC"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "BC Target"
+      },
+      "to": {
+        "kind": "node",
+        "id": "BC Target"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "MR"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "MR"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Rolling Stock Settings"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Rolling Stock Settings"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Physics Input"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Physics Input"
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 154 nodes, 219 links, and 1 submodules from XML."
+  ]
+}

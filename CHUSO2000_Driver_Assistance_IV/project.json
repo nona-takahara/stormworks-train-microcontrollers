@@ -1,0 +1,177 @@
+{
+  "formatVersion": "stormworks-project-json-v10",
+  "sourceName": "CHUSO2000_Driver_Assistance_IV.xml",
+  "name": "CHUSO Series 2000 Driver Assistance",
+  "description": "v0.4.0",
+  "width": 1,
+  "length": 4,
+  "nodes": [
+    {
+      "id": "Monitor Status",
+      "type": "composite_in",
+      "label": "Monitor Status",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": -3.5,
+        "y": -1
+      }
+    },
+    {
+      "id": "Drive Support",
+      "type": "composite_out",
+      "label": "Drive Support",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 3
+      },
+      "position": {
+        "x": 10.25,
+        "y": -11.5
+      }
+    },
+    {
+      "id": "Physics Input",
+      "type": "composite_in",
+      "label": "Physics Input",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 2
+      },
+      "position": {
+        "x": -3.5,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "Drive Support Monitor Touch",
+      "type": "composite_in",
+      "label": "Drive Support Monitor Touch",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": -5,
+        "y": -11.25
+      }
+    },
+    {
+      "id": "Output",
+      "type": "video_out",
+      "label": "Output",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": 1.25,
+        "y": -13.25
+      }
+    },
+    {
+      "id": "Monitor Beep",
+      "type": "boolean_out",
+      "label": "Monitor Beep",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": 2.5,
+        "y": -11
+      }
+    }
+  ],
+  "constants": [],
+  "submodules": [
+    {
+      "id": "main",
+      "name": "main",
+      "relativePath": "main.sw-net",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": {
+        "kind": "node",
+        "id": "Monitor Status"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Monitor Status"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Drive Support"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Drive Support"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Physics Input"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Physics Input"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Drive Support Monitor Touch"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Drive Support Monitor Touch"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Output"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Output"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Monitor Beep"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Monitor Beep"
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 117 nodes, 178 links, and 1 submodules from XML."
+  ]
+}
