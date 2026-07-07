@@ -1,0 +1,177 @@
+{
+  "formatVersion": "stormworks-project-json-v10",
+  "sourceName": "NITS_Simple_Bridge.xml",
+  "name": "NITS Simple Bridge",
+  "description": "NITS read/write control",
+  "width": 3,
+  "length": 2,
+  "nodes": [
+    {
+      "id": "from NITS",
+      "type": "composite_in",
+      "label": "from NITS",
+      "description": null,
+      "nodePosition": {
+        "x": 2,
+        "y": 0
+      },
+      "position": {
+        "x": -7.25,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "to NITS",
+      "type": "composite_out",
+      "label": "to NITS",
+      "description": null,
+      "nodePosition": {
+        "x": 2,
+        "y": 1
+      },
+      "position": {
+        "x": 11.5,
+        "y": 1
+      }
+    },
+    {
+      "id": "Simple IF TX",
+      "type": "composite_in",
+      "label": "Simple IF TX",
+      "description": null,
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      },
+      "position": {
+        "x": 4,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "Simple IF RX",
+      "type": "composite_out",
+      "label": "Simple IF RX",
+      "description": null,
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": -1,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "NITS Extension Output",
+      "type": "composite_out",
+      "label": "NITS Extension Output",
+      "description": "N1-N8 momentary / N9-N16 with memory",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      },
+      "position": {
+        "x": 1.5,
+        "y": 11
+      }
+    },
+    {
+      "id": "NITS Extension Input",
+      "type": "composite_in",
+      "label": "NITS Extension Input",
+      "description": "N1-N8 to Back / N9-N16 to Front(optional)",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      },
+      "position": {
+        "x": -2.25,
+        "y": 0.75
+      }
+    }
+  ],
+  "constants": [],
+  "submodules": [
+    {
+      "id": "main",
+      "name": "main",
+      "relativePath": "main.sw-net",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": {
+        "kind": "node",
+        "id": "from NITS"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "from NITS"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "to NITS"
+      },
+      "to": {
+        "kind": "node",
+        "id": "to NITS"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Simple IF TX"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Simple IF TX"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Simple IF RX"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Simple IF RX"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "NITS Extension Output"
+      },
+      "to": {
+        "kind": "node",
+        "id": "NITS Extension Output"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "NITS Extension Input"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "NITS Extension Input"
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 84 nodes, 115 links, and 1 submodules from XML."
+  ]
+}

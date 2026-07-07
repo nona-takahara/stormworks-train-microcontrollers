@@ -1,0 +1,1986 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor name="NITS Simple Bridge" description="NITS read/write control" width="3" length="2" id_counter="876" id_counter_node="55" sym0="10240" sym1="26624" sym2="59438" sym3="10276" sym4="10468" sym5="11812" sym6="11502" sym7="10240" sym9="65535" sym11="12882" sym12="16978" sym13="8794" sym14="4694" sym15="26450">
+	<nodes>
+		<n id="6" component_id="68">
+			<node label="from NITS" mode="1" type="5">
+				<position x="2"/>
+			</node>
+		</n>
+		<n id="12" component_id="99">
+			<node label="to NITS" type="5">
+				<position x="2" z="1"/>
+			</node>
+		</n>
+		<n id="44" component_id="478">
+			<node label="Simple IF TX" mode="1" type="5">
+				<position z="1"/>
+			</node>
+		</n>
+		<n id="46" component_id="485">
+			<node label="Simple IF RX" type="5"/>
+		</n>
+		<n id="49" component_id="498">
+			<node label="NITS Extension Output" type="5" description="N1-N8 momentary / N9-N16 with memory">
+				<position x="1"/>
+			</node>
+		</n>
+		<n id="55" component_id="847">
+			<node label="NITS Extension Input" mode="1" type="5" description="N1-N8 to Back / N9-N16 to Front(optional)">
+				<position x="1" z="1"/>
+			</node>
+		</n>
+	</nodes>
+	<group>
+		<data type="-1104064832">
+			<inputs/>
+			<outputs/>
+		</data>
+		<components>
+			<c type="56">
+				<object id="440" script='EXT_ID = tonumber(property.getText("NITS Ext. ID"),16)
+curB, oldB, riseB, refB, curN, oldN, refN = {}, {}, {}, {}, {}, {}, {}
+ext2b, ext2f, extlast, logb, logf = {}, {}, 0, {}, {}
+toi = math.floor
+
+function bit(exp, pos) return (exp and 1 or 0) &lt;&lt; pos end
+
+function bit_arr(ar, be, en)
+	local r = 0
+	for i = be, en do
+		r = r &lt;&lt; 1|(ar[i] and 1 or 0)
+	end
+	return r
+end
+
+function shift(val, pos, len) return (toi(val) &amp; toi(2 ^ len - 1)) &lt;&lt; pos end
+
+function arr_or(ar, be, en)
+	for i = be, en do
+		if ar[i] then
+			return true
+		end
+	end
+	return false
+end
+
+function arr_cls(ar, be, en)
+	for i = be, en do
+		ar[i] = false
+	end
+end
+
+function bit_ex(dat, i1, i2)
+	local t1, t2 = dat &amp; (1 &lt;&lt; i1), dat &amp; (1 &lt;&lt; i2)
+	return (dat ~ t1 ~ t2)|bit(t1 ~= 0, i2)|bit(t2 ~= 0, i1)
+end
+
+function pk(intv)
+	local r = (&apos;f&apos;):unpack((&apos;I4&apos;):pack(intv))
+	return r
+end
+
+function unpk(fl)
+	local r = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+	return r
+end
+
+function push_ext(back, front)
+	extlast = extlast + 1
+	ext2b[extlast] = back
+	ext2f[extlast] = front
+end
+
+function pop_ext()
+	local d1, d2 = ext2b[1] or 0, ext2f[1] or 0
+	for i = 1, extlast - 1 do
+		ext2b[i] = ext2b[i + 1] or 0
+		ext2f[i] = ext2f[i + 1] or 0
+	end
+	ext2b[extlast] = 0
+	ext2f[extlast] = 0
+	extlast = extlast - 1
+	return d1, d2 or d1
+end
+
+function make_nits(force41)
+	local b41_42, b43 = 0, 0
+	-- deny
+	if curB[6] then
+		ext2b, ext2f = {}, {}
+		return 0x47 &lt;&lt; 24, 0x47 &lt;&lt; 24, false
+	end
+
+	-- interrapt
+	if curB[7] then
+		return unpk(input.getNumber(6)), unpk(input.getNumber(7)), false
+	end
+
+	-- check ext. mode
+	if refN[8] or refB[32] then
+		refN[8] = false
+		refB[32] = false
+		return 0x47 &lt;&lt; 24|EXT_ID, 0x47 &lt;&lt; 24|EXT_ID, false
+	end
+
+	b43 = bit_arr(curB, 1, 5) &lt;&lt; 19
+	b41_42 = b43|bit_arr(riseB, 10, 15) &lt;&lt; 13
+
+	-- 0x41
+	if curB[32] and (force41 or (arr_or(refB, 16, 18) or arr_or(refN, 1, 3))) then
+		local p = (0x41 &lt;&lt; 24)|b41_42
+		p = p|bit(curB[18], 12)|bit(curB[16], 9)|bit(curB[17], 8)
+		p = p|shift(curN[3], 10, 2)|shift(curN[2], 5, 3)|shift(curN[1], 0, 5)
+
+		arr_cls(riseB, 1, 5)
+		arr_cls(riseB, 10, 15)
+		arr_cls(refB, 16, 18)
+		arr_cls(refN, 1, 3)
+		return p, bit_ex(bit_ex(p, 20, 19), 9, 8), true
+	end
+
+	-- 0x42
+	if arr_or(riseB, 10, 15) or arr_or(riseB, 19, 30) then
+		local p = (0x42 &lt;&lt; 24)|b41_42|bit_arr(riseB, 19, 30)
+		arr_cls(riseB, 1, 5)
+		arr_cls(riseB, 10, 15)
+		arr_cls(riseB, 19, 30)
+		return p, bit_ex(bit_ex(bit_ex(p, 20, 19), 3, 1), 2, 0), false
+	end
+
+	-- ext.
+	if extlast &gt;= 1 then
+		local e1,e2=pop_ext()
+		return e1, e2, false
+	end
+
+	if curB[9] then
+		return unpk(input.getNumber(6)), unpk(input.getNumber(7)), false
+	end
+
+	-- 0x43
+	b43 = 0x43 &lt;&lt; 24|b43|shift(curN[5], 9, 10)|shift(curN[4] / 2, 0, 9)
+	return b43, bit_ex(b43, 20, 19), false
+end
+
+n41time = 0
+watchdog = false
+function onTick()
+	watchdog = not watchdog
+	n41time = n41time &gt; 0 and n41time - 1 or 0
+	for i = 1, 32 do
+		oldB[i] = curB[i]
+		curB[i] = input.getBool(i)
+		if oldB[i] == false and curB[i] == true then
+			riseB[i] = true
+			refB[i] = true
+		else
+			riseB[i] = riseB[i] or false
+			if oldB[i] == true and curB[i] == false then
+				refB[i] = true
+			else
+				refB[i] = refB[i] or false
+			end
+		end
+	end
+
+	for i = 1, 9 do
+		oldN[i] = curN[i]
+		curN[i] = input.getNumber(i)
+		if oldN[i] ~= curN[i] then
+			refN[i] = true
+		else
+			refN[i] = refN[i] or false
+		end
+	end
+
+	if curB[8] then -- push
+		push_ext(unpk(curN[6]), unpk(curN[7]))
+	end
+
+	local n1, n2, f = make_nits(n41time &lt;= 0)
+	if f then n41time = 60 end
+	logb[(n1 &gt;&gt; 24) &amp; 0xff] = unpk(pk(n1))
+	logf[(n2 &gt;&gt; 24) &amp; 0xff] = unpk(pk(n2))
+	logl = unpk(pk(n1))
+
+	output.setNumber(1, pk(n1))
+	output.setNumber(2, pk(n2))
+	output.setNumber(3, extlast)
+	output.setBool(1, watchdog)
+end
+
+function onDraw()
+	screen.drawText(0, 0, string.format("%x", logb[0x41] or 0))
+	screen.drawText(0, 8, string.format("%x", logb[0x42] or 0))
+	screen.drawText(0, 16, string.format("%x", logb[0x60] or 0))
+	screen.drawText(0, 24, string.format("%x", logl or 0))
+end
+'>
+					<pos x="6.5" y="0.75"/>
+					<in1 component_id="493"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="441" count="6">
+					<pos x="10.25" y="-0.5"/>
+					<inc component_id="440"/>
+					<in1 component_id="446"/>
+					<in2 component_id="489"/>
+					<in3 component_id="491"/>
+					<in4 component_id="490"/>
+					<in5 component_id="875"/>
+					<in6 component_id="492"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="442">
+					<pos x="6.5" y="0.25"/>
+					<in1 component_id="440"/>
+				</object>
+			</c>
+			<c>
+				<object id="443">
+					<pos x="6.5" y="-0.25"/>
+					<in1 component_id="442"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="444">
+					<pos x="7.75"/>
+					<in1 component_id="442"/>
+					<in2 component_id="443"/>
+				</object>
+			</c>
+			<c>
+				<object id="445">
+					<pos x="7.75" y="-0.5"/>
+					<in1 component_id="444"/>
+				</object>
+			</c>
+			<c type="26">
+				<object id="446" ct="0" dt="0.1">
+					<pos x="9" y="0.75"/>
+					<in1 component_id="445"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="457" i="5">
+					<pos x="4" y="-0.5"/>
+					<in1 component_id="466"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="458" script='_p=property
+sig,riseB,curB,oldB,curN,oldN,chgN={},{},{},{},{},{},{}
+toi = math.floor
+_pg=function(l)return toi(_p.getNumber(l))end
+
+function pk(intv)
+	local r = (&apos;f&apos;):unpack((&apos;I4&apos;):pack(intv))
+	return r
+end
+
+function unpk(fl)
+	local r = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+	return r
+end
+
+MODE={}
+for i=1,8 do
+	MODE[i]=_pg(("M%d/N%d Mode"):format(i,i+8))
+	sig[i]={b=0,f=0,up=false}
+end
+
+interval = 0
+channel = 0
+watchdog = false
+function onTick()
+	watchdog = not watchdog
+	for i=1,16 do
+		oldN[i] = curN[i]
+		curN[i] = input.getNumber(i)
+		chgN[i] = oldN[i] ~= curN[i]
+
+		oldB[i] = curB[i]
+		curB[i] = input.getBool(i)
+		riseB[i] = (not oldB[i]) and curB[i]
+	end
+	for i=1,8 do
+		if curB[i] or curB[i+8] then
+			local b,f=curN[i],curN[i+8]
+			if (MODE[i] &amp; 1)==0 then
+				f=b
+				chgN[i+8]=false
+			end
+			if (MODE[i] &amp; 2)==0 then
+				b=toi(b);f=toi(f)
+			else
+				b=unpk(b);f=unpk(f)
+			end
+			if chgN[i] or chgN[i+8] or riseB[i] then
+				sig[i].b = b
+				sig[i].f = f
+				sig[i].up=true
+			end
+		end
+	end
+
+	local db,df,cmd=0,0,0
+
+	interval=interval-1
+	if interval&lt;=0 then
+		while channel&lt;8 do
+			channel=channel+1
+			if sig[channel].up then
+				db=sig[channel].b
+				df=sig[channel].f
+				cmd=0x48-1+channel
+				sig[channel].up=false
+				break
+			end
+		end
+
+		if channel&gt;=8 then
+			interval=2
+			channel=0
+		end
+	end
+
+
+	if cmd~=0 then
+		output.setNumber(6, pk((toi(cmd) &lt;&lt; 24) | (db &amp; 0xffffff)))
+		output.setNumber(7, pk((toi(cmd) &lt;&lt; 24) | (df &amp; 0xffffff)))
+	else
+		output.setNumber(6, 0)
+		output.setNumber(7, 0)
+	end
+	output.setBool(14, cmd~=0)
+end
+'>
+					<pos x="0.25" y="0.5"/>
+					<in1 component_id="459"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="459" count="1" offset="16">
+					<pos x="-1" y="0.5"/>
+					<inc component_id="847"/>
+					<in1 component_id="463"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="461" i="13">
+					<pos x="2.75" y="-1.75"/>
+					<in1 component_id="458"/>
+				</object>
+			</c>
+			<c type="24">
+				<object id="462">
+					<pos x="-3.5"/>
+					<in1 component_id="465"/>
+					<in2 component_id="464"/>
+				</object>
+			</c>
+			<c type="26">
+				<object id="463" ct="3" dt="0">
+					<pos x="-2.25" y="0.25"/>
+					<in1 component_id="462"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="464" i="6">
+					<pos x="-4.75" y="-0.25"/>
+					<in1 component_id="466"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="465" i="7">
+					<pos x="-4.75" y="0.25"/>
+					<in1 component_id="466"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="466" script='function toi(x)
+	return math.tointeger(math.floor(x)) or 0
+end
+
+ID = tonumber(property.getText("NITS Ext. ID"),16)
+
+function gbit(val, dg)
+	return ((val &gt;&gt; dg) &amp; 1) == 1
+end
+
+function pk(intv)
+	local r=(&apos;f&apos;):unpack((&apos;I4&apos;):pack(intv))
+	return r
+end
+
+function unpk(fl)
+	local r=(&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+	return r
+end
+
+function bit_exch(dat, i1, i2)
+    local t1 = dat &amp; (toi(1) &lt;&lt; i1)
+    local t2 = dat &amp; (toi(1) &lt;&lt; i2)
+
+    return (dat ~ t1 ~ t2) | bbit(i2, t1~=0) | bbit(i1, t2~=0)
+end
+
+op = {}
+data_s4x = {}
+_Watchdog = false
+function onTick()
+	_Watchdog = not _Watchdog
+	output.setBool(15, _Watchdog)
+
+	local s41, s4x, dt, ch
+	s41 = 0
+	s4x = false
+
+	for i = 1, 32 do
+		op[i] = false
+	end
+
+	output.setBool(6, false)
+	output.setBool(7, false)
+	output.setBool(8, false)
+
+	dt = unpk(input.getNumber(32))
+	local front_car = dt &amp; 31
+	local last_car = (dt &gt;&gt; 5) &amp; 31
+
+	for i = front_car+1, 15 do
+		data_s4x[i] = 0
+	end
+	for i = 17, 31-last_car do
+		data_s4x[i] = 0
+	end
+
+	for i = 1, 31 do
+		dt = unpk(input.getNumber(i))
+		ch = (dt &gt;&gt; 24) &amp; 0xff
+
+		if ch == 0x41 then
+			s41 = i
+			for j = 10, 15 do
+				op[j] = op[j] or gbit(dt, 28 - j)
+			end
+		end
+		if ch == 0x42 then
+			for j = 10, 15 do
+				op[j] = op[j] or gbit(dt, 28 - j)
+			end
+			for j = 19, 26 do
+				op[j] = op[j] or gbit(dt, 30 - j)
+			end
+			if i &lt;= 16 then
+				op[27] = op[27] or gbit(dt, 3)
+				op[28] = op[28] or gbit(dt, 2)
+				op[29] = op[29] or gbit(dt, 1)
+				op[30] = op[30] or gbit(dt, 0)
+			else
+				op[27] = op[27] or gbit(dt, 1)
+				op[28] = op[28] or gbit(dt, 0)
+				op[29] = op[29] or gbit(dt, 3)
+				op[30] = op[30] or gbit(dt, 2)
+			end
+		end
+		if ch &gt;= 0x41 and ch &lt;= 0x43 then
+			s4x = true
+			data_s4x[i] = dt
+		end
+
+		if ch == 0x47 then
+			if (dt &amp; 0xffffff) == ID then
+				output.setBool(8, true)
+			else
+				if (dt &amp; 0xffffff) ~= 0 then
+					output.setBool(6, true)
+				end
+				output.setBool(7, true)
+			end
+		end
+	end
+
+	if s41 ~= 0 then
+		dt = unpk(input.getNumber(s41))
+		output.setNumber(1, dt &amp; 31)
+		output.setNumber(2, (dt &gt;&gt; 5) &amp; 7)
+		output.setNumber(3, (dt &gt;&gt; 10) &amp; 3)
+		output.setBool(18, gbit(dt, 12))
+		if s41 &lt;= 16 then
+			output.setBool(16, gbit(dt, 9))
+			output.setBool(17, gbit(dt, 8))
+		else
+			output.setBool(16, gbit(dt, 8))
+			output.setBool(17, gbit(dt, 9))
+		end
+		output.setBool(9, true)
+	else
+		output.setBool(9, false)
+	end
+
+
+	for i = 1, 32 do
+		dt=data_s4x[i] or 0
+		op[1] = op[1] or gbit(dt, 23)
+		if i ~= 16 then op[2] = op[2] or gbit(dt, 22) end
+		op[3] = op[3] or gbit(dt, 21)
+		if i &lt;= 16 then
+			op[4]=op[4] or gbit(dt, 20); op[5]=op[5] or gbit(dt, 19)
+		else
+			op[5]=op[5] or gbit(dt, 20); op[4]=op[4] or gbit(dt, 19)
+		end
+	end
+
+	for j = 1, 5 do
+		output.setBool(j, op[j])
+	end
+	for j = 10, 30 do
+		output.setBool(j, op[j])
+	end
+	output.setBool(9, s4x)
+
+	output.setNumber(4, front_car)
+	output.setNumber(5, last_car)
+	output.setNumber(6, front_car + last_car + 1)
+end
+'>
+					<pos x="-6" y="1.25"/>
+					<in1 component_id="68"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="486">
+					<pos x="4" y="-2"/>
+					<in1 component_id="461"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="487" i="5">
+					<pos x="2.75" y="0.75"/>
+					<in1 component_id="458"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="488" i="6">
+					<pos x="2.75" y="0.25"/>
+					<in1 component_id="458"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="489" i="5">
+					<pos x="9" y="0.25"/>
+					<in1 component_id="478"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="490">
+					<pos x="9" y="-0.75"/>
+					<in1 component_id="478"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="491" i="6">
+					<pos x="9" y="-0.25"/>
+					<in1 component_id="478"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="492" i="8">
+					<pos x="9" y="-1.75"/>
+					<in1 component_id="478"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="493" count="4" offset="5">
+					<pos x="5.25"/>
+					<inc component_id="741"/>
+					<in1 component_id="457"/>
+					<in2 component_id="676"/>
+					<in3 component_id="486"/>
+					<in4 component_id="677"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="503" count="1">
+					<pos x="-2.25" y="1.5"/>
+					<inc component_id="466"/>
+					<in1 component_id="506"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="504" i="10">
+					<pos x="-4.75" y="1.75"/>
+					<in1 component_id="68"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="506">
+					<pos x="-3.5" y="1.25"/>
+					<in1 component_id="504"/>
+					<in2 component_id="507"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="507">
+					<pos x="-4.75" y="1.25"/>
+					<in1 component_id="466"/>
+				</object>
+			</c>
+			<c type="58">
+				<object id="663" n="NITS Ext. ID" v="0">
+					<pos x="-6" y="2"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="667" i="5">
+					<pos x="2.75" y="-0.25"/>
+					<in1 component_id="466"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="674" i="12">
+					<pos x="2.75" y="-1"/>
+					<in1 component_id="458"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="675" i="14">
+					<pos x="2.75" y="-2.5"/>
+					<in1 component_id="458"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="676">
+					<pos x="4" y="-1.25"/>
+					<in1 component_id="674"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="677">
+					<pos x="4" y="-2.75"/>
+					<in1 component_id="675"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="741" count="3" offset="5">
+					<pos x="4" y="0.25"/>
+					<inc component_id="478"/>
+					<in1 component_id="487"/>
+					<in2 component_id="488"/>
+					<in3 component_id="667"/>
+				</object>
+			</c>
+			<c type="20">
+				<object id="838" name="N1/N9 Mode">
+					<pos x="-11" y="2.5"/>
+					<items>
+						<i l="Integer same">
+							<v text="0"/>
+						</i>
+						<i l="Binary same">
+							<v text="2" value="2"/>
+						</i>
+						<i l="Binary separate">
+							<v text="3" value="3"/>
+						</i>
+					</items>
+				</object>
+			</c>
+			<c type="20">
+				<object id="839" name="N2/N10 Mode">
+					<pos x="-11" y="2"/>
+					<items>
+						<i l="Integer same">
+							<v text="0"/>
+						</i>
+						<i l="Binary same">
+							<v text="2" value="2"/>
+						</i>
+						<i l="Binary separate">
+							<v text="3" value="3"/>
+						</i>
+					</items>
+				</object>
+			</c>
+			<c type="20">
+				<object id="840" name="N3/N11 Mode">
+					<pos x="-11" y="1.5"/>
+					<items>
+						<i l="Integer same">
+							<v text="0"/>
+						</i>
+						<i l="Binary same">
+							<v text="2" value="2"/>
+						</i>
+						<i l="Binary separate">
+							<v text="3" value="3"/>
+						</i>
+					</items>
+				</object>
+			</c>
+			<c type="20">
+				<object id="841" name="N4/N12 Mode">
+					<pos x="-11" y="1"/>
+					<items>
+						<i l="Integer same">
+							<v text="0"/>
+						</i>
+						<i l="Binary same">
+							<v text="2" value="2"/>
+						</i>
+						<i l="Binary separate">
+							<v text="3" value="3"/>
+						</i>
+					</items>
+				</object>
+			</c>
+			<c type="20">
+				<object id="842" name="N5/N13 Mode">
+					<pos x="-11" y="0.5"/>
+					<items>
+						<i l="Integer same">
+							<v text="0"/>
+						</i>
+						<i l="Binary same">
+							<v text="2" value="2"/>
+						</i>
+						<i l="Binary separate">
+							<v text="3" value="3"/>
+						</i>
+					</items>
+				</object>
+			</c>
+			<c type="20">
+				<object id="843" name="N6/N14 Mode">
+					<pos x="-11"/>
+					<items>
+						<i l="Integer same">
+							<v text="0"/>
+						</i>
+						<i l="Binary same">
+							<v text="2" value="2"/>
+						</i>
+						<i l="Binary separate">
+							<v text="3" value="3"/>
+						</i>
+					</items>
+				</object>
+			</c>
+			<c type="20">
+				<object id="844" name="N7/N15 Mode">
+					<pos x="-11" y="-0.5"/>
+					<items>
+						<i l="Integer same">
+							<v text="0"/>
+						</i>
+						<i l="Binary same">
+							<v text="2" value="2"/>
+						</i>
+						<i l="Binary separate">
+							<v text="3" value="3"/>
+						</i>
+					</items>
+				</object>
+			</c>
+			<c type="20">
+				<object id="845" name="N8/N16 Mode">
+					<pos x="-11" y="-1"/>
+					<items>
+						<i l="Integer same">
+							<v text="0"/>
+						</i>
+						<i l="Binary same">
+							<v text="2" value="2"/>
+						</i>
+						<i l="Binary separate">
+							<v text="3" value="3"/>
+						</i>
+					</items>
+				</object>
+			</c>
+			<c type="56">
+				<object id="848" script='function unpk(fl)
+	local r=(&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+	return r
+end
+
+_pg=function(l)return math.floor(property.getNumber(l))end
+MODE={}
+for i=1,8 do
+	MODE[i]=_pg(("M%d/N%d Mode"):format(i,i+8))
+end
+
+opN={}
+opB={}
+function onTick()
+	for i=1,8 do
+		opN[i]=0
+		opB[i]=false
+	end
+
+	for i=1,31 do
+		local f,o,c
+		f=input.getNumber(i)
+		o=unpk(f)
+		c=((o &gt;&gt; 24) &amp; 0xff)-(0x48)+1
+
+		if c&gt;=1 and c&lt;=8 then
+			if (MODE[c] &amp; 2)==0 then
+				opN[c]=(o &amp; 0xffffff) * 1.0
+			else
+				opN[c]=f --binary
+			end
+			opB[c]=true
+		end
+	end
+
+	for i=1,8 do
+		output.setNumber(i, opN[i])
+		output.setBool(i, opB[i])
+	end
+end
+
+'>
+					<pos x="-6" y="7.25"/>
+					<in1 component_id="876"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="849" count="8" offset="8">
+					<pos x="0.25" y="9"/>
+					<inc component_id="848"/>
+					<in1 component_id="854"/>
+					<in2 component_id="855"/>
+					<in3 component_id="856"/>
+					<in4 component_id="857"/>
+					<in5 component_id="850"/>
+					<in6 component_id="851"/>
+					<in7 component_id="852"/>
+					<in8 component_id="853"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="850">
+					<pos x="-2.25" y="6.5"/>
+					<in1 component_id="867"/>
+					<in2 component_id="464"/>
+					<in3 component_id="866"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="851">
+					<pos x="-2.25" y="5.5"/>
+					<in1 component_id="869"/>
+					<in2 component_id="464"/>
+					<in3 component_id="868"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="852">
+					<pos x="-2.25" y="4.5"/>
+					<in1 component_id="871"/>
+					<in2 component_id="464"/>
+					<in3 component_id="870"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="853">
+					<pos x="-2.25" y="3.5"/>
+					<in1 component_id="873"/>
+					<in2 component_id="464"/>
+					<in3 component_id="872"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="854">
+					<pos x="-2.25" y="10.5"/>
+					<in1 component_id="859"/>
+					<in2 component_id="464"/>
+					<in3 component_id="858"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="855">
+					<pos x="-2.25" y="9.5"/>
+					<in1 component_id="861"/>
+					<in2 component_id="464"/>
+					<in3 component_id="860"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="856">
+					<pos x="-2.25" y="8.5"/>
+					<in1 component_id="863"/>
+					<in2 component_id="464"/>
+					<in3 component_id="862"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="857">
+					<pos x="-2.25" y="7.5"/>
+					<in1 component_id="865"/>
+					<in2 component_id="464"/>
+					<in3 component_id="864"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="858">
+					<pos x="-3.5" y="10.5"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="859">
+					<pos x="-3.5" y="11"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="860" i="1">
+					<pos x="-3.5" y="9.5"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="861" i="1">
+					<pos x="-3.5" y="10"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="862" i="2">
+					<pos x="-3.5" y="8.5"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="863" i="2">
+					<pos x="-3.5" y="9"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="864" i="3">
+					<pos x="-3.5" y="7.5"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="865" i="3">
+					<pos x="-3.5" y="8"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="866" i="4">
+					<pos x="-3.5" y="6.5"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="867" i="4">
+					<pos x="-3.5" y="7"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="868" i="5">
+					<pos x="-3.5" y="5.5"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="869" i="5">
+					<pos x="-3.5" y="6"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="870" i="6">
+					<pos x="-3.5" y="4.5"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="871" i="6">
+					<pos x="-3.5" y="5"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="872" i="7">
+					<pos x="-3.5" y="3.5"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="873" i="7">
+					<pos x="-3.5" y="4"/>
+					<in1 component_id="848"/>
+				</object>
+			</c>
+			<c type="44">
+				<object id="874" l="value" on="on" off="off">
+					<pos x="-1"/>
+					<in1 component_id="463"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="875" i="7">
+					<pos x="9" y="-1.25"/>
+					<in1 component_id="478"/>
+				</object>
+			</c>
+			<c type="53">
+				<object id="876">
+					<pos x="-7.25" y="7"/>
+					<in1 component_id="68"/>
+					<in3 component_id="463"/>
+				</object>
+			</c>
+		</components>
+		<components_bridge>
+			<c type="4">
+				<object id="68">
+					<pos x="-7.25" y="1.75"/>
+				</object>
+			</c>
+			<c type="5">
+				<object id="99">
+					<pos x="11.5" y="1"/>
+					<in1 component_id="441"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="478">
+					<pos x="4" y="1.75"/>
+				</object>
+			</c>
+			<c type="5">
+				<object id="485">
+					<pos x="-1" y="1.75"/>
+					<in1 component_id="503"/>
+				</object>
+			</c>
+			<c type="5">
+				<object id="498">
+					<pos x="1.5" y="11"/>
+					<in1 component_id="849"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="847">
+					<pos x="-2.25" y="0.75"/>
+				</object>
+			</c>
+		</components_bridge>
+		<groups/>
+		<component_states>
+			<c0 id="440" script='EXT_ID = tonumber(property.getText("NITS Ext. ID"),16)
+curB, oldB, riseB, refB, curN, oldN, refN = {}, {}, {}, {}, {}, {}, {}
+ext2b, ext2f, extlast, logb, logf = {}, {}, 0, {}, {}
+toi = math.floor
+
+function bit(exp, pos) return (exp and 1 or 0) &lt;&lt; pos end
+
+function bit_arr(ar, be, en)
+	local r = 0
+	for i = be, en do
+		r = r &lt;&lt; 1|(ar[i] and 1 or 0)
+	end
+	return r
+end
+
+function shift(val, pos, len) return (toi(val) &amp; toi(2 ^ len - 1)) &lt;&lt; pos end
+
+function arr_or(ar, be, en)
+	for i = be, en do
+		if ar[i] then
+			return true
+		end
+	end
+	return false
+end
+
+function arr_cls(ar, be, en)
+	for i = be, en do
+		ar[i] = false
+	end
+end
+
+function bit_ex(dat, i1, i2)
+	local t1, t2 = dat &amp; (1 &lt;&lt; i1), dat &amp; (1 &lt;&lt; i2)
+	return (dat ~ t1 ~ t2)|bit(t1 ~= 0, i2)|bit(t2 ~= 0, i1)
+end
+
+function pk(intv)
+	local r = (&apos;f&apos;):unpack((&apos;I4&apos;):pack(intv))
+	return r
+end
+
+function unpk(fl)
+	local r = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+	return r
+end
+
+function push_ext(back, front)
+	extlast = extlast + 1
+	ext2b[extlast] = back
+	ext2f[extlast] = front
+end
+
+function pop_ext()
+	local d1, d2 = ext2b[1] or 0, ext2f[1] or 0
+	for i = 1, extlast - 1 do
+		ext2b[i] = ext2b[i + 1] or 0
+		ext2f[i] = ext2f[i + 1] or 0
+	end
+	ext2b[extlast] = 0
+	ext2f[extlast] = 0
+	extlast = extlast - 1
+	return d1, d2 or d1
+end
+
+function make_nits(force41)
+	local b41_42, b43 = 0, 0
+	-- deny
+	if curB[6] then
+		ext2b, ext2f = {}, {}
+		return 0x47 &lt;&lt; 24, 0x47 &lt;&lt; 24, false
+	end
+
+	-- interrapt
+	if curB[7] then
+		return unpk(input.getNumber(6)), unpk(input.getNumber(7)), false
+	end
+
+	-- check ext. mode
+	if refN[8] or refB[32] then
+		refN[8] = false
+		refB[32] = false
+		return 0x47 &lt;&lt; 24|EXT_ID, 0x47 &lt;&lt; 24|EXT_ID, false
+	end
+
+	b43 = bit_arr(curB, 1, 5) &lt;&lt; 19
+	b41_42 = b43|bit_arr(riseB, 10, 15) &lt;&lt; 13
+
+	-- 0x41
+	if curB[32] and (force41 or (arr_or(refB, 16, 18) or arr_or(refN, 1, 3))) then
+		local p = (0x41 &lt;&lt; 24)|b41_42
+		p = p|bit(curB[18], 12)|bit(curB[16], 9)|bit(curB[17], 8)
+		p = p|shift(curN[3], 10, 2)|shift(curN[2], 5, 3)|shift(curN[1], 0, 5)
+
+		arr_cls(riseB, 1, 5)
+		arr_cls(riseB, 10, 15)
+		arr_cls(refB, 16, 18)
+		arr_cls(refN, 1, 3)
+		return p, bit_ex(bit_ex(p, 20, 19), 9, 8), true
+	end
+
+	-- 0x42
+	if arr_or(riseB, 10, 15) or arr_or(riseB, 19, 30) then
+		local p = (0x42 &lt;&lt; 24)|b41_42|bit_arr(riseB, 19, 30)
+		arr_cls(riseB, 1, 5)
+		arr_cls(riseB, 10, 15)
+		arr_cls(riseB, 19, 30)
+		return p, bit_ex(bit_ex(bit_ex(p, 20, 19), 3, 1), 2, 0), false
+	end
+
+	-- ext.
+	if extlast &gt;= 1 then
+		local e1,e2=pop_ext()
+		return e1, e2, false
+	end
+
+	if curB[9] then
+		return unpk(input.getNumber(6)), unpk(input.getNumber(7)), false
+	end
+
+	-- 0x43
+	b43 = 0x43 &lt;&lt; 24|b43|shift(curN[5], 9, 10)|shift(curN[4] / 2, 0, 9)
+	return b43, bit_ex(b43, 20, 19), false
+end
+
+n41time = 0
+watchdog = false
+function onTick()
+	watchdog = not watchdog
+	n41time = n41time &gt; 0 and n41time - 1 or 0
+	for i = 1, 32 do
+		oldB[i] = curB[i]
+		curB[i] = input.getBool(i)
+		if oldB[i] == false and curB[i] == true then
+			riseB[i] = true
+			refB[i] = true
+		else
+			riseB[i] = riseB[i] or false
+			if oldB[i] == true and curB[i] == false then
+				refB[i] = true
+			else
+				refB[i] = refB[i] or false
+			end
+		end
+	end
+
+	for i = 1, 9 do
+		oldN[i] = curN[i]
+		curN[i] = input.getNumber(i)
+		if oldN[i] ~= curN[i] then
+			refN[i] = true
+		else
+			refN[i] = refN[i] or false
+		end
+	end
+
+	if curB[8] then -- push
+		push_ext(unpk(curN[6]), unpk(curN[7]))
+	end
+
+	local n1, n2, f = make_nits(n41time &lt;= 0)
+	if f then n41time = 60 end
+	logb[(n1 &gt;&gt; 24) &amp; 0xff] = unpk(pk(n1))
+	logf[(n2 &gt;&gt; 24) &amp; 0xff] = unpk(pk(n2))
+	logl = unpk(pk(n1))
+
+	output.setNumber(1, pk(n1))
+	output.setNumber(2, pk(n2))
+	output.setNumber(3, extlast)
+	output.setBool(1, watchdog)
+end
+
+function onDraw()
+	screen.drawText(0, 0, string.format("%x", logb[0x41] or 0))
+	screen.drawText(0, 8, string.format("%x", logb[0x42] or 0))
+	screen.drawText(0, 16, string.format("%x", logb[0x60] or 0))
+	screen.drawText(0, 24, string.format("%x", logl or 0))
+end
+'>
+				<pos x="6.5" y="0.75"/>
+				<in1 component_id="493"/>
+			</c0>
+			<c1 id="441" count="6">
+				<pos x="10.25" y="-0.5"/>
+				<inc component_id="440"/>
+				<in1 component_id="446"/>
+				<in2 component_id="489"/>
+				<in3 component_id="491"/>
+				<in4 component_id="490"/>
+				<in5 component_id="875"/>
+				<in6 component_id="492"/>
+			</c1>
+			<c2 id="442">
+				<pos x="6.5" y="0.25"/>
+				<in1 component_id="440"/>
+			</c2>
+			<c3 id="443">
+				<pos x="6.5" y="-0.25"/>
+				<in1 component_id="442"/>
+			</c3>
+			<c4 id="444">
+				<pos x="7.75"/>
+				<in1 component_id="442"/>
+				<in2 component_id="443"/>
+			</c4>
+			<c5 id="445">
+				<pos x="7.75" y="-0.5"/>
+				<in1 component_id="444"/>
+			</c5>
+			<c6 id="446" ct="0" dt="0.1">
+				<pos x="9" y="0.75"/>
+				<in1 component_id="445"/>
+			</c6>
+			<c7 id="457" i="5">
+				<pos x="4" y="-0.5"/>
+				<in1 component_id="466"/>
+			</c7>
+			<c8 id="458" script='_p=property
+sig,riseB,curB,oldB,curN,oldN,chgN={},{},{},{},{},{},{}
+toi = math.floor
+_pg=function(l)return toi(_p.getNumber(l))end
+
+function pk(intv)
+	local r = (&apos;f&apos;):unpack((&apos;I4&apos;):pack(intv))
+	return r
+end
+
+function unpk(fl)
+	local r = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+	return r
+end
+
+MODE={}
+for i=1,8 do
+	MODE[i]=_pg(("M%d/N%d Mode"):format(i,i+8))
+	sig[i]={b=0,f=0,up=false}
+end
+
+interval = 0
+channel = 0
+watchdog = false
+function onTick()
+	watchdog = not watchdog
+	for i=1,16 do
+		oldN[i] = curN[i]
+		curN[i] = input.getNumber(i)
+		chgN[i] = oldN[i] ~= curN[i]
+
+		oldB[i] = curB[i]
+		curB[i] = input.getBool(i)
+		riseB[i] = (not oldB[i]) and curB[i]
+	end
+	for i=1,8 do
+		if curB[i] or curB[i+8] then
+			local b,f=curN[i],curN[i+8]
+			if (MODE[i] &amp; 1)==0 then
+				f=b
+				chgN[i+8]=false
+			end
+			if (MODE[i] &amp; 2)==0 then
+				b=toi(b);f=toi(f)
+			else
+				b=unpk(b);f=unpk(f)
+			end
+			if chgN[i] or chgN[i+8] or riseB[i] then
+				sig[i].b = b
+				sig[i].f = f
+				sig[i].up=true
+			end
+		end
+	end
+
+	local db,df,cmd=0,0,0
+
+	interval=interval-1
+	if interval&lt;=0 then
+		while channel&lt;8 do
+			channel=channel+1
+			if sig[channel].up then
+				db=sig[channel].b
+				df=sig[channel].f
+				cmd=0x48-1+channel
+				sig[channel].up=false
+				break
+			end
+		end
+
+		if channel&gt;=8 then
+			interval=2
+			channel=0
+		end
+	end
+
+
+	if cmd~=0 then
+		output.setNumber(6, pk((toi(cmd) &lt;&lt; 24) | (db &amp; 0xffffff)))
+		output.setNumber(7, pk((toi(cmd) &lt;&lt; 24) | (df &amp; 0xffffff)))
+	else
+		output.setNumber(6, 0)
+		output.setNumber(7, 0)
+	end
+	output.setBool(14, cmd~=0)
+end
+'>
+				<pos x="0.25" y="0.5"/>
+				<in1 component_id="459"/>
+			</c8>
+			<c9 id="459" count="1" offset="16">
+				<pos x="-1" y="0.5"/>
+				<inc component_id="847"/>
+				<in1 component_id="463"/>
+			</c9>
+			<c10 id="461" i="13">
+				<pos x="2.75" y="-1.75"/>
+				<in1 component_id="458"/>
+			</c10>
+			<c11 id="462">
+				<pos x="-3.5"/>
+				<in1 component_id="465"/>
+				<in2 component_id="464"/>
+			</c11>
+			<c12 id="463" ct="3" dt="0">
+				<pos x="-2.25" y="0.25"/>
+				<in1 component_id="462"/>
+			</c12>
+			<c13 id="464" i="6">
+				<pos x="-4.75" y="-0.25"/>
+				<in1 component_id="466"/>
+			</c13>
+			<c14 id="465" i="7">
+				<pos x="-4.75" y="0.25"/>
+				<in1 component_id="466"/>
+			</c14>
+			<c15 id="466" script='function toi(x)
+	return math.tointeger(math.floor(x)) or 0
+end
+
+ID = tonumber(property.getText("NITS Ext. ID"),16)
+
+function gbit(val, dg)
+	return ((val &gt;&gt; dg) &amp; 1) == 1
+end
+
+function pk(intv)
+	local r=(&apos;f&apos;):unpack((&apos;I4&apos;):pack(intv))
+	return r
+end
+
+function unpk(fl)
+	local r=(&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+	return r
+end
+
+function bit_exch(dat, i1, i2)
+    local t1 = dat &amp; (toi(1) &lt;&lt; i1)
+    local t2 = dat &amp; (toi(1) &lt;&lt; i2)
+
+    return (dat ~ t1 ~ t2) | bbit(i2, t1~=0) | bbit(i1, t2~=0)
+end
+
+op = {}
+data_s4x = {}
+_Watchdog = false
+function onTick()
+	_Watchdog = not _Watchdog
+	output.setBool(15, _Watchdog)
+
+	local s41, s4x, dt, ch
+	s41 = 0
+	s4x = false
+
+	for i = 1, 32 do
+		op[i] = false
+	end
+
+	output.setBool(6, false)
+	output.setBool(7, false)
+	output.setBool(8, false)
+
+	dt = unpk(input.getNumber(32))
+	local front_car = dt &amp; 31
+	local last_car = (dt &gt;&gt; 5) &amp; 31
+
+	for i = front_car+1, 15 do
+		data_s4x[i] = 0
+	end
+	for i = 17, 31-last_car do
+		data_s4x[i] = 0
+	end
+
+	for i = 1, 31 do
+		dt = unpk(input.getNumber(i))
+		ch = (dt &gt;&gt; 24) &amp; 0xff
+
+		if ch == 0x41 then
+			s41 = i
+			for j = 10, 15 do
+				op[j] = op[j] or gbit(dt, 28 - j)
+			end
+		end
+		if ch == 0x42 then
+			for j = 10, 15 do
+				op[j] = op[j] or gbit(dt, 28 - j)
+			end
+			for j = 19, 26 do
+				op[j] = op[j] or gbit(dt, 30 - j)
+			end
+			if i &lt;= 16 then
+				op[27] = op[27] or gbit(dt, 3)
+				op[28] = op[28] or gbit(dt, 2)
+				op[29] = op[29] or gbit(dt, 1)
+				op[30] = op[30] or gbit(dt, 0)
+			else
+				op[27] = op[27] or gbit(dt, 1)
+				op[28] = op[28] or gbit(dt, 0)
+				op[29] = op[29] or gbit(dt, 3)
+				op[30] = op[30] or gbit(dt, 2)
+			end
+		end
+		if ch &gt;= 0x41 and ch &lt;= 0x43 then
+			s4x = true
+			data_s4x[i] = dt
+		end
+
+		if ch == 0x47 then
+			if (dt &amp; 0xffffff) == ID then
+				output.setBool(8, true)
+			else
+				if (dt &amp; 0xffffff) ~= 0 then
+					output.setBool(6, true)
+				end
+				output.setBool(7, true)
+			end
+		end
+	end
+
+	if s41 ~= 0 then
+		dt = unpk(input.getNumber(s41))
+		output.setNumber(1, dt &amp; 31)
+		output.setNumber(2, (dt &gt;&gt; 5) &amp; 7)
+		output.setNumber(3, (dt &gt;&gt; 10) &amp; 3)
+		output.setBool(18, gbit(dt, 12))
+		if s41 &lt;= 16 then
+			output.setBool(16, gbit(dt, 9))
+			output.setBool(17, gbit(dt, 8))
+		else
+			output.setBool(16, gbit(dt, 8))
+			output.setBool(17, gbit(dt, 9))
+		end
+		output.setBool(9, true)
+	else
+		output.setBool(9, false)
+	end
+
+
+	for i = 1, 32 do
+		dt=data_s4x[i] or 0
+		op[1] = op[1] or gbit(dt, 23)
+		if i ~= 16 then op[2] = op[2] or gbit(dt, 22) end
+		op[3] = op[3] or gbit(dt, 21)
+		if i &lt;= 16 then
+			op[4]=op[4] or gbit(dt, 20); op[5]=op[5] or gbit(dt, 19)
+		else
+			op[5]=op[5] or gbit(dt, 20); op[4]=op[4] or gbit(dt, 19)
+		end
+	end
+
+	for j = 1, 5 do
+		output.setBool(j, op[j])
+	end
+	for j = 10, 30 do
+		output.setBool(j, op[j])
+	end
+	output.setBool(9, s4x)
+
+	output.setNumber(4, front_car)
+	output.setNumber(5, last_car)
+	output.setNumber(6, front_car + last_car + 1)
+end
+'>
+				<pos x="-6" y="1.25"/>
+				<in1 component_id="68"/>
+			</c15>
+			<c16 id="486">
+				<pos x="4" y="-2"/>
+				<in1 component_id="461"/>
+			</c16>
+			<c17 id="487" i="5">
+				<pos x="2.75" y="0.75"/>
+				<in1 component_id="458"/>
+			</c17>
+			<c18 id="488" i="6">
+				<pos x="2.75" y="0.25"/>
+				<in1 component_id="458"/>
+			</c18>
+			<c19 id="489" i="5">
+				<pos x="9" y="0.25"/>
+				<in1 component_id="478"/>
+			</c19>
+			<c20 id="490">
+				<pos x="9" y="-0.75"/>
+				<in1 component_id="478"/>
+			</c20>
+			<c21 id="491" i="6">
+				<pos x="9" y="-0.25"/>
+				<in1 component_id="478"/>
+			</c21>
+			<c22 id="492" i="8">
+				<pos x="9" y="-1.75"/>
+				<in1 component_id="478"/>
+			</c22>
+			<c23 id="493" count="4" offset="5">
+				<pos x="5.25"/>
+				<inc component_id="741"/>
+				<in1 component_id="457"/>
+				<in2 component_id="676"/>
+				<in3 component_id="486"/>
+				<in4 component_id="677"/>
+			</c23>
+			<c24 id="503" count="1">
+				<pos x="-2.25" y="1.5"/>
+				<inc component_id="466"/>
+				<in1 component_id="506"/>
+			</c24>
+			<c25 id="504" i="10">
+				<pos x="-4.75" y="1.75"/>
+				<in1 component_id="68"/>
+			</c25>
+			<c26 id="506">
+				<pos x="-3.5" y="1.25"/>
+				<in1 component_id="504"/>
+				<in2 component_id="507"/>
+			</c26>
+			<c27 id="507">
+				<pos x="-4.75" y="1.25"/>
+				<in1 component_id="466"/>
+			</c27>
+			<c28 id="663" n="NITS Ext. ID" v="0">
+				<pos x="-6" y="2"/>
+			</c28>
+			<c29 id="667" i="5">
+				<pos x="2.75" y="-0.25"/>
+				<in1 component_id="466"/>
+			</c29>
+			<c30 id="674" i="12">
+				<pos x="2.75" y="-1"/>
+				<in1 component_id="458"/>
+			</c30>
+			<c31 id="675" i="14">
+				<pos x="2.75" y="-2.5"/>
+				<in1 component_id="458"/>
+			</c31>
+			<c32 id="676">
+				<pos x="4" y="-1.25"/>
+				<in1 component_id="674"/>
+			</c32>
+			<c33 id="677">
+				<pos x="4" y="-2.75"/>
+				<in1 component_id="675"/>
+			</c33>
+			<c34 id="741" count="3" offset="5">
+				<pos x="4" y="0.25"/>
+				<inc component_id="478"/>
+				<in1 component_id="487"/>
+				<in2 component_id="488"/>
+				<in3 component_id="667"/>
+			</c34>
+			<c35 id="838" name="N1/N9 Mode">
+				<pos x="-11" y="2.5"/>
+				<items>
+					<i l="Integer same">
+						<v text="0"/>
+					</i>
+					<i l="Binary same">
+						<v text="2" value="2"/>
+					</i>
+					<i l="Binary separate">
+						<v text="3" value="3"/>
+					</i>
+				</items>
+			</c35>
+			<c36 id="839" name="N2/N10 Mode">
+				<pos x="-11" y="2"/>
+				<items>
+					<i l="Integer same">
+						<v text="0"/>
+					</i>
+					<i l="Binary same">
+						<v text="2" value="2"/>
+					</i>
+					<i l="Binary separate">
+						<v text="3" value="3"/>
+					</i>
+				</items>
+			</c36>
+			<c37 id="840" name="N3/N11 Mode">
+				<pos x="-11" y="1.5"/>
+				<items>
+					<i l="Integer same">
+						<v text="0"/>
+					</i>
+					<i l="Binary same">
+						<v text="2" value="2"/>
+					</i>
+					<i l="Binary separate">
+						<v text="3" value="3"/>
+					</i>
+				</items>
+			</c37>
+			<c38 id="841" name="N4/N12 Mode">
+				<pos x="-11" y="1"/>
+				<items>
+					<i l="Integer same">
+						<v text="0"/>
+					</i>
+					<i l="Binary same">
+						<v text="2" value="2"/>
+					</i>
+					<i l="Binary separate">
+						<v text="3" value="3"/>
+					</i>
+				</items>
+			</c38>
+			<c39 id="842" name="N5/N13 Mode">
+				<pos x="-11" y="0.5"/>
+				<items>
+					<i l="Integer same">
+						<v text="0"/>
+					</i>
+					<i l="Binary same">
+						<v text="2" value="2"/>
+					</i>
+					<i l="Binary separate">
+						<v text="3" value="3"/>
+					</i>
+				</items>
+			</c39>
+			<c40 id="843" name="N6/N14 Mode">
+				<pos x="-11"/>
+				<items>
+					<i l="Integer same">
+						<v text="0"/>
+					</i>
+					<i l="Binary same">
+						<v text="2" value="2"/>
+					</i>
+					<i l="Binary separate">
+						<v text="3" value="3"/>
+					</i>
+				</items>
+			</c40>
+			<c41 id="844" name="N7/N15 Mode">
+				<pos x="-11" y="-0.5"/>
+				<items>
+					<i l="Integer same">
+						<v text="0"/>
+					</i>
+					<i l="Binary same">
+						<v text="2" value="2"/>
+					</i>
+					<i l="Binary separate">
+						<v text="3" value="3"/>
+					</i>
+				</items>
+			</c41>
+			<c42 id="845" name="N8/N16 Mode">
+				<pos x="-11" y="-1"/>
+				<items>
+					<i l="Integer same">
+						<v text="0"/>
+					</i>
+					<i l="Binary same">
+						<v text="2" value="2"/>
+					</i>
+					<i l="Binary separate">
+						<v text="3" value="3"/>
+					</i>
+				</items>
+			</c42>
+			<c43 id="848" script='function unpk(fl)
+	local r=(&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+	return r
+end
+
+_pg=function(l)return math.floor(property.getNumber(l))end
+MODE={}
+for i=1,8 do
+	MODE[i]=_pg(("M%d/N%d Mode"):format(i,i+8))
+end
+
+opN={}
+opB={}
+function onTick()
+	for i=1,8 do
+		opN[i]=0
+		opB[i]=false
+	end
+
+	for i=1,31 do
+		local f,o,c
+		f=input.getNumber(i)
+		o=unpk(f)
+		c=((o &gt;&gt; 24) &amp; 0xff)-(0x48)+1
+
+		if c&gt;=1 and c&lt;=8 then
+			if (MODE[c] &amp; 2)==0 then
+				opN[c]=(o &amp; 0xffffff) * 1.0
+			else
+				opN[c]=f --binary
+			end
+			opB[c]=true
+		end
+	end
+
+	for i=1,8 do
+		output.setNumber(i, opN[i])
+		output.setBool(i, opB[i])
+	end
+end
+
+'>
+				<pos x="-6" y="7.25"/>
+				<in1 component_id="876"/>
+			</c43>
+			<c44 id="849" count="8" offset="8">
+				<pos x="0.25" y="9"/>
+				<inc component_id="848"/>
+				<in1 component_id="854"/>
+				<in2 component_id="855"/>
+				<in3 component_id="856"/>
+				<in4 component_id="857"/>
+				<in5 component_id="850"/>
+				<in6 component_id="851"/>
+				<in7 component_id="852"/>
+				<in8 component_id="853"/>
+			</c44>
+			<c45 id="850">
+				<pos x="-2.25" y="6.5"/>
+				<in1 component_id="867"/>
+				<in2 component_id="464"/>
+				<in3 component_id="866"/>
+				<r text="0"/>
+			</c45>
+			<c46 id="851">
+				<pos x="-2.25" y="5.5"/>
+				<in1 component_id="869"/>
+				<in2 component_id="464"/>
+				<in3 component_id="868"/>
+				<r text="0"/>
+			</c46>
+			<c47 id="852">
+				<pos x="-2.25" y="4.5"/>
+				<in1 component_id="871"/>
+				<in2 component_id="464"/>
+				<in3 component_id="870"/>
+				<r text="0"/>
+			</c47>
+			<c48 id="853">
+				<pos x="-2.25" y="3.5"/>
+				<in1 component_id="873"/>
+				<in2 component_id="464"/>
+				<in3 component_id="872"/>
+				<r text="0"/>
+			</c48>
+			<c49 id="854">
+				<pos x="-2.25" y="10.5"/>
+				<in1 component_id="859"/>
+				<in2 component_id="464"/>
+				<in3 component_id="858"/>
+				<r text="0"/>
+			</c49>
+			<c50 id="855">
+				<pos x="-2.25" y="9.5"/>
+				<in1 component_id="861"/>
+				<in2 component_id="464"/>
+				<in3 component_id="860"/>
+				<r text="0"/>
+			</c50>
+			<c51 id="856">
+				<pos x="-2.25" y="8.5"/>
+				<in1 component_id="863"/>
+				<in2 component_id="464"/>
+				<in3 component_id="862"/>
+				<r text="0"/>
+			</c51>
+			<c52 id="857">
+				<pos x="-2.25" y="7.5"/>
+				<in1 component_id="865"/>
+				<in2 component_id="464"/>
+				<in3 component_id="864"/>
+				<r text="0"/>
+			</c52>
+			<c53 id="858">
+				<pos x="-3.5" y="10.5"/>
+				<in1 component_id="848"/>
+			</c53>
+			<c54 id="859">
+				<pos x="-3.5" y="11"/>
+				<in1 component_id="848"/>
+			</c54>
+			<c55 id="860" i="1">
+				<pos x="-3.5" y="9.5"/>
+				<in1 component_id="848"/>
+			</c55>
+			<c56 id="861" i="1">
+				<pos x="-3.5" y="10"/>
+				<in1 component_id="848"/>
+			</c56>
+			<c57 id="862" i="2">
+				<pos x="-3.5" y="8.5"/>
+				<in1 component_id="848"/>
+			</c57>
+			<c58 id="863" i="2">
+				<pos x="-3.5" y="9"/>
+				<in1 component_id="848"/>
+			</c58>
+			<c59 id="864" i="3">
+				<pos x="-3.5" y="7.5"/>
+				<in1 component_id="848"/>
+			</c59>
+			<c60 id="865" i="3">
+				<pos x="-3.5" y="8"/>
+				<in1 component_id="848"/>
+			</c60>
+			<c61 id="866" i="4">
+				<pos x="-3.5" y="6.5"/>
+				<in1 component_id="848"/>
+			</c61>
+			<c62 id="867" i="4">
+				<pos x="-3.5" y="7"/>
+				<in1 component_id="848"/>
+			</c62>
+			<c63 id="868" i="5">
+				<pos x="-3.5" y="5.5"/>
+				<in1 component_id="848"/>
+			</c63>
+			<c64 id="869" i="5">
+				<pos x="-3.5" y="6"/>
+				<in1 component_id="848"/>
+			</c64>
+			<c65 id="870" i="6">
+				<pos x="-3.5" y="4.5"/>
+				<in1 component_id="848"/>
+			</c65>
+			<c66 id="871" i="6">
+				<pos x="-3.5" y="5"/>
+				<in1 component_id="848"/>
+			</c66>
+			<c67 id="872" i="7">
+				<pos x="-3.5" y="3.5"/>
+				<in1 component_id="848"/>
+			</c67>
+			<c68 id="873" i="7">
+				<pos x="-3.5" y="4"/>
+				<in1 component_id="848"/>
+			</c68>
+			<c69 id="874" l="value" on="on" off="off">
+				<pos x="-1"/>
+				<in1 component_id="463"/>
+			</c69>
+			<c70 id="875" i="7">
+				<pos x="9" y="-1.25"/>
+				<in1 component_id="478"/>
+			</c70>
+			<c71 id="876">
+				<pos x="-7.25" y="7"/>
+				<in1 component_id="68"/>
+				<in3 component_id="463"/>
+			</c71>
+		</component_states>
+		<component_bridge_states>
+			<c0 id="68">
+				<pos x="-7.25" y="1.75"/>
+			</c0>
+			<c1 id="99">
+				<pos x="11.5" y="1"/>
+				<in1 component_id="441"/>
+			</c1>
+			<c2 id="478">
+				<pos x="4" y="1.75"/>
+			</c2>
+			<c3 id="485">
+				<pos x="-1" y="1.75"/>
+				<in1 component_id="503"/>
+			</c3>
+			<c4 id="498">
+				<pos x="1.5" y="11"/>
+				<in1 component_id="849"/>
+			</c4>
+			<c5 id="847">
+				<pos x="-2.25" y="0.75"/>
+			</c5>
+		</component_bridge_states>
+		<group_states/>
+	</group>
+</microprocessor>
+
