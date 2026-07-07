@@ -72,10 +72,10 @@ module main
   inst CAPACITOR startup_delay (charge_time=5, discharge_time=0) : -> out=startup_delay_out
   inst OR power_cut_set : a=startup_delay_out, b=motor_current_oor_out -> out=power_cut_set_out
   inst SR_LATCH power_cut_latch : r=power_cut_reset_out, s=power_cut_set_out -> q=power_cut_latch_q
-  inst AND power_cut_reset : a=notch_active_out, b=eb_inv_out -> out=power_cut_reset_out
+  inst AND power_cut_reset : a=notch_active_out, b=regen_flag_inv_out -> out=power_cut_reset_out
   inst NOT danryu_not : a=motor_current_positive_out -> out="DANRYU"
-  inst COMPOSITE_READ_BOOLEAN eb_signal (channel=18) : composite="Simple IF" -> out=eb_signal_out
-  inst NOT eb_inv : a=eb_signal_out -> out=eb_inv_out
+  inst COMPOSITE_READ_BOOLEAN regen_flag (channel=18) : composite="Simple IF" -> out=regen_flag_out
+  inst NOT regen_flag_inv : a=regen_flag_out -> out=regen_flag_inv_out
   inst GREATER_THAN overspeed : a=abs_speed_out, b=overspeed_threshold_out -> out=overspeed_out
   inst PROPERTY_NUMBER overspeed_threshold (value=32, n="Over Speed Th. [m/s]") : -> out=overspeed_threshold_out
   inst THRESHOLD direction_nonzero (min=0, max=1) : value=direction_out -> out=direction_nonzero_out
@@ -87,7 +87,7 @@ module main
   inst COMPOSITE_READ_NUMBER speed_w_read (channel=4) : composite=current_src_mux_out -> out="W"
   inst PROPERTY_NUMBER power_limit_current (value=210, n="Power Limit Current [A]") : -> out=power_limit_current_out
   inst PROPERTY_NUMBER brake_limit_current (value=290, n="Brake Limit@320kPa [A]") : -> out=brake_limit_current_out
-  inst COMPOSITE_WRITE_BOOLEAN traction_status_bool (count=6, offset=1) : in1=traction_phase1_latch_q, in2=traction_phase2_latch_q, in3=regen_latch_q, in4=notch_ge1_out, in5=low_bc_with_eb_out, in6=regen_warning_cond_out -> out=traction_status_bool_out
+  inst COMPOSITE_WRITE_BOOLEAN traction_status_bool (count=6, offset=1) : in1=traction_phase1_latch_q, in2=traction_phase2_latch_q, in3=regen_latch_q, in4=notch_ge1_out, in5=low_bc_with_regen_flag_out, in6=regen_warning_cond_out -> out=traction_status_bool_out
 
   # --- Brake pressure and EB logic ---
   inst COMPOSITE_READ_NUMBER brake_current_fb (channel=6) : composite=current_src_mux_out -> out=brake_current_fb_out
@@ -100,10 +100,10 @@ module main
   inst LESS_THAN brake_below_min : a=brake_pressure_sw_out, b=brake_min_pressure_value -> out=brake_below_min_out
   inst NUM_SWITCHBOX brake_pressure_sw : a="BP [atm]", b=ecb_pressure_sw_out, switch=sap_ecb_toggle_out -> out=brake_pressure_sw_out
   inst PROPERTY_TOGGLE sap_ecb_toggle (label="", on_label="SAP", off_label="ECB", n="SAP or ECB") : -> out=sap_ecb_toggle_out
-  inst NUM_SWITCHBOX ecb_pressure_sw : a=ecb_release_pressure_value, b=ecb_apply_pressure_value, switch=brake_apply_signal_out -> out=ecb_pressure_sw_out
-  inst COMPOSITE_READ_BOOLEAN brake_apply_signal (channel=1) : composite="Simple IF" -> out=brake_apply_signal_out
-  inst CONST ecb_release_pressure (value=0) : -> value=ecb_release_pressure_value
-  inst CONST ecb_apply_pressure (value=5) : -> value=ecb_apply_pressure_value
+  inst NUM_SWITCHBOX ecb_pressure_sw : a=ecb_offset_eb_active_value, b=ecb_offset_eb_inactive_value, switch=eb_signal_out -> out=ecb_pressure_sw_out
+  inst COMPOSITE_READ_BOOLEAN eb_signal (channel=1) : composite="Simple IF" -> out=eb_signal_out
+  inst CONST ecb_offset_eb_active (value=0) : -> value=ecb_offset_eb_active_value
+  inst CONST ecb_offset_eb_inactive (value=5) : -> value=ecb_offset_eb_inactive_value
   inst COMPOSITE_READ_NUMBER sap_raw (channel=1) : composite="Simple IF" -> out=sap_raw_out
   inst COMPOSITE_READ_BOOLEAN forward_signal (channel=16) : composite="Simple IF" -> out=forward_signal_out
   inst COMPOSITE_READ_BOOLEAN backward_signal (channel=17) : composite="Simple IF" -> out=backward_signal_out
@@ -156,10 +156,10 @@ module main
   inst PULSE regen_warning_pulse (mode="rise") : a=regen_warning_blinker_out -> out=regen_warning_pulse_out
   inst AND coasting_cond : a=neutral_cond_out, b=regen_latch_not_q -> out=coasting_cond_out
   inst THRESHOLD current_near_zero (min=-50, max=50) : value=motor_current_out -> out=current_near_zero_out
-  inst NOR no_power_no_lowspeed : a=notch_ge1_out, b=low_bc_with_eb_out -> out=no_power_no_lowspeed_out
-  inst AND neutral_cond : a=current_near_zero_out, b=no_power_no_lowspeed_out -> out=neutral_cond_out
-  inst OR phase_reset_cond : a=coasting_cond_out, b=regen_pulse_no_eb_out -> out=phase_reset_cond_out
-  inst AND regen_pulse_no_eb : a=regen_warning_pulse_out, b=eb_inv_out -> out=regen_pulse_no_eb_out
+  inst NOR no_notch_no_regen_brake_demand : a=notch_ge1_out, b=low_bc_with_regen_flag_out -> out=no_notch_no_regen_brake_demand_out
+  inst AND neutral_cond : a=current_near_zero_out, b=no_notch_no_regen_brake_demand_out -> out=neutral_cond_out
+  inst OR phase_reset_cond : a=coasting_cond_out, b=regen_pulse_regen_flag_off_out -> out=phase_reset_cond_out
+  inst AND regen_pulse_regen_flag_off : a=regen_warning_pulse_out, b=regen_flag_inv_out -> out=regen_pulse_regen_flag_off_out
 
   # --- Regen BC control ---
   inst FUNC_NUM_1 regen_bc_target (expression="-floor((x-1)*2)/7.2") : x=sap_pressure_sw_out -> out=regen_bc_target_out
@@ -168,11 +168,11 @@ module main
   inst CONST regen_bc_zero (value=0) : -> value=regen_bc_zero_value
   inst LESS_THAN regen_bc_below_min : a=regen_bc_smooth_out, b=regen_bc_min_value -> out=regen_bc_below_min_out
   inst CONST regen_bc_min (value=-0.1) : -> value=regen_bc_min_value
-  inst OR regen_bc_enable : a=regen_delay_cap_out, b=eb_inv_out -> out=regen_bc_enable_out
+  inst OR regen_bc_enable : a=regen_delay_cap_out, b=regen_flag_inv_out -> out=regen_bc_enable_out
   inst CAPACITOR regen_delay_cap (charge_time=0.5, discharge_time=10) : enable=brake_current_high_phase1_out -> out=regen_delay_cap_out
   inst LESS_THAN bc_target_below_min : a=regen_bc_target_out, b=bc_target_min_value -> out=bc_target_below_min_out
   inst CONST bc_target_min (value=-0.05) : -> value=bc_target_min_value
-  inst AND low_bc_with_eb : a=bc_target_below_min_out, b=eb_signal_out -> out=low_bc_with_eb_out
+  inst AND low_bc_with_regen_flag : a=bc_target_below_min_out, b=regen_flag_out -> out=low_bc_with_regen_flag_out
   inst FUNC_NUM_1 regen_current (expression="max(-x,0)") : x=regen_bc_target_out -> out=regen_current_out
   inst COMPOSITE_WRITE_NUMBER regen_current_write (count=1, offset=7) : in1=regen_current_out -> out=regen_current_write_out
   inst CONST current_offset_200 (value=200) : -> value=current_offset_200_value
