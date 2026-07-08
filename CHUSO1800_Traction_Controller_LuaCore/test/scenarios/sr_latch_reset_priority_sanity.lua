@@ -1,42 +1,36 @@
 -- SPEC.md §0.1/H6: every SR latch is reset-priority (simultaneous set+reset
 -- -> Off) and must not oscillate when re-evaluated with unchanged inputs.
--- Exercised via panta1_latch (set=panta1_up_signal, reset=panta1_down_signal)
--- since it is the simplest latch with directly-driven set/reset inputs (no
--- derived conditions to control for).
+-- Exercised directly against core.sr_latch (exposed for testing only) rather
+-- than through a specific latch in calculateTick: phase1/phase2/regen are
+-- all driven by multi-condition derived set/reset expressions, not simple
+-- direct inputs, so unit-testing the shared sr_latch helper in isolation is
+-- both simpler and a more precise test of the reset-priority mechanics
+-- itself (all three latches share this exact same implementation).
 
 local core = require("chuso1800_core")
 
 return function(h)
-    local state = core.zero_state()
+    -- set only, from Off -> latches true
+    h.assert_true(core.sr_latch(false, true, false), "set-only latches true")
 
-    -- set only -> latches true
-    local set_only = core.encode_stateless_in({ panta1_up_signal = true })
-    local _, s1 = core.calculateTick(set_only, state)
-    state = s1
-    h.assert_true(core.decode_state(state).panta1_latch, "set-only latches true")
+    -- hold: neither set nor reset -> keeps the old value
+    h.assert_true(core.sr_latch(true, false, false), "holds true with neither set nor reset")
+    h.assert_false(core.sr_latch(false, false, false), "holds false with neither set nor reset")
 
-    -- hold: neither set nor reset -> stays true
-    local hold = core.encode_stateless_in({})
-    local _, s2 = core.calculateTick(hold, state)
-    state = s2
-    h.assert_true(core.decode_state(state).panta1_latch, "holds true with neither set nor reset")
-
-    -- simultaneous set+reset -> reset wins (Off)
-    local both = core.encode_stateless_in({ panta1_up_signal = true, panta1_down_signal = true })
-    local _, s3 = core.calculateTick(both, state)
-    state = s3
-    h.assert_false(core.decode_state(state).panta1_latch, "reset wins on simultaneous set+reset")
+    -- simultaneous set+reset -> reset wins (Off), regardless of old value
+    h.assert_false(core.sr_latch(true, true, true), "reset wins on simultaneous set+reset, from On")
+    h.assert_false(core.sr_latch(false, true, true), "reset wins on simultaneous set+reset, from Off")
 
     -- repeated simultaneous set+reset -> stays Off, no oscillation
+    local q = true
     for tick = 1, 10 do
-        local _, s = core.calculateTick(both, state)
-        state = s
-        h.assert_false(core.decode_state(state).panta1_latch, "stays off under sustained set+reset, tick " .. tick)
+        q = core.sr_latch(q, true, true)
+        h.assert_false(q, "stays off under sustained set+reset, tick " .. tick)
     end
 
     -- reset only, from Off -> stays Off
-    local reset_only = core.encode_stateless_in({ panta1_down_signal = true })
-    local _, s4 = core.calculateTick(reset_only, state)
-    state = s4
-    h.assert_false(core.decode_state(state).panta1_latch, "reset-only from Off stays Off")
+    h.assert_false(core.sr_latch(false, false, true), "reset-only from Off stays Off")
+
+    -- set only, from On -> stays On (idempotent)
+    h.assert_true(core.sr_latch(true, true, false), "set-only from On stays On")
 end

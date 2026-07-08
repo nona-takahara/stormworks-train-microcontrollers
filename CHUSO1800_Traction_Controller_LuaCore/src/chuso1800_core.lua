@@ -99,7 +99,6 @@ local property = property
 if type(property) ~= "table" then
     local DEFAULT_BOOL_PROPERTIES = {
         ["SAP or ECB"] = false, -- off = ECB (main.sw-net's sap_ecb_toggle default)
-        ["M type"] = false,     -- off = 1800 (main.sw-net's mtype_toggle default)
     }
     local DEFAULT_NUMBER_PROPERTIES = {
         ["Over Speed Th. [m/s]"] = 32,       -- main.sw-net's overspeed_threshold
@@ -112,7 +111,6 @@ if type(property) ~= "table" then
 end
 
 local SAP_ECB_IS_SAP = property.getBool("SAP or ECB")
-local IS_1800_TYPE = not property.getBool("M type")
 local OVERSPEED_THRESHOLD = property.getNumber("Over Speed Th. [m/s]")     -- m/s
 local POWER_LIMIT_CURRENT = property.getNumber("Power Limit Current [A]") -- A
 
@@ -154,10 +152,6 @@ M.STATE_LATCHES_LAYOUT = {
     { name = "phase1_latch",                  bits = 1 },
     { name = "phase2_latch",                  bits = 1 },
     { name = "regen_latch",                   bits = 1 },
-    { name = "panta1_latch",                  bits = 1 },
-    { name = "panta2_latch",                  bits = 1 },
-    { name = "panta1_en_latch",               bits = 1 },
-    { name = "panta2_en_latch",               bits = 1 },
     { name = "traction_advance_counter",      bits = 4 }, -- 0-12, periodic_pulse_step
     { name = "regen_warning_counter",         bits = 5 }, -- 0-30, periodic_pulse_step
 }
@@ -176,20 +170,10 @@ M.INPUT_BITS_LAYOUT = {
     { name = "forward_signal",         bits = 1 },
     { name = "backward_signal",        bits = 1 },
     { name = "eb_signal",              bits = 1 },
-    { name = "panta_enable_signal",    bits = 1 },
-    { name = "panta_all_down_signal",  bits = 1 },
-    { name = "panta1_up_signal",       bits = 1 },
-    { name = "panta1_down_signal",     bits = 1 },
-    { name = "panta2_up_signal",       bits = 1 },
-    { name = "panta2_down_signal",     bits = 1 },
 }
 
 M.STATUS_BITS_LAYOUT = {
     { name = "cam_pulse",               bits = 1 },
-    { name = "panta1_1800_active",      bits = 1 },
-    { name = "panta2_1800_active",      bits = 1 },
-    { name = "panta1_1800_latched",     bits = 1 },
-    { name = "panta2_1800_latched",     bits = 1 },
     { name = "phase1_latch",            bits = 1 },
     { name = "phase2_latch",            bits = 1 },
     { name = "regen_latch",             bits = 1 },
@@ -434,10 +418,6 @@ function M.decode_state(state_in)
         phase1_latch = bool(latches.phase1_latch),
         phase2_latch = bool(latches.phase2_latch),
         regen_latch = bool(latches.regen_latch),
-        panta1_latch = bool(latches.panta1_latch),
-        panta2_latch = bool(latches.panta2_latch),
-        panta1_en_latch = bool(latches.panta1_en_latch),
-        panta2_en_latch = bool(latches.panta2_en_latch),
         traction_advance_counter = latches.traction_advance_counter,
         regen_warning_counter = latches.regen_warning_counter,
         regen_delay_level = timers.regen_delay_level,
@@ -458,10 +438,6 @@ function M.encode_state(f)
         phase1_latch = f.phase1_latch,
         phase2_latch = f.phase2_latch,
         regen_latch = f.regen_latch,
-        panta1_latch = f.panta1_latch,
-        panta2_latch = f.panta2_latch,
-        panta1_en_latch = f.panta1_en_latch,
-        panta2_en_latch = f.panta2_en_latch,
         traction_advance_counter = f.traction_advance_counter,
         regen_warning_counter = f.regen_warning_counter,
     })
@@ -487,12 +463,6 @@ function M.encode_stateless_in(f)
         forward_signal = f.forward_signal,
         backward_signal = f.backward_signal,
         eb_signal = f.eb_signal,
-        panta_enable_signal = f.panta_enable_signal,
-        panta_all_down_signal = f.panta_all_down_signal,
-        panta1_up_signal = f.panta1_up_signal,
-        panta1_down_signal = f.panta1_down_signal,
-        panta2_up_signal = f.panta2_up_signal,
-        panta2_down_signal = f.panta2_down_signal,
     })
     return {
         f.speed or 0,
@@ -513,10 +483,6 @@ function M.decode_stateless_out(stateless_out)
         bc_target_smooth = stateless_out[3],
         bcT = stateless_out[4],
         cam_pulse = bool(status.cam_pulse),
-        panta1_1800_active = bool(status.panta1_1800_active),
-        panta2_1800_active = bool(status.panta2_1800_active),
-        panta1_1800_latched = bool(status.panta1_1800_latched),
-        panta2_1800_latched = bool(status.panta2_1800_latched),
         phase1_latch = bool(status.phase1_latch),
         phase2_latch = bool(status.phase2_latch),
         regen_latch = bool(status.regen_latch),
@@ -548,12 +514,6 @@ local function decode_inputs(stateless_in)
         forward_signal = bool(bits.forward_signal),
         backward_signal = bool(bits.backward_signal),
         eb_signal = bool(bits.eb_signal),
-        panta_enable_signal = bool(bits.panta_enable_signal),
-        panta_all_down_signal = bool(bits.panta_all_down_signal),
-        panta1_up_signal = bool(bits.panta1_up_signal),
-        panta1_down_signal = bool(bits.panta1_down_signal),
-        panta2_up_signal = bool(bits.panta2_up_signal),
-        panta2_down_signal = bool(bits.panta2_down_signal),
     }
 end
 
@@ -719,26 +679,6 @@ local function smooth_bc(st, accel, regen_bc_target, regen_flag, brake_current_h
     }
 end
 
--- SPEC §3.9 pantograph latches.
-local function pantograph_block(st, inp)
-    local panta1_latch = sr_latch(st.panta1_latch, inp.panta1_up_signal, inp.panta1_down_signal)
-    local panta2_latch = sr_latch(st.panta2_latch, inp.panta2_up_signal, inp.panta2_down_signal)
-    local panta1_set_cond = (not st.panta1_latch) and inp.panta_enable_signal
-    local panta2_set_cond = (not st.panta2_latch) and inp.panta_enable_signal
-    local panta1_en_latch = sr_latch(st.panta1_en_latch, panta1_set_cond, inp.panta_all_down_signal)
-    local panta2_en_latch = sr_latch(st.panta2_en_latch, panta2_set_cond, inp.panta_all_down_signal)
-    return {
-        panta1_latch = panta1_latch,
-        panta2_latch = panta2_latch,
-        panta1_en_latch = panta1_en_latch,
-        panta2_en_latch = panta2_en_latch,
-        panta1_1800_active = panta1_en_latch and IS_1800_TYPE,
-        panta2_1800_active = panta2_en_latch and IS_1800_TYPE,
-        panta1_1800_latched = panta1_latch and IS_1800_TYPE,
-        panta2_1800_latched = panta2_latch and IS_1800_TYPE,
-    }
-end
-
 --------------------------------------------------------------------------
 -- Main tick function
 --------------------------------------------------------------------------
@@ -786,7 +726,6 @@ function M.calculateTick(stateless_in, state_in)
     })
     local cam = advance_cam(st, phase.traction_any_active)
     local bc = smooth_bc(st, elec.accel, demand.regen_bc_target, inp.regen_flag, warn.brake_current_high_phase1)
-    local panta = pantograph_block(st, inp)
 
     ----------------------------------------------------------------
     -- Assemble outputs
@@ -794,10 +733,6 @@ function M.calculateTick(stateless_in, state_in)
 
     local status_bits = pack_bits(M.STATUS_BITS_LAYOUT, {
         cam_pulse = cam.cam_pulse,
-        panta1_1800_active = panta.panta1_1800_active,
-        panta2_1800_active = panta.panta2_1800_active,
-        panta1_1800_latched = panta.panta1_1800_latched,
-        panta2_1800_latched = panta.panta2_1800_latched,
         phase1_latch = phase.phase1_latch,
         phase2_latch = phase.phase2_latch,
         regen_latch = phase.regen_latch,
@@ -821,10 +756,6 @@ function M.calculateTick(stateless_in, state_in)
         phase1_latch = phase.phase1_latch,
         phase2_latch = phase.phase2_latch,
         regen_latch = phase.regen_latch,
-        panta1_latch = panta.panta1_latch,
-        panta2_latch = panta.panta2_latch,
-        panta1_en_latch = panta.panta1_en_latch,
-        panta2_en_latch = panta.panta2_en_latch,
         traction_advance_counter = cam.traction_advance_counter_next,
         regen_warning_counter = warn.regen_warning_counter_next,
         regen_delay_level = bc.regen_delay_level,
@@ -841,10 +772,11 @@ function M.calculateTick(stateless_in, state_in)
     return stateless_out, state_out
 end
 
--- Exposed for test/scenarios/bitpack_selftest.lua only; not used by
--- calculateTick's own callers.
+-- Exposed for tests only (bitpack_selftest.lua, sr_latch_reset_priority_sanity.lua);
+-- not used by calculateTick's own callers.
 M.pack_bits = pack_bits
 M.unpack_bits = unpack_bits
 M.bool = bool
+M.sr_latch = sr_latch
 
 return M

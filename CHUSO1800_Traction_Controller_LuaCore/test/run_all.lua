@@ -22,7 +22,6 @@ local scenario_names = {
     "current_limit_cam_advance",
     "regen_delay_cap_timing",
     "bc_smoothing_ramp_rates",
-    "pantograph_up_down_enable_sequence",
     "direction_eb_interlock_corrected_semantics",
     "power_cut_dead_logic_constant",
 }
