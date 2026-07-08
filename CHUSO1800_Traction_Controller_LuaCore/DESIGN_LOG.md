@@ -115,8 +115,8 @@
   （enable中+1、`period_ticks`=on+off相当に達したら0に戻しつつパルス1回発火、
   disableで即0リセット）。位相ビットも「前回出力」ビットも不要。
 - **根拠**：本モジュールのどこもブリンカの生のON/OFF出力そのものを読んで
-  おらず、そこから駆動される周期パルス（カム進段・回生警告パルス）だけが
-  意味を持つ。
+  おらず、そこから駆動される周期パルス（カム進段・界磁電流超過検知パルス）
+  だけが意味を持つ。
 - **許容した挙動差**：最初のパルスが有効化から `period_ticks` 後に来る
   （元設計は最短で `off_ticks` 後）。定常状態の周期は同一。
 - **影響箇所**：README「意図的な簡略化」3項、`SIGNAL_MAP.md` の
@@ -150,3 +150,37 @@
 - **保証**：`test/scenarios/power_cut_dead_logic_constant.lua`。
 - **影響箇所**：README「意図的な簡略化」1項、`STATUS_BITS_LAYOUT` の
   `power_cut` フィールド。
+
+## #10 `regen_warning_*` を `field_current_excess_*` へ改名（誤命名の修正）
+
+- **当初案**：main.sw-net由来の `regen_warning_cond`/`regen_warning_blinker`/
+  `regen_warning_pulse` という名前をそのまま踏襲していた。
+- **現在の設計**：`field_current_excess_cond`/`field_current_excess_blinker`/
+  `field_current_excess_pulse`（関数名 `regen_warning_block` も
+  `field_current_excess_block` へ、定数 `REGEN_WARNING_PERIOD_TICKS` も
+  `FIELD_CURRENT_EXCESS_PERIOD_TICKS` へ、状態フィールド
+  `regen_warning_counter` も `field_current_excess_counter` へ改名）。
+- **変更のきっかけ**：ユーザーが別セッションでのClaudeとの分析結果を
+  共有。main.sw-netの`brake_current_fb`（channel=6読み込み）は実際には
+  `n409.lua`の`output.setNumber(6, iF_a)`＝**界磁電流**を読んでいるだけで
+  「ブレーキ電流」ではなく、`regen_warning_cond = (iF_a > 300or400A) ∧
+  (notch_eff==0)`という条件も「回生ブレーキの警告」ではないと判明した。
+- **理由**：実態は「ノッチオフ後も界磁電流iF_aが閾値を超えたまま残っている
+  過渡状態を検知し、電流の自然減衰（`coasting_cond`）を待たずに直列/並列
+  制御ラッチを強制的に畳んで空回しへ戻す」保護的フォールバックであり、
+  回生ブレーキとは無関係。誤解を招く名前を放置すると再び同じ誤読が起きる
+  ため、`CHUSO1800_Traction_Controller/main.sw-net`・`SPEC.md`（source of
+  truth側、commit 571e10eと同じ方式で直接編集）とあわせて改名した。
+- **意図的にスコープ外とした部分**：`brake_current_fb`／
+  `brake_limit_300_b`／`brake_limit_300_const`／`brake_limit_400`／
+  `brake_limit_sw`／`brake_current_above_300`／`brake_current_high`／
+  `brake_current_high_phase1` は同根の誤解に基づく命名だが、ユーザーの
+  判断により**今回は改名対象から除外**（変更範囲を最小化するため）。
+  本モジュールの `field_current_excess_block` 内でもこれらの名前は
+  `brake_limit_sw`/`brake_current_above_300` のまま残っている
+  （main.sw-net側と対応を取るため意図的に不揃いのまま）。
+- **影響箇所**：`CHUSO1800_Traction_Controller/main.sw-net`・`SPEC.md`
+  （§3.6「命名注意」・命名誤りテーブルに追記）、
+  `src/chuso1800_core.lua`（`field_current_excess_block`とその内部・
+  `STATE_LATCHES_LAYOUT`/`STATUS_BITS_LAYOUT`のフィールド名）、
+  `SIGNAL_MAP.md`・README.md 内の「回生警告」表記。

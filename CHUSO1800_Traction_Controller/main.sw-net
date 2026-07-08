@@ -87,7 +87,7 @@ module main
   inst COMPOSITE_READ_NUMBER speed_w_read (channel=4) : composite=current_src_mux_out -> out="W"
   inst PROPERTY_NUMBER power_limit_current (value=210, n="Power Limit Current [A]") : -> out=power_limit_current_out
   inst PROPERTY_NUMBER brake_limit_current (value=290, n="Brake Limit@320kPa [A]") : -> out=brake_limit_current_out
-  inst COMPOSITE_WRITE_BOOLEAN traction_status_bool (count=6, offset=1) : in1=traction_phase1_latch_q, in2=traction_phase2_latch_q, in3=regen_latch_q, in4=notch_ge1_out, in5=low_bc_with_regen_flag_out, in6=regen_warning_cond_out -> out=traction_status_bool_out
+  inst COMPOSITE_WRITE_BOOLEAN traction_status_bool (count=6, offset=1) : in1=traction_phase1_latch_q, in2=traction_phase2_latch_q, in3=regen_latch_q, in4=notch_ge1_out, in5=low_bc_with_regen_flag_out, in6=field_current_excess_cond_out -> out=traction_status_bool_out
 
   # --- Brake pressure and EB logic ---
   inst COMPOSITE_READ_NUMBER brake_current_fb (channel=6) : composite=current_src_mux_out -> out=brake_current_fb_out
@@ -125,8 +125,8 @@ module main
   inst AND phase1_low_bc : a=traction_phase1_latch_q, b=regen_bc_below_min_out -> out=phase1_low_bc_out
   inst NUM_SWITCHBOX brake_limit_sw : a=brake_limit_400_value, b=brake_limit_300_const_value, switch=phase1_low_bc_out -> out=brake_limit_sw_out
   inst AND brake_current_high_phase1 : a=brake_current_above_300_out, b=traction_phase1_cap_out -> out=brake_current_high_phase1_out
-  inst BOOL_FUNC_4 traction_phase1_set (expression="(x&y)|(z&w)") : x=power_with_regen_out, y=traction_phase2_latch_not_q, z=regen_warning_pulse_out, w=traction_phase2_latch_q -> out=traction_phase1_set_out
-  inst BOOL_FUNC_4 traction_phase1_reset (expression="x|(y&z)|w") : x=phase_reset_cond_out, y=regen_warning_pulse_out, z=traction_phase1_cap_out, w=traction_phase2_set_cond_out -> out=traction_phase1_reset_out
+  inst BOOL_FUNC_4 traction_phase1_set (expression="(x&y)|(z&w)") : x=power_with_regen_out, y=traction_phase2_latch_not_q, z=field_current_excess_pulse_out, w=traction_phase2_latch_q -> out=traction_phase1_set_out
+  inst BOOL_FUNC_4 traction_phase1_reset (expression="x|(y&z)|w") : x=phase_reset_cond_out, y=field_current_excess_pulse_out, z=traction_phase1_cap_out, w=traction_phase2_set_cond_out -> out=traction_phase1_reset_out
 
   # --- Traction phase 2 latch ---
   inst SR_LATCH traction_phase2_latch : r=traction_phase2_reset_out, s=traction_phase2_set_cond_out -> q=traction_phase2_latch_q, not_q=traction_phase2_latch_not_q
@@ -151,15 +151,15 @@ module main
   inst AND regen_off_all : a=regen_not_available_out, b=traction_all_off_out -> out=regen_off_all_out
   inst AND power_with_regen : a=notch_ge1_out, b=notch_fb_ge1_out -> out=power_with_regen_out
   inst NOT no_power_notch : a=notch_ge1_out -> out=no_power_notch_out
-  inst AND regen_warning_cond : a=brake_current_high_out, b=no_power_notch_out -> out=regen_warning_cond_out
-  inst BLINKER regen_warning_blinker (on_time=0.1, off_time=0.4) : enable=regen_warning_cond_out -> out=regen_warning_blinker_out
-  inst PULSE regen_warning_pulse (mode="rise") : a=regen_warning_blinker_out -> out=regen_warning_pulse_out
+  inst AND field_current_excess_cond : a=brake_current_high_out, b=no_power_notch_out -> out=field_current_excess_cond_out
+  inst BLINKER field_current_excess_blinker (on_time=0.1, off_time=0.4) : enable=field_current_excess_cond_out -> out=field_current_excess_blinker_out
+  inst PULSE field_current_excess_pulse (mode="rise") : a=field_current_excess_blinker_out -> out=field_current_excess_pulse_out
   inst AND coasting_cond : a=neutral_cond_out, b=regen_latch_not_q -> out=coasting_cond_out
   inst THRESHOLD current_near_zero (min=-50, max=50) : value=motor_current_out -> out=current_near_zero_out
   inst NOR no_notch_no_regen_brake_demand : a=notch_ge1_out, b=low_bc_with_regen_flag_out -> out=no_notch_no_regen_brake_demand_out
   inst AND neutral_cond : a=current_near_zero_out, b=no_notch_no_regen_brake_demand_out -> out=neutral_cond_out
   inst OR phase_reset_cond : a=coasting_cond_out, b=regen_pulse_regen_flag_off_out -> out=phase_reset_cond_out
-  inst AND regen_pulse_regen_flag_off : a=regen_warning_pulse_out, b=regen_flag_inv_out -> out=regen_pulse_regen_flag_off_out
+  inst AND regen_pulse_regen_flag_off : a=field_current_excess_pulse_out, b=regen_flag_inv_out -> out=regen_pulse_regen_flag_off_out
 
   # --- Regen BC control ---
   inst FUNC_NUM_1 regen_bc_target (expression="-floor((x-1)*2)/7.2") : x=sap_pressure_sw_out -> out=regen_bc_target_out

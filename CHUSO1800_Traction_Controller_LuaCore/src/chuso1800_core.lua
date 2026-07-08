@@ -119,7 +119,7 @@ local BC_TARGET_MIN = -0.05
 -- Tick-rate-derived timer constants (Stormworks assumed 60 ticks/sec, SPEC §0.2).
 local CAP_DEBOUNCE_TICKS = 6              -- 0.1s debounce, instant reset when disabled
 local CAM_ADVANCE_PERIOD_TICKS = 12       -- 0.1s+0.1s traction_blinker period
-local REGEN_WARNING_PERIOD_TICKS = 30     -- 0.1s+0.4s regen_warning_blinker period
+local FIELD_CURRENT_EXCESS_PERIOD_TICKS = 30     -- 0.1s+0.4s field_current_excess_blinker period
 
 -- regen_delay was CAPACITOR(charge_time=0.5s, discharge_time=10s) --
 -- 0.5s = 30 ticks, 10s = 600 ticks. `level` is scaled so that "full" equals
@@ -144,7 +144,7 @@ M.STATE_LATCHES_LAYOUT = {
     { name = "phase2_latch",                  bits = 1 },
     { name = "regen_latch",                   bits = 1 },
     { name = "traction_advance_counter",      bits = 4 }, -- 0-12, periodic_pulse_step
-    { name = "regen_warning_counter",         bits = 5 }, -- 0-30, periodic_pulse_step
+    { name = "field_current_excess_counter",         bits = 5 }, -- 0-30, periodic_pulse_step
 }
 
 M.STATE_TIMERS_LAYOUT = {
@@ -161,7 +161,7 @@ M.STATUS_BITS_LAYOUT = {
     { name = "regen_latch",             bits = 1 },
     { name = "notch_ge1",               bits = 1 },
     { name = "low_bc_with_regen_flag",  bits = 1 },
-    { name = "regen_warning_cond",      bits = 1 },
+    { name = "field_current_excess_cond",      bits = 1 },
     { name = "power_cut",               bits = 1 }, -- always 0, see README "Simplifications"
 }
 
@@ -401,7 +401,7 @@ function M.decode_state(state_in)
         phase2_latch = bool(latches.phase2_latch),
         regen_latch = bool(latches.regen_latch),
         traction_advance_counter = latches.traction_advance_counter,
-        regen_warning_counter = latches.regen_warning_counter,
+        field_current_excess_counter = latches.field_current_excess_counter,
         regen_delay_level = timers.regen_delay_level,
         phase1_cap_counter = timers.phase1_cap_counter,
         phase2_cap_counter = timers.phase2_cap_counter,
@@ -421,7 +421,7 @@ function M.encode_state(f)
         phase2_latch = f.phase2_latch,
         regen_latch = f.regen_latch,
         traction_advance_counter = f.traction_advance_counter,
-        regen_warning_counter = f.regen_warning_counter,
+        field_current_excess_counter = f.field_current_excess_counter,
     })
     local slot2 = pack_bits(M.STATE_TIMERS_LAYOUT, {
         regen_delay_level = f.regen_delay_level,
@@ -463,7 +463,7 @@ function M.decode_stateless_out(stateless_out)
         regen_latch = bool(status.regen_latch),
         notch_ge1 = bool(status.notch_ge1),
         low_bc_with_regen_flag = bool(status.low_bc_with_regen_flag),
-        regen_warning_cond = bool(status.regen_warning_cond),
+        field_current_excess_cond = bool(status.field_current_excess_cond),
         power_cut = bool(status.power_cut),
     }
 end
@@ -570,20 +570,26 @@ local function debounce_block(st, motor_current)
     }
 end
 
--- SPEC §3.6 brake-current / regen-warning-pulse chain.
-local function regen_warning_block(st, iF_a, notch_ge1, phase1_cap_charged)
+-- SPEC §3.6 field-current-excess detection chain (see SPEC.md §3.6 naming
+-- note: this was mislabeled "regen_warning" in main.sw-net, but it isn't a
+-- regen-brake warning at all -- iF_a here is the field current, read from
+-- the same channel n409.lua calls "brake_current_fb"/channel=6. The
+-- condition detects "notch went to 0 but iF_a is still above the 300/400A
+-- threshold" and forces phase1/phase2 to fold early instead of waiting for
+-- coasting_cond's natural current decay).
+local function field_current_excess_block(st, iF_a, notch_ge1, phase1_cap_charged)
     local regen_bc_below_min = st.regen_bc_smooth < REGEN_BC_MIN
     local phase1_low_bc = st.phase1_latch and regen_bc_below_min
     local brake_limit_sw = phase1_low_bc and BRAKE_LIMIT_400 or BRAKE_LIMIT_300
     local brake_current_above_300 = iF_a > BRAKE_LIMIT_300
-    local regen_warning_cond = (iF_a > brake_limit_sw) and (not notch_ge1)
+    local field_current_excess_cond = (iF_a > brake_limit_sw) and (not notch_ge1)
     local counter_next, pulse = periodic_pulse_step(
-        st.regen_warning_counter, regen_warning_cond, REGEN_WARNING_PERIOD_TICKS)
+        st.field_current_excess_counter, field_current_excess_cond, FIELD_CURRENT_EXCESS_PERIOD_TICKS)
     return {
         brake_current_high_phase1 = brake_current_above_300 and phase1_cap_charged,
-        regen_warning_cond = regen_warning_cond,
-        regen_warning_counter_next = counter_next,
-        regen_warning_pulse = pulse,
+        field_current_excess_cond = field_current_excess_cond,
+        field_current_excess_counter_next = counter_next,
+        field_current_excess_pulse = pulse,
     }
 end
 
@@ -599,15 +605,15 @@ local function phase_state_machine(st, notch, cond)
     local no_notch_no_regen_brake_demand = not (notch.notch_ge1 or cond.low_bc_with_regen_flag)
     local neutral_cond = current_near_zero and no_notch_no_regen_brake_demand
     local coasting_cond = neutral_cond and (not st.regen_latch)
-    local regen_pulse_regen_flag_off = cond.regen_warning_pulse and (not cond.regen_flag)
+    local regen_pulse_regen_flag_off = cond.field_current_excess_pulse and (not cond.regen_flag)
     local phase_reset_cond = coasting_cond or regen_pulse_regen_flag_off
 
     local phase1_set_cond = notch.notch_ge2 and notch.notch_fb_range_low
         and cond.phase1_cap_charged and cond.current_below_limit_cap_charged
     local phase1_set = (power_with_regen and (not st.phase2_latch))
-        or (cond.regen_warning_pulse and st.phase2_latch)
+        or (cond.field_current_excess_pulse and st.phase2_latch)
     local phase1_reset = phase_reset_cond
-        or (cond.regen_warning_pulse and cond.phase1_cap_charged)
+        or (cond.field_current_excess_pulse and cond.phase1_cap_charged)
 
     local phase2_blinker_cond = notch.notch_ge3 and notch.notch_fb_range_high
         and cond.phase2_cap_charged and cond.current_below_limit_cap_charged
@@ -689,12 +695,12 @@ function M.calculateTick(stateless_in, state_in)
     local elec = eb_substitute(phys, eb_condition, demand.regen_current)
 
     local debounce = debounce_block(st, elec.motor_current)
-    local warn = regen_warning_block(st, elec.iF_a, notch.notch_ge1, debounce.phase1_cap_charged)
+    local warn = field_current_excess_block(st, elec.iF_a, notch.notch_ge1, debounce.phase1_cap_charged)
 
     local phase = phase_state_machine(st, notch, {
         motor_current = elec.motor_current,
         low_bc_with_regen_flag = demand.low_bc_with_regen_flag,
-        regen_warning_pulse = warn.regen_warning_pulse,
+        field_current_excess_pulse = warn.field_current_excess_pulse,
         regen_flag = inp.regen_flag,
         phase1_cap_charged = debounce.phase1_cap_charged,
         phase2_cap_charged = debounce.phase2_cap_charged,
@@ -714,7 +720,7 @@ function M.calculateTick(stateless_in, state_in)
         regen_latch = phase.regen_latch,
         notch_ge1 = notch.notch_ge1,
         low_bc_with_regen_flag = demand.low_bc_with_regen_flag,
-        regen_warning_cond = warn.regen_warning_cond,
+        field_current_excess_cond = warn.field_current_excess_cond,
         power_cut = false,
     })
 
@@ -733,7 +739,7 @@ function M.calculateTick(stateless_in, state_in)
         phase2_latch = phase.phase2_latch,
         regen_latch = phase.regen_latch,
         traction_advance_counter = cam.traction_advance_counter_next,
-        regen_warning_counter = warn.regen_warning_counter_next,
+        field_current_excess_counter = warn.field_current_excess_counter_next,
         regen_delay_level = bc.regen_delay_level,
         phase1_cap_counter = debounce.phase1_cap_counter_next,
         phase2_cap_counter = debounce.phase2_cap_counter_next,
