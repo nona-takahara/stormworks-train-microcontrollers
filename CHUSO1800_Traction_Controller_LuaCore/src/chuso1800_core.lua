@@ -154,12 +154,6 @@ M.STATE_TIMERS_LAYOUT = {
     { name = "current_below_limit_cap_counter",   bits = 3 },  -- 0-6
 }
 
-M.INPUT_BITS_LAYOUT = {
-    { name = "notch_pos",              bits = 3 }, -- 0-7
-    { name = "controller_stop",        bits = 1 },
-    { name = "regen_flag",             bits = 1 },
-}
-
 M.STATUS_BITS_LAYOUT = {
     { name = "cam_pulse",               bits = 1 },
     { name = "phase1_latch",            bits = 1 },
@@ -444,19 +438,15 @@ function M.encode_state(f)
 end
 
 function M.encode_stateless_in(f)
-    local bits = pack_bits(M.INPUT_BITS_LAYOUT, {
-        notch_pos = f.notch_pos,
-        controller_stop = f.controller_stop,
-        regen_flag = f.regen_flag,
-    })
     return {
         f.speed or 0,
         f.catenary_voltage_sw or 0,
         f.brake_pressure_sw or 0,
         f.sap_pressure_sw or 0,
         f.direction or 0,
-        bits,
-        0, 0,
+        f.notch_pos or 0,
+        (f.controller_stop and 1) or 0,
+        (f.regen_flag and 1) or 0,
     }
 end
 
@@ -486,7 +476,6 @@ end
 --------------------------------------------------------------------------
 
 local function decode_inputs(stateless_in)
-    local bits = unpack_bits(M.INPUT_BITS_LAYOUT, stateless_in[6])
     return {
         speed = stateless_in[1],
         catenary_voltage_sw = stateless_in[2],
@@ -501,9 +490,14 @@ local function decode_inputs(stateless_in)
         -- `direction` SUBTRACT node), instead of two separate forward/
         -- backward booleans.
         direction = stateless_in[5],
-        notch_pos = bits.notch_pos,
-        controller_stop = bool(bits.controller_stop),
-        regen_flag = bool(bits.regen_flag),
+        -- notch_pos/controller_stop/regen_flag are each their own raw-double
+        -- slot (not bit-packed): they arrive from Stormworks composite
+        -- channels as doubles already (a Simple IF number and two booleans
+        -- from Extended IF), and slots 6-8 were otherwise unused, so packing
+        -- them into one slot bought nothing but an extra pack/unpack step.
+        notch_pos = clamp(math.floor(stateless_in[6] or 0), 0, 7),
+        controller_stop = (stateless_in[7] or 0) ~= 0,
+        regen_flag = (stateless_in[8] or 0) ~= 0,
     }
 end
 
@@ -518,7 +512,7 @@ end
 -- SPEC §3.3 (notch processing) + §3.2's cam-position echo ("notch_fb").
 local function notch_and_cam_feedback(inp, st, eb_condition)
     local notch_enable_sw = eb_condition and 0 or 1
-    local notch_eff = clamp(inp.notch_pos, 0, 7) * notch_enable_sw
+    local notch_eff = inp.notch_pos * notch_enable_sw
     -- Cam-position echo zeroed under EB, matching the original
     -- current_src_mux substitution (only ch7 survives EB).
     local notch_fb = eb_condition and 0 or st.position_counter

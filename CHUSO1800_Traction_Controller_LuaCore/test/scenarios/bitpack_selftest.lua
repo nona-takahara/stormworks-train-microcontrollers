@@ -58,8 +58,7 @@ return function(h)
     -- regression guard on the actual production layouts, not just a
     -- synthetic one).
     for _, layout_name in ipairs({
-        "STATE_LATCHES_LAYOUT", "STATE_TIMERS_LAYOUT",
-        "INPUT_BITS_LAYOUT", "STATUS_BITS_LAYOUT",
+        "STATE_LATCHES_LAYOUT", "STATE_TIMERS_LAYOUT", "STATUS_BITS_LAYOUT",
     }) do
         local real_layout = core[layout_name]
         local fields = {}
