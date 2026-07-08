@@ -19,9 +19,10 @@ calculateTick(stateless_in, state_in) -> stateless_out, state_out
 - `stateless_in`・`stateless_out`：配列 `[1..8]`、各要素はLua数値1個。
 - `state_in`・`state_out`：配列 `[1..8]`、各要素はLua数値1個。
   tick Nの `state_out` は、そのままtick N+1の `state_in` として戻ってくる。
-- 各スロットは生のdoubleか、`bitpack.pack(layout, fields)` で生成し
-  `bitpack.unpack(layout, value)` で分解する整数のどちらか
-  （`src/bitpack.lua` 参照）。
+- 各スロットは生のdoubleか、`pack_bits(layout, fields)` で生成し
+  `unpack_bits(layout, value)` で分解する整数のどちらか。両関数は
+  `src/chuso1800_core.lua` に直接書かれている（Stormworksに`require`が
+  存在しないため、別ファイルへの切り出しはしていない）。
 
 ## 分類(a) — 真のラッチ状態 → パック済みステートビットフィールドへ
 
@@ -123,13 +124,12 @@ calculateTick(stateless_in, state_in) -> stateless_out, state_out
 
 ## ステートレス入力スロットのレイアウト
 
-`sap_ecb_toggle` はECBに固定している前提（sw-netのプロパティ自体のデフォルト
-と一致：`PROPERTY_TOGGLE` に `v=` の指定がなければオフ＝「ECB」ラベル。
-`main.sw-net` の102行目付近、およびSPEC §3.8「既定 OFF=ECB」を参照）。
-ECBの場合、`brake_pressure_sw`/`sap_pressure_sw` は `"BP [atm]"`/`"SAP
-[atm]"` を一切読まない ─ が、スロット5・6は依然としてそれらのポートに
-配線してある（README.mdのリスク項目2参照）ので、将来SAPモードへ切り替える際は
-スロット割付の再設計ではなく定数1つの変更で済む。
+`SAP_ECB_IS_SAP`（`property.getBool("SAP or ECB")`、sw-netの
+`sap_ecb_toggle` と同名のプロパティ）が真のときのみ `brake_pressure_sw`/
+`sap_pressure_sw` がスロット5・6（`"BP [atm]"`/`"SAP [atm]"`）を読む。偽
+（既定値。`PROPERTY_TOGGLE` に `v=` の指定がなければオフ＝「ECB」ラベル。
+`main.sw-net` の102行目付近、およびSPEC §3.8「既定 OFF=ECB」を参照）の間は
+ECB経由の計算値を使い、スロット5・6は読まれるが使用されない。
 
 | slot | 内容 | 由来 |
 |---|---|---|
@@ -137,8 +137,8 @@ ECBの場合、`brake_pressure_sw`/`sap_pressure_sw` は `"BP [atm]"`/`"SAP
 | 2 | `catenary_voltage_sw`（V） | ゲート側で計算した値をそのまま入力として受け取る |
 | 3 | `sap_raw` | Simple IF ch1（数値）─ ブレーキハンドル位置、0-8程度 |
 | 4 | `INPUT_BITS_LAYOUT` のパック済みビットフィールド（32bit中14bit、下記参照） | Simple IF／Extended IF／Controller Stop |
-| 5 | `"BP [atm]"`（配線済みだがECB固定中は未使用） | BPセンサポート |
-| 6 | `"SAP [atm]"`（配線済みだがECB固定中は未使用） | SAPセンサポート |
+| 5 | `"BP [atm]"`（`SAP_ECB_IS_SAP`が真の間だけ使用） | BPセンサポート |
+| 6 | `"SAP [atm]"`（`SAP_ECB_IS_SAP`が真の間だけ使用） | SAPセンサポート |
 | 7-8 | 予備（0） | |
 
 ### `INPUT_BITS_LAYOUT`（14bit）

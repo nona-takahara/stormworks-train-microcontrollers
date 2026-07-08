@@ -25,15 +25,19 @@
 -- Physics (Newton-solve) is ported verbatim from
 -- CHUSO1800_Traction_Controller/scripts/n409.lua -- that file is NOT modified;
 -- test/scenarios/physics_regression_vs_n409.lua checks numeric parity.
-
-local bitpack = require("bitpack")
+--
+-- This file is entirely self-contained (no `require`): Stormworks' Lua
+-- sandbox has no module loader, so this whole file must be pastable
+-- directly into a single Stormworks LUA node as-is. The bit-packing helpers
+-- below (pack_bits/unpack_bits) are a plain string.pack("I4",...)/
+-- string.unpack("I4",...) implementation inlined here for that reason --
+-- there used to be a separate src/bitpack.lua required from here, which
+-- cannot work once deployed; it has been folded in directly instead.
 
 local M = {}
 
 --------------------------------------------------------------------------
--- Constants (copied from n409.lua verbatim, plus new hardcoded PROPERTY_*
--- values per the plan's decision to hardcode tunables instead of wiring
--- live Stormworks properties).
+-- Constants (copied from n409.lua verbatim).
 --------------------------------------------------------------------------
 
 local K = 12.16
@@ -60,9 +64,46 @@ local PR = {     0,5.137,4.157,3.197,2.681,2.178,1.717,1.317,0.9710,0.7570,0.638
 -- as two independent uses of the same constant.
 local NEWTON_SEED = 200
 
--- former PROPERTY_NUMBER / PROPERTY_TOGGLE values, hardcoded per plan decision.
-local OVERSPEED_THRESHOLD = 32       -- m/s
-local POWER_LIMIT_CURRENT = 210      -- A
+--------------------------------------------------------------------------
+-- Stormworks `property` values, read once at script load ("spawn time" --
+-- properties don't change mid-flight, so there is no need to re-read them
+-- every tick). This is the mechanism that keeps SAP/ECB mode, M-type, and
+-- the two numeric limits genuinely tunable per-vehicle in Stormworks'
+-- property panel -- matching the original main.sw-net PROPERTY_TOGGLE/
+-- PROPERTY_NUMBER node names exactly -- instead of baking them into source.
+-- property.get*() sits entirely outside the 8+8 composite-channel budget,
+-- so this costs no input slots.
+--
+-- Outside Stormworks (this repo's plain-`lua` test suite), the `property`
+-- global does not exist; fall back to the same defaults the original
+-- main.sw-net PROPERTY_* nodes ship with (PROPERTY_NUMBER value=..., and
+-- PROPERTY_TOGGLE with no v= override, which Stormworks treats as off).
+--------------------------------------------------------------------------
+
+local property = property
+if type(property) ~= "table" then
+    local DEFAULT_BOOL_PROPERTIES = {
+        ["SAP or ECB"] = false, -- off = ECB (main.sw-net's sap_ecb_toggle default)
+        ["M type"] = false,     -- off = 1800 (main.sw-net's mtype_toggle default)
+    }
+    local DEFAULT_NUMBER_PROPERTIES = {
+        ["Over Speed Th. [m/s]"] = 32,       -- main.sw-net's overspeed_threshold
+        ["Power Limit Current [A]"] = 210,   -- main.sw-net's power_limit_current
+    }
+    property = {
+        getBool = function(name) return DEFAULT_BOOL_PROPERTIES[name] end,
+        getNumber = function(name) return DEFAULT_NUMBER_PROPERTIES[name] end,
+    }
+end
+
+local SAP_ECB_IS_SAP = property.getBool("SAP or ECB")
+local IS_1800_TYPE = not property.getBool("M type")
+local OVERSPEED_THRESHOLD = property.getNumber("Over Speed Th. [m/s]")     -- m/s
+local POWER_LIMIT_CURRENT = property.getNumber("Power Limit Current [A]") -- A
+
+-- Plain CONST nodes in main.sw-net (not PROPERTY_* -- never exposed as
+-- in-game-tunable in the original design either), so these stay source
+-- constants.
 local BRAKE_MIN_PRESSURE = 4         -- atm
 local BRAKE_LIMIT_300 = 300
 local BRAKE_LIMIT_400 = 400
@@ -70,9 +111,6 @@ local ECB_OFFSET_EB_ACTIVE = 0
 local ECB_OFFSET_EB_INACTIVE = 5
 local REGEN_BC_MIN = -0.1
 local BC_TARGET_MIN = -0.05
-local IS_1800_TYPE = true            -- mtype_toggle hardcoded: this unit is 1800-type.
--- SAP/ECB toggle hardcoded to ECB (sw-net PROPERTY_TOGGLE default: v= omitted -> off -> "ECB" label).
-local SAP_ECB_IS_SAP = false
 
 -- Tick-rate-derived timer constants (Stormworks assumed 60 ticks/sec, SPEC §0.2).
 local CAP_DEBOUNCE_TICKS = 6              -- 0.1s charge, instant (0s) discharge
@@ -148,6 +186,48 @@ local function clamp(x, lo, hi)
     if x < lo then return lo end
     if x > hi then return hi end
     return x
+end
+
+-- Bit packing: several small integer/boolean fields into one 32-bit slot
+-- value. `layout` is an ordered list of { name = string, bits = 1..32 };
+-- layout[1] occupies the lowest bits. The 32-bit boundary is enforced by
+-- round-tripping through string.pack("I4",...)/string.unpack("I4",...) so
+-- overflow wraps like a real 32-bit unsigned value instead of silently
+-- growing past what a single slot can hold.
+local function pack_bits(layout, fields)
+    local acc = 0
+    local shift = 0
+    for _, field in ipairs(layout) do
+        local width = field.bits
+        local max = (1 << width) - 1
+        local raw = fields[field.name] or 0
+        if type(raw) == "boolean" then
+            raw = raw and 1 or 0
+        end
+        raw = math.floor(raw)
+        if raw < 0 then raw = 0 end
+        if raw > max then raw = max end
+        acc = acc | (raw << shift)
+        shift = shift + width
+    end
+    return string.unpack("I4", string.pack("I4", acc))
+end
+
+local function unpack_bits(layout, value)
+    local acc = string.unpack("I4", string.pack("I4", math.floor(value or 0)))
+    local fields = {}
+    local shift = 0
+    for _, field in ipairs(layout) do
+        local width = field.bits
+        local mask = (1 << width) - 1
+        fields[field.name] = (acc >> shift) & mask
+        shift = shift + width
+    end
+    return fields
+end
+
+local function bool(intval)
+    return intval ~= 0
 end
 
 -- Reset-priority SR latch (SPEC.md §0.1).
@@ -322,20 +402,20 @@ function M.zero_state()
 end
 
 function M.decode_state(state_in)
-    local latches = bitpack.unpack(M.STATE_LATCHES_LAYOUT, state_in[1])
-    local timers = bitpack.unpack(M.STATE_TIMERS_LAYOUT, state_in[2])
+    local latches = unpack_bits(M.STATE_LATCHES_LAYOUT, state_in[1])
+    local timers = unpack_bits(M.STATE_TIMERS_LAYOUT, state_in[2])
     return {
         position_counter = latches.position_counter,
-        phase1_latch = bitpack.bool(latches.phase1_latch),
-        phase2_latch = bitpack.bool(latches.phase2_latch),
-        regen_latch = bitpack.bool(latches.regen_latch),
-        panta1_latch = bitpack.bool(latches.panta1_latch),
-        panta2_latch = bitpack.bool(latches.panta2_latch),
-        panta1_en_latch = bitpack.bool(latches.panta1_en_latch),
-        panta2_en_latch = bitpack.bool(latches.panta2_en_latch),
-        traction_blinker_phase = bitpack.bool(latches.traction_blinker_phase),
+        phase1_latch = bool(latches.phase1_latch),
+        phase2_latch = bool(latches.phase2_latch),
+        regen_latch = bool(latches.regen_latch),
+        panta1_latch = bool(latches.panta1_latch),
+        panta2_latch = bool(latches.panta2_latch),
+        panta1_en_latch = bool(latches.panta1_en_latch),
+        panta2_en_latch = bool(latches.panta2_en_latch),
+        traction_blinker_phase = bool(latches.traction_blinker_phase),
         traction_blinker_counter = latches.traction_blinker_counter,
-        regen_warning_blinker_phase = bitpack.bool(latches.regen_warning_blinker_phase),
+        regen_warning_blinker_phase = bool(latches.regen_warning_blinker_phase),
         regen_warning_blinker_counter = latches.regen_warning_blinker_counter,
         regen_delay_cap_level = timers.regen_delay_cap_level,
         phase1_cap_counter = timers.phase1_cap_counter,
@@ -350,7 +430,7 @@ function M.decode_state(state_in)
 end
 
 function M.encode_state(f)
-    local slot1 = bitpack.pack(M.STATE_LATCHES_LAYOUT, {
+    local slot1 = pack_bits(M.STATE_LATCHES_LAYOUT, {
         position_counter = f.position_counter,
         phase1_latch = f.phase1_latch,
         phase2_latch = f.phase2_latch,
@@ -364,7 +444,7 @@ function M.encode_state(f)
         regen_warning_blinker_phase = f.regen_warning_blinker_phase,
         regen_warning_blinker_counter = f.regen_warning_blinker_counter,
     })
-    local slot2 = bitpack.pack(M.STATE_TIMERS_LAYOUT, {
+    local slot2 = pack_bits(M.STATE_TIMERS_LAYOUT, {
         regen_delay_cap_level = f.regen_delay_cap_level,
         phase1_cap_counter = f.phase1_cap_counter,
         phase2_cap_counter = f.phase2_cap_counter,
@@ -379,7 +459,7 @@ function M.encode_state(f)
 end
 
 function M.encode_stateless_in(f)
-    local bits = bitpack.pack(M.INPUT_BITS_LAYOUT, {
+    local bits = pack_bits(M.INPUT_BITS_LAYOUT, {
         notch_pos = f.notch_pos,
         controller_stop = f.controller_stop,
         regen_flag = f.regen_flag,
@@ -405,24 +485,24 @@ function M.encode_stateless_in(f)
 end
 
 function M.decode_stateless_out(stateless_out)
-    local status = bitpack.unpack(M.STATUS_BITS_LAYOUT, stateless_out[5])
+    local status = unpack_bits(M.STATUS_BITS_LAYOUT, stateless_out[5])
     return {
         motor_current = stateless_out[1],
         W = stateless_out[2],
         bc_target_smooth = stateless_out[3],
         bcT = stateless_out[4],
-        cam_pulse = bitpack.bool(status.cam_pulse),
-        panta1_1800_active = bitpack.bool(status.panta1_1800_active),
-        panta2_1800_active = bitpack.bool(status.panta2_1800_active),
-        panta1_1800_latched = bitpack.bool(status.panta1_1800_latched),
-        panta2_1800_latched = bitpack.bool(status.panta2_1800_latched),
-        phase1_latch = bitpack.bool(status.phase1_latch),
-        phase2_latch = bitpack.bool(status.phase2_latch),
-        regen_latch = bitpack.bool(status.regen_latch),
-        notch_ge1 = bitpack.bool(status.notch_ge1),
-        low_bc_with_regen_flag = bitpack.bool(status.low_bc_with_regen_flag),
-        regen_warning_cond = bitpack.bool(status.regen_warning_cond),
-        power_cut = bitpack.bool(status.power_cut),
+        cam_pulse = bool(status.cam_pulse),
+        panta1_1800_active = bool(status.panta1_1800_active),
+        panta2_1800_active = bool(status.panta2_1800_active),
+        panta1_1800_latched = bool(status.panta1_1800_latched),
+        panta2_1800_latched = bool(status.panta2_1800_latched),
+        phase1_latch = bool(status.phase1_latch),
+        phase2_latch = bool(status.phase2_latch),
+        regen_latch = bool(status.regen_latch),
+        notch_ge1 = bool(status.notch_ge1),
+        low_bc_with_regen_flag = bool(status.low_bc_with_regen_flag),
+        regen_warning_cond = bool(status.regen_warning_cond),
+        power_cut = bool(status.power_cut),
     }
 end
 
@@ -432,26 +512,26 @@ end
 
 function M.calculateTick(stateless_in, state_in)
     local st = M.decode_state(state_in)
-    local inbits = bitpack.unpack(M.INPUT_BITS_LAYOUT, stateless_in[4])
+    local inbits = unpack_bits(M.INPUT_BITS_LAYOUT, stateless_in[4])
 
     local speed = stateless_in[1]
     local catenary_voltage_sw = stateless_in[2]
     local sap_raw = stateless_in[3]
-    -- stateless_in[5]/[6] (BP/SAP atm) are pre-wired but unused while ECB is
-    -- hardcoded (SAP_ECB_IS_SAP = false); see SIGNAL_MAP.md.
+    local bp_atm = stateless_in[5]  -- only read when SAP_ECB_IS_SAP (live property)
+    local sap_atm = stateless_in[6] -- only read when SAP_ECB_IS_SAP (live property)
 
     local notch_pos = inbits.notch_pos
-    local controller_stop = bitpack.bool(inbits.controller_stop)
-    local regen_flag = bitpack.bool(inbits.regen_flag)
-    local forward_signal = bitpack.bool(inbits.forward_signal)
-    local backward_signal = bitpack.bool(inbits.backward_signal)
-    local eb_signal = bitpack.bool(inbits.eb_signal)
-    local panta_enable_signal = bitpack.bool(inbits.panta_enable_signal)
-    local panta_all_down_signal = bitpack.bool(inbits.panta_all_down_signal)
-    local panta1_up_signal = bitpack.bool(inbits.panta1_up_signal)
-    local panta1_down_signal = bitpack.bool(inbits.panta1_down_signal)
-    local panta2_up_signal = bitpack.bool(inbits.panta2_up_signal)
-    local panta2_down_signal = bitpack.bool(inbits.panta2_down_signal)
+    local controller_stop = bool(inbits.controller_stop)
+    local regen_flag = bool(inbits.regen_flag)
+    local forward_signal = bool(inbits.forward_signal)
+    local backward_signal = bool(inbits.backward_signal)
+    local eb_signal = bool(inbits.eb_signal)
+    local panta_enable_signal = bool(inbits.panta_enable_signal)
+    local panta_all_down_signal = bool(inbits.panta_all_down_signal)
+    local panta1_up_signal = bool(inbits.panta1_up_signal)
+    local panta1_down_signal = bool(inbits.panta1_down_signal)
+    local panta2_up_signal = bool(inbits.panta2_up_signal)
+    local panta2_down_signal = bool(inbits.panta2_down_signal)
 
     ----------------------------------------------------------------
     -- Direction, EB condition (bucket c, fresh every tick)
@@ -459,9 +539,11 @@ function M.calculateTick(stateless_in, state_in)
 
     local direction = (forward_signal and 1 or 0) - (backward_signal and 1 or 0)
     local overspeed = math.abs(speed) > OVERSPEED_THRESHOLD
-    -- ECB pressure chain (SAP mode not wired while SAP_ECB_IS_SAP = false).
+    -- Brake pressure: SAP_ECB_IS_SAP (live "SAP or ECB" property) selects
+    -- between the physical SAP sensor pressure and the ECB offset chain,
+    -- matching main.sw-net's brake_pressure_sw NUM_SWITCHBOX.
     local ecb_pressure_sw = eb_signal and ECB_OFFSET_EB_ACTIVE or ECB_OFFSET_EB_INACTIVE
-    local brake_pressure_sw = ecb_pressure_sw -- ECB path (SAP path would read stateless_in[5])
+    local brake_pressure_sw = SAP_ECB_IS_SAP and bp_atm or ecb_pressure_sw
     local brake_below_min = brake_pressure_sw < BRAKE_MIN_PRESSURE
     local power_cut = false -- provably dead, see README "Simplifications"
 
@@ -491,7 +573,8 @@ function M.calculateTick(stateless_in, state_in)
     -- SAP/regen-BC pressure chain (fresh; feeds physics ch8 and low_bc flag)
     ----------------------------------------------------------------
 
-    local sap_pressure_sw = clamp(sap_raw + (5 - ecb_pressure_sw) * 7, 0, 36) / 8 + 1
+    local ecb_sap_pressure = clamp(sap_raw + (5 - ecb_pressure_sw) * 7, 0, 36) / 8 + 1
+    local sap_pressure_sw = SAP_ECB_IS_SAP and sap_atm or ecb_sap_pressure
     local regen_bc_target = -math.floor((sap_pressure_sw - 1) * 2) / 7.2
     local bc_target_below_min = regen_bc_target < BC_TARGET_MIN
     local low_bc_with_regen_flag = bc_target_below_min and regen_flag
@@ -653,7 +736,7 @@ function M.calculateTick(stateless_in, state_in)
     -- Assemble outputs
     ----------------------------------------------------------------
 
-    local status_bits = bitpack.pack(M.STATUS_BITS_LAYOUT, {
+    local status_bits = pack_bits(M.STATUS_BITS_LAYOUT, {
         cam_pulse = cam_pulse,
         panta1_1800_active = panta1_1800_active,
         panta2_1800_active = panta2_1800_active,
@@ -703,5 +786,11 @@ function M.calculateTick(stateless_in, state_in)
 
     return stateless_out, state_out
 end
+
+-- Exposed for test/scenarios/bitpack_selftest.lua only; not used by
+-- calculateTick's own callers.
+M.pack_bits = pack_bits
+M.unpack_bits = unpack_bits
+M.bool = bool
 
 return M
