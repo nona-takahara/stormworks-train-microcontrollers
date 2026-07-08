@@ -13,7 +13,7 @@ return function(h)
         core.zero_state(),
         core.encode_state({ position_counter = 13, phase1_latch = true, OLD_I = 100000, OLD_IF_A = 500, OLD_PHI = 5 }),
         core.encode_state({ position_counter = 14, phase2_latch = true, regen_latch = true }),
-        core.encode_state({ regen_delay_seconds = 0.5, regen_bc_smooth = -50, bc_target_smooth = -999 }),
+        core.encode_state({ regen_delay_level = 600, regen_bc_smooth = -50, bc_target_smooth = -999 }),
     }
 
     local extreme_inputs = {

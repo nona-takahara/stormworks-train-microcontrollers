@@ -31,9 +31,13 @@
 --   * periodic_pulse_step replaces the BLINKER+PULSE(rise) gate pair with a
 --     single elapsed-tick counter, since nothing here ever reads a raw
 --     on/off duty-cycle output -- only the periodic pulse it drives matters.
---   * regen_delay_step is expressed directly in seconds (a raw double state
---     slot) instead of a scaled 0-600 integer level, matching SPEC's own
---     charge_time/discharge_time framing.
+--   * regen_delay_step counts in whole ticks (a packed integer, not a
+--     seconds-based float): 0.5s charge / 10s discharge is a 20x ratio, so
+--     the level is scaled so charging adds 20/tick and discharging removes
+--     1/tick, both exact integers -- avoiding the float-accumulation drift
+--     a seconds-based accumulator would have (30 additions of 1/60 land at
+--     0.49999999999999994, not exactly 0.5, which would need an epsilon
+--     guard on every "charged" check; integers need none).
 --
 -- Physics (Newton-solve) is ported verbatim from
 -- CHUSO1800_Traction_Controller/scripts/n409.lua -- that file is NOT modified;
@@ -124,13 +128,22 @@ local REGEN_BC_MIN = -0.1
 local BC_TARGET_MIN = -0.05
 
 -- Tick-rate-derived timer constants (Stormworks assumed 60 ticks/sec, SPEC §0.2).
-local TICK_SECONDS = 1 / 60
 local CAP_DEBOUNCE_TICKS = 6              -- 0.1s debounce, instant reset when disabled
 local CAM_ADVANCE_PERIOD_TICKS = 12       -- 0.1s+0.1s traction_blinker period
 local REGEN_WARNING_PERIOD_TICKS = 30     -- 0.1s+0.4s regen_warning_blinker period
-local REGEN_DELAY_CHARGE_SECONDS = 0.5
-local REGEN_DELAY_DISCHARGE_SECONDS = 10
-local REGEN_DELAY_EPSILON = 1e-9          -- float-accumulation guard, see regen_delay_step
+
+-- regen_delay was CAPACITOR(charge_time=0.5s, discharge_time=10s) --
+-- 0.5s = 30 ticks, 10s = 600 ticks. `level` is scaled so that "full" equals
+-- the LARGER of the two tick counts (600): discharging then decrements
+-- exactly 1/tick (600 ticks to drain, matching 10s by construction), and
+-- charging must fill the same 0..600 range in only 30 ticks, so it adds
+-- 600/30 = 20/tick. Pure integer arithmetic -- both steps land exactly on
+-- whole numbers, so "charged" is a plain `>= 600` with no epsilon needed.
+local REGEN_DELAY_DISCHARGE_TICKS = 600   -- 10s
+local REGEN_DELAY_CHARGE_TICKS = 30       -- 0.5s
+local REGEN_DELAY_FULL = REGEN_DELAY_DISCHARGE_TICKS
+local REGEN_DELAY_CHARGE_STEP = REGEN_DELAY_FULL // REGEN_DELAY_CHARGE_TICKS -- 20
+local REGEN_DELAY_DISCHARGE_STEP = 1
 
 --------------------------------------------------------------------------
 -- Bit layouts (must match SIGNAL_MAP.md exactly)
@@ -150,6 +163,7 @@ M.STATE_LATCHES_LAYOUT = {
 }
 
 M.STATE_TIMERS_LAYOUT = {
+    { name = "regen_delay_level",                 bits = 10 }, -- 0-600, see REGEN_DELAY_* constants
     { name = "phase1_cap_counter",                bits = 3 },  -- 0-6
     { name = "phase2_cap_counter",                bits = 3 },  -- 0-6
     { name = "current_below_limit_cap_counter",   bits = 3 },  -- 0-6
@@ -278,22 +292,18 @@ local function periodic_pulse_step(old_counter, enable, period_ticks)
     return counter, false
 end
 
--- regen_delay (was CAPACITOR(charge_time=0.5s, discharge_time=10s)): a
--- plain seconds-based ramp, held in a raw double state slot rather than a
--- packed integer -- this is a genuine duration, so seconds match SPEC's own
--- framing directly instead of a scaled integer level.
-local function regen_delay_step(old_seconds, enable)
+-- regen_delay (was CAPACITOR(charge_time=0.5s, discharge_time=10s)): see the
+-- REGEN_DELAY_* constants above for the scaling derivation. `level` is a
+-- packed integer field (STATE_TIMERS_LAYOUT), not a raw double.
+local function regen_delay_step(old_level, enable)
     if enable then
-        return math.min(old_seconds + TICK_SECONDS, REGEN_DELAY_CHARGE_SECONDS)
+        return math.min(old_level + REGEN_DELAY_CHARGE_STEP, REGEN_DELAY_FULL)
     end
-    return math.max(old_seconds - TICK_SECONDS * (REGEN_DELAY_CHARGE_SECONDS / REGEN_DELAY_DISCHARGE_SECONDS), 0)
+    return math.max(old_level - REGEN_DELAY_DISCHARGE_STEP, 0)
 end
 
-local function regen_delay_charged(old_seconds)
-    -- Epsilon guard: 30 additions of 1/60 land at 0.49999999999999994 (float
-    -- drift), one tick short of a bare ">=0.5" -- without this the charge
-    -- would take 31 ticks instead of the intended 30 (0.5s at 60 ticks/sec).
-    return old_seconds >= REGEN_DELAY_CHARGE_SECONDS - REGEN_DELAY_EPSILON
+local function regen_delay_charged(old_level)
+    return old_level >= REGEN_DELAY_FULL
 end
 
 --------------------------------------------------------------------------
@@ -430,6 +440,7 @@ function M.decode_state(state_in)
         panta2_en_latch = bool(latches.panta2_en_latch),
         traction_advance_counter = latches.traction_advance_counter,
         regen_warning_counter = latches.regen_warning_counter,
+        regen_delay_level = timers.regen_delay_level,
         phase1_cap_counter = timers.phase1_cap_counter,
         phase2_cap_counter = timers.phase2_cap_counter,
         current_below_limit_cap_counter = timers.current_below_limit_cap_counter,
@@ -438,7 +449,6 @@ function M.decode_state(state_in)
         OLD_PHI = state_in[5],
         regen_bc_smooth = state_in[6],
         bc_target_smooth = state_in[7],
-        regen_delay_seconds = state_in[8],
     }
 end
 
@@ -456,6 +466,7 @@ function M.encode_state(f)
         regen_warning_counter = f.regen_warning_counter,
     })
     local slot2 = pack_bits(M.STATE_TIMERS_LAYOUT, {
+        regen_delay_level = f.regen_delay_level,
         phase1_cap_counter = f.phase1_cap_counter,
         phase2_cap_counter = f.phase2_cap_counter,
         current_below_limit_cap_counter = f.current_below_limit_cap_counter,
@@ -464,7 +475,7 @@ function M.encode_state(f)
         slot1, slot2,
         f.OLD_I or 0, f.OLD_IF_A or 0, f.OLD_PHI or 0,
         f.regen_bc_smooth or 0, f.bc_target_smooth or 0,
-        f.regen_delay_seconds or 0,
+        0, -- spare
     }
 end
 
@@ -699,12 +710,12 @@ end
 
 -- SPEC §3.8 BC / regen-BC smoothing.
 local function smooth_bc(st, accel, regen_bc_target, regen_flag, brake_current_high_phase1)
-    local regen_bc_enable = regen_delay_charged(st.regen_delay_seconds) or (not regen_flag)
+    local regen_bc_enable = regen_delay_charged(st.regen_delay_level) or (not regen_flag)
     local regen_bc_sw = regen_bc_enable and 0 or regen_bc_target
     return {
         bc_target_smooth = accel * 0.2 + st.bc_target_smooth * 0.8,
         regen_bc_smooth = math.min(clamp(regen_bc_sw, st.regen_bc_smooth - 0.1, st.regen_bc_smooth + 0.02), 0),
-        regen_delay_seconds = regen_delay_step(st.regen_delay_seconds, brake_current_high_phase1),
+        regen_delay_level = regen_delay_step(st.regen_delay_level, brake_current_high_phase1),
     }
 end
 
@@ -816,6 +827,7 @@ function M.calculateTick(stateless_in, state_in)
         panta2_en_latch = panta.panta2_en_latch,
         traction_advance_counter = cam.traction_advance_counter_next,
         regen_warning_counter = warn.regen_warning_counter_next,
+        regen_delay_level = bc.regen_delay_level,
         phase1_cap_counter = debounce.phase1_cap_counter_next,
         phase2_cap_counter = debounce.phase2_cap_counter_next,
         current_below_limit_cap_counter = debounce.current_below_limit_cap_counter_next,
@@ -824,7 +836,6 @@ function M.calculateTick(stateless_in, state_in)
         OLD_PHI = phys.OLD_PHI,
         regen_bc_smooth = bc.regen_bc_smooth,
         bc_target_smooth = bc.bc_target_smooth,
-        regen_delay_seconds = bc.regen_delay_seconds,
     })
 
     return stateless_out, state_out
