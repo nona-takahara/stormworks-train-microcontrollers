@@ -10,17 +10,30 @@
 -- of every formula below (cross-referenced to CHUSO1800_Traction_Controller/SPEC.md).
 --
 -- Modeling rule (see README.md "Tick model"): every node that has a feedback
--- path (SR latches, capacitors/debounces, blinkers, the physics quasi-state,
--- BC smoothing) reads its OLD value (state_in) when computing this tick's
--- decisions, and writes a NEW value to state_out for next tick. Purely
--- combinational logic (derived only from fresh external inputs, or from other
--- freshly-computed combinational values) is evaluated fully within the same
--- tick -- unlike the literal gate-net model (SPEC.md §0.2, "every gate output
--- is 1-tick delayed"), this module lets combinational chains settle
--- instantly, which SPEC.md's own closing note anticipates and accepts
--- ("transient corner-case tick-counts may shrink, steady-state conclusions
--- are unchanged"). This collapsing is required to fit the whole control
--- surface in 8 state slots.
+-- path (SR latches, debounce timers, periodic pulses, the physics
+-- quasi-state, BC smoothing) reads its OLD value (state_in) when computing
+-- this tick's decisions, and writes a NEW value to state_out for next tick.
+-- Purely combinational logic (derived only from fresh external inputs, or
+-- from other freshly-computed combinational values) is evaluated fully
+-- within the same tick -- unlike the literal gate-net model (SPEC.md §0.2,
+-- "every gate output is 1-tick delayed"), this module lets combinational
+-- chains settle instantly, which SPEC.md's own closing note anticipates and
+-- accepts ("transient corner-case tick-counts may shrink, steady-state
+-- conclusions are unchanged"). This collapsing is required to fit the whole
+-- control surface in 8 state slots.
+--
+-- Below is organized into small functions, each roughly matching one
+-- SPEC.md §3.x section, threaded together by calculateTick at the bottom --
+-- rather than one large flat transliteration of every main.sw-net gate name
+-- into a same-named local variable. Two mechanisms are deliberately
+-- SIMPLER than a literal gate-for-gate port, at the cost of shifting exact
+-- tick counts in corner cases (never steady-state behavior):
+--   * periodic_pulse_step replaces the BLINKER+PULSE(rise) gate pair with a
+--     single elapsed-tick counter, since nothing here ever reads a raw
+--     on/off duty-cycle output -- only the periodic pulse it drives matters.
+--   * regen_delay_step is expressed directly in seconds (a raw double state
+--     slot) instead of a scaled 0-600 integer level, matching SPEC's own
+--     charge_time/discharge_time framing.
 --
 -- Physics (Newton-solve) is ported verbatim from
 -- CHUSO1800_Traction_Controller/scripts/n409.lua -- that file is NOT modified;
@@ -30,9 +43,7 @@
 -- sandbox has no module loader, so this whole file must be pastable
 -- directly into a single Stormworks LUA node as-is. The bit-packing helpers
 -- below (pack_bits/unpack_bits) are a plain string.pack("I4",...)/
--- string.unpack("I4",...) implementation inlined here for that reason --
--- there used to be a separate src/bitpack.lua required from here, which
--- cannot work once deployed; it has been folded in directly instead.
+-- string.unpack("I4",...) implementation inlined here for that reason.
 
 local M = {}
 
@@ -113,14 +124,13 @@ local REGEN_BC_MIN = -0.1
 local BC_TARGET_MIN = -0.05
 
 -- Tick-rate-derived timer constants (Stormworks assumed 60 ticks/sec, SPEC §0.2).
-local CAP_DEBOUNCE_TICKS = 6              -- 0.1s charge, instant (0s) discharge
-local TRACTION_BLINKER_ON_TICKS = 6       -- 0.1s
-local TRACTION_BLINKER_OFF_TICKS = 6      -- 0.1s
-local REGEN_WARNING_BLINKER_ON_TICKS = 6  -- 0.1s
-local REGEN_WARNING_BLINKER_OFF_TICKS = 24 -- 0.4s
-local REGEN_DELAY_CAP_FULL = 600          -- 0.5s charge / 10s discharge, scaled
-local REGEN_DELAY_CAP_CHARGE_STEP = 20    -- 600/30 ticks
-local REGEN_DELAY_CAP_DISCHARGE_STEP = 1  -- 600/600 ticks
+local TICK_SECONDS = 1 / 60
+local CAP_DEBOUNCE_TICKS = 6              -- 0.1s debounce, instant reset when disabled
+local CAM_ADVANCE_PERIOD_TICKS = 12       -- 0.1s+0.1s traction_blinker period
+local REGEN_WARNING_PERIOD_TICKS = 30     -- 0.1s+0.4s regen_warning_blinker period
+local REGEN_DELAY_CHARGE_SECONDS = 0.5
+local REGEN_DELAY_DISCHARGE_SECONDS = 10
+local REGEN_DELAY_EPSILON = 1e-9          -- float-accumulation guard, see regen_delay_step
 
 --------------------------------------------------------------------------
 -- Bit layouts (must match SIGNAL_MAP.md exactly)
@@ -135,14 +145,11 @@ M.STATE_LATCHES_LAYOUT = {
     { name = "panta2_latch",                  bits = 1 },
     { name = "panta1_en_latch",               bits = 1 },
     { name = "panta2_en_latch",               bits = 1 },
-    { name = "traction_blinker_phase",        bits = 1 },
-    { name = "traction_blinker_counter",      bits = 3 }, -- 0-6
-    { name = "regen_warning_blinker_phase",   bits = 1 },
-    { name = "regen_warning_blinker_counter", bits = 5 }, -- 0-23
+    { name = "traction_advance_counter",      bits = 4 }, -- 0-12, periodic_pulse_step
+    { name = "regen_warning_counter",         bits = 5 }, -- 0-30, periodic_pulse_step
 }
 
 M.STATE_TIMERS_LAYOUT = {
-    { name = "regen_delay_cap_level",             bits = 10 }, -- 0-600
     { name = "phase1_cap_counter",                bits = 3 },  -- 0-6
     { name = "phase2_cap_counter",                bits = 3 },  -- 0-6
     { name = "current_below_limit_cap_counter",   bits = 3 },  -- 0-6
@@ -237,48 +244,56 @@ local function sr_latch(old_q, set, reset)
     return old_q
 end
 
--- CAPACITOR(charge_time=0.1s, discharge_time=0): instant reset when disabled.
-local function debounce_cap_step(old_counter, enable)
-    local new_counter
+-- Debounce (was CAPACITOR(charge_time=0.1s, discharge_time=0) in
+-- main.sw-net): a plain "N consecutive enabled ticks" counter. Enabling
+-- resets instantly, matching discharge_time=0.
+local function debounce_step(old_counter, enable)
     if enable then
-        new_counter = math.min(old_counter + 1, CAP_DEBOUNCE_TICKS)
-    else
-        new_counter = 0
+        return math.min(old_counter + 1, CAP_DEBOUNCE_TICKS)
     end
-    return new_counter
+    return 0
 end
 
--- CAPACITOR(charge_time=0.5s, discharge_time=10s), scaled to a 0-600 level.
-local function regen_delay_cap_step(old_level, enable)
-    local new_level
-    if enable then
-        new_level = math.min(old_level + REGEN_DELAY_CAP_CHARGE_STEP, REGEN_DELAY_CAP_FULL)
-    else
-        new_level = math.max(old_level - REGEN_DELAY_CAP_DISCHARGE_STEP, 0)
-    end
-    return new_level
+local function debounce_charged(old_counter)
+    return old_counter >= CAP_DEBOUNCE_TICKS
 end
 
--- BLINKER(on_ticks, off_ticks): while disabled, output is false (matching a
--- real disabled blinker). Re-enabling always starts a fresh off_ticks-long
--- "off" sub-phase before the first "on" -- this costs up to off_ticks of
--- extra latency versus a hypothetical "instant on when enabled" blinker, but
--- keeps the state bit an honest reflection of "current output", which is
--- what the rising-edge (PULSE) detection below relies on: edge =
--- (not old_phase_on) and new_phase_on, comparing state_in's value against
--- this tick's freshly computed one, with no extra "previous output" bit.
-local function blinker_step(old_phase_on, old_counter, enable, on_ticks, off_ticks)
+-- Periodic pulse (was BLINKER(on_ticks, off_ticks) + PULSE(rise) in
+-- main.sw-net): fires once every `period_ticks` of continuous `enable`,
+-- then restarts the count; disabling resets the count to 0. Nothing in this
+-- module reads a raw on/off duty-cycle output, only the periodic pulse it
+-- would drive (cam advance, regen-warning pulse) -- so a single elapsed-tick
+-- counter stands in for the BLINKER+PULSE gate pair, with no separate
+-- "previous phase" bit needed. Timing differs slightly from a literal port
+-- (first pulse arrives at period_ticks after enabling, not at off_ticks);
+-- see README.md "tick model".
+local function periodic_pulse_step(old_counter, enable, period_ticks)
     if not enable then
-        return false, 0
+        return 0, false
     end
     local counter = old_counter + 1
-    local limit = old_phase_on and on_ticks or off_ticks
-    local new_phase_on = old_phase_on
-    if counter >= limit then
-        new_phase_on = not old_phase_on
-        counter = 0
+    if counter >= period_ticks then
+        return 0, true
     end
-    return new_phase_on, counter
+    return counter, false
+end
+
+-- regen_delay (was CAPACITOR(charge_time=0.5s, discharge_time=10s)): a
+-- plain seconds-based ramp, held in a raw double state slot rather than a
+-- packed integer -- this is a genuine duration, so seconds match SPEC's own
+-- framing directly instead of a scaled integer level.
+local function regen_delay_step(old_seconds, enable)
+    if enable then
+        return math.min(old_seconds + TICK_SECONDS, REGEN_DELAY_CHARGE_SECONDS)
+    end
+    return math.max(old_seconds - TICK_SECONDS * (REGEN_DELAY_CHARGE_SECONDS / REGEN_DELAY_DISCHARGE_SECONDS), 0)
+end
+
+local function regen_delay_charged(old_seconds)
+    -- Epsilon guard: 30 additions of 1/60 land at 0.49999999999999994 (float
+    -- drift), one tick short of a bare ">=0.5" -- without this the charge
+    -- would take 31 ticks instead of the intended 30 (0.5s at 60 ticks/sec).
+    return old_seconds >= REGEN_DELAY_CHARGE_SECONDS - REGEN_DELAY_EPSILON
 end
 
 --------------------------------------------------------------------------
@@ -413,11 +428,8 @@ function M.decode_state(state_in)
         panta2_latch = bool(latches.panta2_latch),
         panta1_en_latch = bool(latches.panta1_en_latch),
         panta2_en_latch = bool(latches.panta2_en_latch),
-        traction_blinker_phase = bool(latches.traction_blinker_phase),
-        traction_blinker_counter = latches.traction_blinker_counter,
-        regen_warning_blinker_phase = bool(latches.regen_warning_blinker_phase),
-        regen_warning_blinker_counter = latches.regen_warning_blinker_counter,
-        regen_delay_cap_level = timers.regen_delay_cap_level,
+        traction_advance_counter = latches.traction_advance_counter,
+        regen_warning_counter = latches.regen_warning_counter,
         phase1_cap_counter = timers.phase1_cap_counter,
         phase2_cap_counter = timers.phase2_cap_counter,
         current_below_limit_cap_counter = timers.current_below_limit_cap_counter,
@@ -426,6 +438,7 @@ function M.decode_state(state_in)
         OLD_PHI = state_in[5],
         regen_bc_smooth = state_in[6],
         bc_target_smooth = state_in[7],
+        regen_delay_seconds = state_in[8],
     }
 end
 
@@ -439,13 +452,10 @@ function M.encode_state(f)
         panta2_latch = f.panta2_latch,
         panta1_en_latch = f.panta1_en_latch,
         panta2_en_latch = f.panta2_en_latch,
-        traction_blinker_phase = f.traction_blinker_phase,
-        traction_blinker_counter = f.traction_blinker_counter,
-        regen_warning_blinker_phase = f.regen_warning_blinker_phase,
-        regen_warning_blinker_counter = f.regen_warning_blinker_counter,
+        traction_advance_counter = f.traction_advance_counter,
+        regen_warning_counter = f.regen_warning_counter,
     })
     local slot2 = pack_bits(M.STATE_TIMERS_LAYOUT, {
-        regen_delay_cap_level = f.regen_delay_cap_level,
         phase1_cap_counter = f.phase1_cap_counter,
         phase2_cap_counter = f.phase2_cap_counter,
         current_below_limit_cap_counter = f.current_below_limit_cap_counter,
@@ -454,7 +464,7 @@ function M.encode_state(f)
         slot1, slot2,
         f.OLD_I or 0, f.OLD_IF_A or 0, f.OLD_PHI or 0,
         f.regen_bc_smooth or 0, f.bc_target_smooth or 0,
-        0,
+        f.regen_delay_seconds or 0,
     }
 end
 
@@ -507,281 +517,314 @@ function M.decode_stateless_out(stateless_out)
 end
 
 --------------------------------------------------------------------------
+-- Tick sub-steps, each roughly one SPEC.md §3.x section. `st` throughout is
+-- always the OLD decoded state (this tick's input); functions return plain
+-- values/tables, calculateTick threads them together and does all state_out
+-- assembly at the end.
+--------------------------------------------------------------------------
+
+local function decode_inputs(stateless_in)
+    local bits = unpack_bits(M.INPUT_BITS_LAYOUT, stateless_in[4])
+    return {
+        speed = stateless_in[1],
+        catenary_voltage_sw = stateless_in[2],
+        sap_raw = stateless_in[3],
+        bp_atm = stateless_in[5],  -- only used when SAP_ECB_IS_SAP (live property)
+        sap_atm = stateless_in[6], -- only used when SAP_ECB_IS_SAP (live property)
+        notch_pos = bits.notch_pos,
+        controller_stop = bool(bits.controller_stop),
+        regen_flag = bool(bits.regen_flag),
+        forward_signal = bool(bits.forward_signal),
+        backward_signal = bool(bits.backward_signal),
+        eb_signal = bool(bits.eb_signal),
+        panta_enable_signal = bool(bits.panta_enable_signal),
+        panta_all_down_signal = bool(bits.panta_all_down_signal),
+        panta1_up_signal = bool(bits.panta1_up_signal),
+        panta1_down_signal = bool(bits.panta1_down_signal),
+        panta2_up_signal = bool(bits.panta2_up_signal),
+        panta2_down_signal = bool(bits.panta2_down_signal),
+    }
+end
+
+-- SPEC §3.5 (EB / power-cut condition) + the brake-pressure half of §3.8.
+local function eb_and_brake_pressure(inp)
+    local direction = (inp.forward_signal and 1 or 0) - (inp.backward_signal and 1 or 0)
+    local overspeed = math.abs(inp.speed) > OVERSPEED_THRESHOLD
+    local ecb_pressure_sw = inp.eb_signal and ECB_OFFSET_EB_ACTIVE or ECB_OFFSET_EB_INACTIVE
+    -- SAP_ECB_IS_SAP (live "SAP or ECB" property) selects between the
+    -- physical SAP sensor pressure and the ECB offset chain, matching
+    -- main.sw-net's brake_pressure_sw NUM_SWITCHBOX.
+    local brake_pressure_sw = SAP_ECB_IS_SAP and inp.bp_atm or ecb_pressure_sw
+    local brake_below_min = brake_pressure_sw < BRAKE_MIN_PRESSURE
+    local power_cut = false -- provably dead, see README "Simplifications"
+    local eb_condition = inp.controller_stop or power_cut or (direction == 0) or overspeed or brake_below_min
+    return direction, eb_condition, ecb_pressure_sw, power_cut
+end
+
+-- SPEC §3.3 (notch processing) + §3.2's cam-position echo ("notch_fb").
+local function notch_and_cam_feedback(inp, st, eb_condition)
+    local notch_enable_sw = eb_condition and 0 or 1
+    local notch_eff = clamp(inp.notch_pos, 0, 7) * notch_enable_sw
+    -- Cam-position echo zeroed under EB, matching the original
+    -- current_src_mux substitution (only ch7 survives EB).
+    local notch_fb = eb_condition and 0 or st.position_counter
+    return {
+        notch_eff = notch_eff,
+        notch_ge1 = notch_eff >= 1 and notch_eff <= 7,
+        notch_ge2 = notch_eff >= 2 and notch_eff <= 7,
+        notch_ge3 = notch_eff >= 3 and notch_eff <= 7,
+        notch_fb_ge1 = notch_fb >= 0 and notch_fb <= 1,
+        notch_fb_range_low = notch_fb >= 0 and notch_fb <= 13,
+        notch_fb_range_high = notch_fb >= 14 and notch_fb <= 20,
+        notch_fb_eq14 = notch_fb == 14,
+        notch_fb_ne14 = notch_fb ~= 14,
+    }
+end
+
+-- SPEC §3.8 (regen-BC target chain, fresh every tick).
+local function brake_demand(inp, ecb_pressure_sw)
+    local ecb_sap_pressure = clamp(inp.sap_raw + (5 - ecb_pressure_sw) * 7, 0, 36) / 8 + 1
+    local sap_pressure_sw = SAP_ECB_IS_SAP and inp.sap_atm or ecb_sap_pressure
+    local regen_bc_target = -math.floor((sap_pressure_sw - 1) * 2) / 7.2
+    local bc_target_below_min = regen_bc_target < BC_TARGET_MIN
+    return {
+        regen_bc_target = regen_bc_target,
+        low_bc_with_regen_flag = bc_target_below_min and inp.regen_flag,
+        regen_current = math.max(-regen_bc_target, 0),
+    }
+end
+
+-- current_src_mux EB substitution: under EB only ch7 (bcT, here holding
+-- regen_current) survives; everything else reads 0.
+local function eb_substitute(phys, eb_condition, regen_current)
+    return {
+        motor_current = eb_condition and 0 or phys.motor_current,
+        W = eb_condition and 0 or phys.W,
+        accel = eb_condition and 0 or phys.accel,
+        iF_a = eb_condition and 0 or phys.iF_a,
+        bcT = eb_condition and regen_current or phys.bcT,
+    }
+end
+
+-- SPEC §3.6/§3.7 debounce timers (current-limit and phase1/phase2's own
+-- "has been on for 0.1s" gates). "*_charged" reflects the OLD counter (this
+-- tick's decision input); "*_next" is what gets stored for next tick.
+local function debounce_block(st, motor_current)
+    local current_limit_sw = st.phase2_latch and (POWER_LIMIT_CURRENT - 20) or POWER_LIMIT_CURRENT
+    local current_below_limit = motor_current < current_limit_sw
+    return {
+        current_limit_sw = current_limit_sw,
+        current_below_limit_cap_charged = debounce_charged(st.current_below_limit_cap_counter),
+        current_below_limit_cap_counter_next = debounce_step(st.current_below_limit_cap_counter, current_below_limit),
+        phase1_cap_charged = debounce_charged(st.phase1_cap_counter),
+        phase1_cap_counter_next = debounce_step(st.phase1_cap_counter, st.phase1_latch),
+        phase2_cap_charged = debounce_charged(st.phase2_cap_counter),
+        phase2_cap_counter_next = debounce_step(st.phase2_cap_counter, st.phase2_latch),
+    }
+end
+
+-- SPEC §3.6 brake-current / regen-warning-pulse chain.
+local function regen_warning_block(st, iF_a, notch_ge1, phase1_cap_charged)
+    local regen_bc_below_min = st.regen_bc_smooth < REGEN_BC_MIN
+    local phase1_low_bc = st.phase1_latch and regen_bc_below_min
+    local brake_limit_sw = phase1_low_bc and BRAKE_LIMIT_400 or BRAKE_LIMIT_300
+    local brake_current_above_300 = iF_a > BRAKE_LIMIT_300
+    local regen_warning_cond = (iF_a > brake_limit_sw) and (not notch_ge1)
+    local counter_next, pulse = periodic_pulse_step(
+        st.regen_warning_counter, regen_warning_cond, REGEN_WARNING_PERIOD_TICKS)
+    return {
+        brake_current_high_phase1 = brake_current_above_300 and phase1_cap_charged,
+        regen_warning_cond = regen_warning_cond,
+        regen_warning_counter_next = counter_next,
+        regen_warning_pulse = pulse,
+    }
+end
+
+-- SPEC §3.6 core state machine: phase1/phase2/regen SR latches. `notch`
+-- (from notch_and_cam_feedback) already carries both the notch_ge* fields
+-- and the cam-position-echo notch_fb_* fields in one table.
+local function phase_state_machine(st, notch, cond)
+    local phase1_notch_active = st.phase1_latch and notch.notch_ge1
+    local phase1_regen_active = st.phase1_latch and notch.notch_fb_ne14 and st.regen_latch
+    local power_with_regen = notch.notch_ge1 and notch.notch_fb_ge1
+
+    local current_near_zero = cond.motor_current >= -50 and cond.motor_current <= 50
+    local no_notch_no_regen_brake_demand = not (notch.notch_ge1 or cond.low_bc_with_regen_flag)
+    local neutral_cond = current_near_zero and no_notch_no_regen_brake_demand
+    local coasting_cond = neutral_cond and (not st.regen_latch)
+    local regen_pulse_regen_flag_off = cond.regen_warning_pulse and (not cond.regen_flag)
+    local phase_reset_cond = coasting_cond or regen_pulse_regen_flag_off
+
+    local phase1_set_cond = notch.notch_ge2 and notch.notch_fb_range_low
+        and cond.phase1_cap_charged and cond.current_below_limit_cap_charged
+    local phase1_set = (power_with_regen and (not st.phase2_latch))
+        or (cond.regen_warning_pulse and st.phase2_latch)
+    local phase1_reset = phase_reset_cond
+        or (cond.regen_warning_pulse and cond.phase1_cap_charged)
+
+    local phase2_blinker_cond = notch.notch_ge3 and notch.notch_fb_range_high
+        and cond.phase2_cap_charged and cond.current_below_limit_cap_charged
+    local phase2_set_cond = notch.notch_ge3 and notch.notch_fb_eq14 and cond.current_below_limit_cap_charged
+    local phase2_reset = phase_reset_cond or (st.phase1_latch and not (notch.notch_ge3 and notch.notch_fb_eq14))
+
+    -- phase2_set_cond doubles as an extra phase1-reset trigger (Series ->
+    -- Parallel transition resets phase1 the same tick phase2 sets).
+    phase1_reset = phase1_reset or phase2_set_cond
+
+    local traction_all_off = (not st.phase1_latch) and (not st.phase2_latch)
+    local regen_set_cond = st.phase2_latch and notch.notch_fb_ge1
+    local regen_reset = phase1_notch_active or traction_all_off
+    local regen_off_all = (not notch.notch_fb_ge1) and traction_all_off
+
+    return {
+        phase1_latch = sr_latch(st.phase1_latch, phase1_set, phase1_reset),
+        phase2_latch = sr_latch(st.phase2_latch, phase2_set_cond, phase2_reset),
+        regen_latch = sr_latch(st.regen_latch, regen_set_cond, regen_reset),
+        traction_any_active = phase1_set_cond or phase2_blinker_cond or regen_off_all or phase1_regen_active,
+    }
+end
+
+-- SPEC §3.2 cam advance (periodic pulse while traction_any_active).
+local function advance_cam(st, traction_any_active)
+    local counter_next, pulse = periodic_pulse_step(
+        st.traction_advance_counter, traction_any_active, CAM_ADVANCE_PERIOD_TICKS)
+    local position_counter = (st.position_counter + (pulse and 1 or 0)) % 21
+    local delta = position_counter - st.position_counter
+    return {
+        position_counter = position_counter,
+        cam_pulse = not (delta >= 0 and delta <= 1), -- true only on the 20->0 ring wrap
+        traction_advance_counter_next = counter_next,
+    }
+end
+
+-- SPEC §3.8 BC / regen-BC smoothing.
+local function smooth_bc(st, accel, regen_bc_target, regen_flag, brake_current_high_phase1)
+    local regen_bc_enable = regen_delay_charged(st.regen_delay_seconds) or (not regen_flag)
+    local regen_bc_sw = regen_bc_enable and 0 or regen_bc_target
+    return {
+        bc_target_smooth = accel * 0.2 + st.bc_target_smooth * 0.8,
+        regen_bc_smooth = math.min(clamp(regen_bc_sw, st.regen_bc_smooth - 0.1, st.regen_bc_smooth + 0.02), 0),
+        regen_delay_seconds = regen_delay_step(st.regen_delay_seconds, brake_current_high_phase1),
+    }
+end
+
+-- SPEC §3.9 pantograph latches.
+local function pantograph_block(st, inp)
+    local panta1_latch = sr_latch(st.panta1_latch, inp.panta1_up_signal, inp.panta1_down_signal)
+    local panta2_latch = sr_latch(st.panta2_latch, inp.panta2_up_signal, inp.panta2_down_signal)
+    local panta1_set_cond = (not st.panta1_latch) and inp.panta_enable_signal
+    local panta2_set_cond = (not st.panta2_latch) and inp.panta_enable_signal
+    local panta1_en_latch = sr_latch(st.panta1_en_latch, panta1_set_cond, inp.panta_all_down_signal)
+    local panta2_en_latch = sr_latch(st.panta2_en_latch, panta2_set_cond, inp.panta_all_down_signal)
+    return {
+        panta1_latch = panta1_latch,
+        panta2_latch = panta2_latch,
+        panta1_en_latch = panta1_en_latch,
+        panta2_en_latch = panta2_en_latch,
+        panta1_1800_active = panta1_en_latch and IS_1800_TYPE,
+        panta2_1800_active = panta2_en_latch and IS_1800_TYPE,
+        panta1_1800_latched = panta1_latch and IS_1800_TYPE,
+        panta2_1800_latched = panta2_latch and IS_1800_TYPE,
+    }
+end
+
+--------------------------------------------------------------------------
 -- Main tick function
 --------------------------------------------------------------------------
 
 function M.calculateTick(stateless_in, state_in)
     local st = M.decode_state(state_in)
-    local inbits = unpack_bits(M.INPUT_BITS_LAYOUT, stateless_in[4])
+    local inp = decode_inputs(stateless_in)
 
-    local speed = stateless_in[1]
-    local catenary_voltage_sw = stateless_in[2]
-    local sap_raw = stateless_in[3]
-    local bp_atm = stateless_in[5]  -- only read when SAP_ECB_IS_SAP (live property)
-    local sap_atm = stateless_in[6] -- only read when SAP_ECB_IS_SAP (live property)
+    local direction, eb_condition, ecb_pressure_sw = eb_and_brake_pressure(inp)
+    local notch = notch_and_cam_feedback(inp, st, eb_condition)
+    local demand = brake_demand(inp, ecb_pressure_sw)
 
-    local notch_pos = inbits.notch_pos
-    local controller_stop = bool(inbits.controller_stop)
-    local regen_flag = bool(inbits.regen_flag)
-    local forward_signal = bool(inbits.forward_signal)
-    local backward_signal = bool(inbits.backward_signal)
-    local eb_signal = bool(inbits.eb_signal)
-    local panta_enable_signal = bool(inbits.panta_enable_signal)
-    local panta_all_down_signal = bool(inbits.panta_all_down_signal)
-    local panta1_up_signal = bool(inbits.panta1_up_signal)
-    local panta1_down_signal = bool(inbits.panta1_down_signal)
-    local panta2_up_signal = bool(inbits.panta2_up_signal)
-    local panta2_down_signal = bool(inbits.panta2_down_signal)
-
-    ----------------------------------------------------------------
-    -- Direction, EB condition (bucket c, fresh every tick)
-    ----------------------------------------------------------------
-
-    local direction = (forward_signal and 1 or 0) - (backward_signal and 1 or 0)
-    local overspeed = math.abs(speed) > OVERSPEED_THRESHOLD
-    -- Brake pressure: SAP_ECB_IS_SAP (live "SAP or ECB" property) selects
-    -- between the physical SAP sensor pressure and the ECB offset chain,
-    -- matching main.sw-net's brake_pressure_sw NUM_SWITCHBOX.
-    local ecb_pressure_sw = eb_signal and ECB_OFFSET_EB_ACTIVE or ECB_OFFSET_EB_INACTIVE
-    local brake_pressure_sw = SAP_ECB_IS_SAP and bp_atm or ecb_pressure_sw
-    local brake_below_min = brake_pressure_sw < BRAKE_MIN_PRESSURE
-    local power_cut = false -- provably dead, see README "Simplifications"
-
-    local eb_condition = controller_stop or power_cut or (direction == 0) or overspeed or brake_below_min
-
-    ----------------------------------------------------------------
-    -- Notch processing
-    ----------------------------------------------------------------
-
-    local notch_enable_sw = eb_condition and 0 or 1
-    local notch_eff = clamp(notch_pos, 0, 7) * notch_enable_sw
-    local notch_ge1 = notch_eff >= 1 and notch_eff <= 7
-    local notch_ge2 = notch_eff >= 2 and notch_eff <= 7
-    local notch_ge3 = notch_eff >= 3 and notch_eff <= 7
-
-    -- Cam-position echo ("notch_fb" in SPEC.md); zeroed under EB just like
-    -- the original current_src_mux substitution (only ch7 survives EB).
-    local notch_fb = eb_condition and 0 or st.position_counter
-    local notch_fb_ge1 = notch_fb >= 0 and notch_fb <= 1
-    local notch_fb_range_low = notch_fb >= 0 and notch_fb <= 13
-    local notch_fb_range_high = notch_fb >= 14 and notch_fb <= 20
-    local notch_fb_eq14 = notch_fb == 14
-    local notch_fb_ne14 = not notch_fb_eq14
-    local regen_available = notch_fb_ge1 -- duplicate of notch_fb_ge1, SPEC §5 dead-code note
-
-    ----------------------------------------------------------------
-    -- SAP/regen-BC pressure chain (fresh; feeds physics ch8 and low_bc flag)
-    ----------------------------------------------------------------
-
-    local ecb_sap_pressure = clamp(sap_raw + (5 - ecb_pressure_sw) * 7, 0, 36) / 8 + 1
-    local sap_pressure_sw = SAP_ECB_IS_SAP and sap_atm or ecb_sap_pressure
-    local regen_bc_target = -math.floor((sap_pressure_sw - 1) * 2) / 7.2
-    local bc_target_below_min = regen_bc_target < BC_TARGET_MIN
-    local low_bc_with_regen_flag = bc_target_below_min and regen_flag
-    local regen_current = math.max(-regen_bc_target, 0)
-
-    ----------------------------------------------------------------
-    -- Physics (uses OLD phase1/phase2/regen -- see module header "Modeling rule")
-    ----------------------------------------------------------------
-
+    -- Physics always uses OLD phase1/phase2/regen (breaks the physics <->
+    -- state-machine cycle; see module header "Modeling rule").
     local phys = M.physics_tick({
-        speed = speed,
-        vl = catenary_voltage_sw,
+        speed = inp.speed,
+        vl = inp.catenary_voltage_sw,
         position_counter = st.position_counter,
         direction = direction,
-        notch_eff = notch_eff,
+        notch_eff = notch.notch_eff,
         phase1 = st.phase1_latch,
         phase2 = st.phase2_latch,
         regen = st.regen_latch,
-        notch_ge1 = notch_ge1,
-        low_bc_with_regen_flag = low_bc_with_regen_flag,
+        notch_ge1 = notch.notch_ge1,
+        low_bc_with_regen_flag = demand.low_bc_with_regen_flag,
         regen_bc_smooth_seed = st.regen_bc_smooth,
-        regen_bc_target = regen_bc_target,
+        regen_bc_target = demand.regen_bc_target,
         OLD_I = st.OLD_I,
         OLD_IF_A = st.OLD_IF_A,
         OLD_PHI = st.OLD_PHI,
     })
+    local elec = eb_substitute(phys, eb_condition, demand.regen_current)
 
-    -- current_src_mux EB substitution: under EB only ch7 (bcT, here holding
-    -- regen_current) survives; everything else reads 0.
-    local motor_current = eb_condition and 0 or phys.motor_current
-    local W = eb_condition and 0 or phys.W
-    local accel = eb_condition and 0 or phys.accel
-    local iF_a = eb_condition and 0 or phys.iF_a
-    local bcT = eb_condition and regen_current or phys.bcT
+    local debounce = debounce_block(st, elec.motor_current)
+    local warn = regen_warning_block(st, elec.iF_a, notch.notch_ge1, debounce.phase1_cap_charged)
 
-    ----------------------------------------------------------------
-    -- Current-limit debounce (feeds phase1/phase2 advance conditions)
-    ----------------------------------------------------------------
-
-    local current_limit_sw = st.phase2_latch and (POWER_LIMIT_CURRENT - 20) or POWER_LIMIT_CURRENT
-    local current_below_limit = motor_current < current_limit_sw
-    local current_below_limit_cap_counter = debounce_cap_step(st.current_below_limit_cap_counter, current_below_limit)
-    local current_below_limit_cap_charged = st.current_below_limit_cap_counter >= CAP_DEBOUNCE_TICKS
-
-    ----------------------------------------------------------------
-    -- Phase1/phase2 debounce capacitors (enable = OWN old latch value)
-    ----------------------------------------------------------------
-
-    local phase1_cap_counter = debounce_cap_step(st.phase1_cap_counter, st.phase1_latch)
-    local phase1_cap_charged = st.phase1_cap_counter >= CAP_DEBOUNCE_TICKS
-    local phase2_cap_counter = debounce_cap_step(st.phase2_cap_counter, st.phase2_latch)
-    local phase2_cap_charged = st.phase2_cap_counter >= CAP_DEBOUNCE_TICKS
-
-    ----------------------------------------------------------------
-    -- Brake-current / regen-warning chain
-    ----------------------------------------------------------------
-
-    local regen_bc_below_min = st.regen_bc_smooth < REGEN_BC_MIN
-    local phase1_low_bc = st.phase1_latch and regen_bc_below_min
-    local brake_limit_sw = phase1_low_bc and BRAKE_LIMIT_400 or BRAKE_LIMIT_300
-    local brake_current_fb = iF_a
-    local brake_current_high = brake_current_fb > brake_limit_sw
-    local brake_current_above_300 = brake_current_fb > BRAKE_LIMIT_300
-    local brake_current_high_phase1 = brake_current_above_300 and phase1_cap_charged
-    local no_power_notch = not notch_ge1
-    local regen_warning_cond = brake_current_high and no_power_notch
-
-    local regen_warning_blinker_phase, regen_warning_blinker_counter = blinker_step(
-        st.regen_warning_blinker_phase, st.regen_warning_blinker_counter, regen_warning_cond,
-        REGEN_WARNING_BLINKER_ON_TICKS, REGEN_WARNING_BLINKER_OFF_TICKS)
-    local regen_warning_pulse = (not st.regen_warning_blinker_phase) and regen_warning_blinker_phase
-    local regen_pulse_regen_flag_off = regen_warning_pulse and (not regen_flag)
-
-    ----------------------------------------------------------------
-    -- Coasting / phase-reset condition
-    ----------------------------------------------------------------
-
-    local current_near_zero = motor_current >= -50 and motor_current <= 50
-    local no_notch_no_regen_brake_demand = not (notch_ge1 or low_bc_with_regen_flag)
-    local neutral_cond = current_near_zero and no_notch_no_regen_brake_demand
-    local coasting_cond = neutral_cond and (not st.regen_latch)
-    local phase_reset_cond = coasting_cond or regen_pulse_regen_flag_off
-
-    ----------------------------------------------------------------
-    -- Phase1 / phase2 / regen set-reset conditions (main.sw-net §3.6)
-    ----------------------------------------------------------------
-
-    local phase1_notch_active = st.phase1_latch and notch_ge1
-    local phase1_not_high_notch = st.phase1_latch and notch_fb_ne14
-    local phase1_regen_active = phase1_not_high_notch and st.regen_latch
-    local power_with_regen = notch_ge1 and notch_fb_ge1
-
-    local phase1_set_cond = notch_ge2 and notch_fb_range_low and phase1_cap_charged and current_below_limit_cap_charged
-    local phase1_set = (power_with_regen and (not st.phase2_latch)) or (regen_warning_pulse and st.phase2_latch)
-
-    local phase2_blinker_cond = notch_ge3 and notch_fb_range_high and phase2_cap_charged and current_below_limit_cap_charged
-    local phase2_set_cond = notch_ge3 and notch_fb_eq14 and current_below_limit_cap_charged
-    local phase2_reset = phase_reset_cond or (st.phase1_latch and not (notch_ge3 and notch_fb_eq14))
-
-    local phase1_reset = phase_reset_cond or (regen_warning_pulse and phase1_cap_charged) or phase2_set_cond
-
-    local traction_all_off = (not st.phase1_latch) and (not st.phase2_latch)
-    local regen_not_available = not notch_fb_ge1
-    local regen_off_all = regen_not_available and traction_all_off
-    local regen_set_cond = st.phase2_latch and regen_available
-    local regen_reset = phase1_notch_active or traction_all_off
-
-    local new_phase1_latch = sr_latch(st.phase1_latch, phase1_set, phase1_reset)
-    local new_phase2_latch = sr_latch(st.phase2_latch, phase2_set_cond, phase2_reset)
-    local new_regen_latch = sr_latch(st.regen_latch, regen_set_cond, regen_reset)
-
-    ----------------------------------------------------------------
-    -- Cam advance (traction_blinker -> rising-edge pulse -> position_counter)
-    ----------------------------------------------------------------
-
-    local traction_any_active = phase1_set_cond or phase2_blinker_cond or regen_off_all or phase1_regen_active
-    local traction_blinker_phase, traction_blinker_counter = blinker_step(
-        st.traction_blinker_phase, st.traction_blinker_counter, traction_any_active,
-        TRACTION_BLINKER_ON_TICKS, TRACTION_BLINKER_OFF_TICKS)
-    local position_tick_pulse = (not st.traction_blinker_phase) and traction_blinker_phase
-    local new_position_counter = (st.position_counter + (position_tick_pulse and 1 or 0)) % 21
-    local position_delta = new_position_counter - st.position_counter
-    local cam_pulse = not (position_delta >= 0 and position_delta <= 1)
-
-    ----------------------------------------------------------------
-    -- Regen BC ramp / delay capacitor
-    ----------------------------------------------------------------
-
-    local regen_delay_cap_charged = st.regen_delay_cap_level >= REGEN_DELAY_CAP_FULL
-    local regen_bc_enable = regen_delay_cap_charged or (not regen_flag)
-    local regen_bc_sw = regen_bc_enable and 0 or regen_bc_target
-    local new_regen_bc_smooth = math.min(
-        clamp(regen_bc_sw, st.regen_bc_smooth - 0.1, st.regen_bc_smooth + 0.02), 0)
-    local new_regen_delay_cap_level = regen_delay_cap_step(st.regen_delay_cap_level, brake_current_high_phase1)
-
-    ----------------------------------------------------------------
-    -- BC target smoothing (EMA); accel already EB-zeroed above.
-    ----------------------------------------------------------------
-
-    local new_bc_target_smooth = accel * 0.2 + st.bc_target_smooth * 0.8
-
-    ----------------------------------------------------------------
-    -- Pantograph latches
-    ----------------------------------------------------------------
-
-    local new_panta1_latch = sr_latch(st.panta1_latch, panta1_up_signal, panta1_down_signal)
-    local new_panta2_latch = sr_latch(st.panta2_latch, panta2_up_signal, panta2_down_signal)
-    local panta1_set_cond = (not st.panta1_latch) and panta_enable_signal
-    local panta2_set_cond = (not st.panta2_latch) and panta_enable_signal
-    local new_panta1_en_latch = sr_latch(st.panta1_en_latch, panta1_set_cond, panta_all_down_signal)
-    local new_panta2_en_latch = sr_latch(st.panta2_en_latch, panta2_set_cond, panta_all_down_signal)
-
-    local panta1_1800_active = new_panta1_en_latch and IS_1800_TYPE
-    local panta2_1800_active = new_panta2_en_latch and IS_1800_TYPE
-    local panta1_1800_latched = new_panta1_latch and IS_1800_TYPE
-    local panta2_1800_latched = new_panta2_latch and IS_1800_TYPE
+    local phase = phase_state_machine(st, notch, {
+        motor_current = elec.motor_current,
+        low_bc_with_regen_flag = demand.low_bc_with_regen_flag,
+        regen_warning_pulse = warn.regen_warning_pulse,
+        regen_flag = inp.regen_flag,
+        phase1_cap_charged = debounce.phase1_cap_charged,
+        phase2_cap_charged = debounce.phase2_cap_charged,
+        current_below_limit_cap_charged = debounce.current_below_limit_cap_charged,
+    })
+    local cam = advance_cam(st, phase.traction_any_active)
+    local bc = smooth_bc(st, elec.accel, demand.regen_bc_target, inp.regen_flag, warn.brake_current_high_phase1)
+    local panta = pantograph_block(st, inp)
 
     ----------------------------------------------------------------
     -- Assemble outputs
     ----------------------------------------------------------------
 
     local status_bits = pack_bits(M.STATUS_BITS_LAYOUT, {
-        cam_pulse = cam_pulse,
-        panta1_1800_active = panta1_1800_active,
-        panta2_1800_active = panta2_1800_active,
-        panta1_1800_latched = panta1_1800_latched,
-        panta2_1800_latched = panta2_1800_latched,
-        phase1_latch = new_phase1_latch,
-        phase2_latch = new_phase2_latch,
-        regen_latch = new_regen_latch,
-        notch_ge1 = notch_ge1,
-        low_bc_with_regen_flag = low_bc_with_regen_flag,
-        regen_warning_cond = regen_warning_cond,
-        power_cut = power_cut,
+        cam_pulse = cam.cam_pulse,
+        panta1_1800_active = panta.panta1_1800_active,
+        panta2_1800_active = panta.panta2_1800_active,
+        panta1_1800_latched = panta.panta1_1800_latched,
+        panta2_1800_latched = panta.panta2_1800_latched,
+        phase1_latch = phase.phase1_latch,
+        phase2_latch = phase.phase2_latch,
+        regen_latch = phase.regen_latch,
+        notch_ge1 = notch.notch_ge1,
+        low_bc_with_regen_flag = demand.low_bc_with_regen_flag,
+        regen_warning_cond = warn.regen_warning_cond,
+        power_cut = false,
     })
 
     local stateless_out = {
-        motor_current,
-        W,
-        new_bc_target_smooth,
-        bcT,
+        elec.motor_current,
+        elec.W,
+        bc.bc_target_smooth,
+        elec.bcT,
         status_bits,
         0, 0, 0,
     }
 
     local state_out = M.encode_state({
-        position_counter = new_position_counter,
-        phase1_latch = new_phase1_latch,
-        phase2_latch = new_phase2_latch,
-        regen_latch = new_regen_latch,
-        panta1_latch = new_panta1_latch,
-        panta2_latch = new_panta2_latch,
-        panta1_en_latch = new_panta1_en_latch,
-        panta2_en_latch = new_panta2_en_latch,
-        traction_blinker_phase = traction_blinker_phase,
-        traction_blinker_counter = traction_blinker_counter,
-        regen_warning_blinker_phase = regen_warning_blinker_phase,
-        regen_warning_blinker_counter = regen_warning_blinker_counter,
-        regen_delay_cap_level = new_regen_delay_cap_level,
-        phase1_cap_counter = phase1_cap_counter,
-        phase2_cap_counter = phase2_cap_counter,
-        current_below_limit_cap_counter = current_below_limit_cap_counter,
+        position_counter = cam.position_counter,
+        phase1_latch = phase.phase1_latch,
+        phase2_latch = phase.phase2_latch,
+        regen_latch = phase.regen_latch,
+        panta1_latch = panta.panta1_latch,
+        panta2_latch = panta.panta2_latch,
+        panta1_en_latch = panta.panta1_en_latch,
+        panta2_en_latch = panta.panta2_en_latch,
+        traction_advance_counter = cam.traction_advance_counter_next,
+        regen_warning_counter = warn.regen_warning_counter_next,
+        phase1_cap_counter = debounce.phase1_cap_counter_next,
+        phase2_cap_counter = debounce.phase2_cap_counter_next,
+        current_below_limit_cap_counter = debounce.current_below_limit_cap_counter_next,
         OLD_I = phys.OLD_I,
         OLD_IF_A = phys.OLD_IF_A,
         OLD_PHI = phys.OLD_PHI,
-        regen_bc_smooth = new_regen_bc_smooth,
-        bc_target_smooth = new_bc_target_smooth,
+        regen_bc_smooth = bc.regen_bc_smooth,
+        bc_target_smooth = bc.bc_target_smooth,
+        regen_delay_seconds = bc.regen_delay_seconds,
     })
 
     return stateless_out, state_out
