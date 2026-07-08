@@ -18,9 +18,9 @@ return function(h)
 
     local extreme_inputs = {
         core.encode_stateless_in({}),
-        core.encode_stateless_in({ speed = 1000, catenary_voltage_sw = 999999, notch_pos = 7, forward_signal = true }),
-        core.encode_stateless_in({ controller_stop = true, eb_signal = true }),
-        core.encode_stateless_in({ speed = -1000, backward_signal = true, notch_pos = 7 }),
+        core.encode_stateless_in({ speed = 1000, catenary_voltage_sw = 999999, notch_pos = 7, direction = 1, brake_pressure_sw = 5 }),
+        core.encode_stateless_in({ controller_stop = true, brake_pressure_sw = 0 }),
+        core.encode_stateless_in({ speed = -1000, direction = -1, notch_pos = 7, brake_pressure_sw = 5 }),
     }
 
     for si, state in ipairs(extreme_states) do

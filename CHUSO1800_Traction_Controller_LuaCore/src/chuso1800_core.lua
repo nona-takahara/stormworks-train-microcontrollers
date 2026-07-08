@@ -82,35 +82,28 @@ local NEWTON_SEED = 200
 --------------------------------------------------------------------------
 -- Stormworks `property` values, read once at script load ("spawn time" --
 -- properties don't change mid-flight, so there is no need to re-read them
--- every tick). This is the mechanism that keeps SAP/ECB mode, M-type, and
--- the two numeric limits genuinely tunable per-vehicle in Stormworks'
--- property panel -- matching the original main.sw-net PROPERTY_TOGGLE/
--- PROPERTY_NUMBER node names exactly -- instead of baking them into source.
--- property.get*() sits entirely outside the 8+8 composite-channel budget,
--- so this costs no input slots.
+-- every tick). This is the mechanism that keeps the two numeric limits
+-- genuinely tunable per-vehicle in Stormworks' property panel -- matching
+-- the original main.sw-net PROPERTY_NUMBER node names exactly -- instead of
+-- baking them into source. property.get*() sits entirely outside the 8+8
+-- composite-channel budget, so this costs no input slots.
 --
 -- Outside Stormworks (this repo's plain-`lua` test suite), the `property`
 -- global does not exist; fall back to the same defaults the original
--- main.sw-net PROPERTY_* nodes ship with (PROPERTY_NUMBER value=..., and
--- PROPERTY_TOGGLE with no v= override, which Stormworks treats as off).
+-- main.sw-net PROPERTY_NUMBER nodes ship with (their value=... attribute).
 --------------------------------------------------------------------------
 
 local property = property
 if type(property) ~= "table" then
-    local DEFAULT_BOOL_PROPERTIES = {
-        ["SAP or ECB"] = false, -- off = ECB (main.sw-net's sap_ecb_toggle default)
-    }
     local DEFAULT_NUMBER_PROPERTIES = {
         ["Over Speed Th. [m/s]"] = 32,       -- main.sw-net's overspeed_threshold
         ["Power Limit Current [A]"] = 210,   -- main.sw-net's power_limit_current
     }
     property = {
-        getBool = function(name) return DEFAULT_BOOL_PROPERTIES[name] end,
         getNumber = function(name) return DEFAULT_NUMBER_PROPERTIES[name] end,
     }
 end
 
-local SAP_ECB_IS_SAP = property.getBool("SAP or ECB")
 local OVERSPEED_THRESHOLD = property.getNumber("Over Speed Th. [m/s]")     -- m/s
 local POWER_LIMIT_CURRENT = property.getNumber("Power Limit Current [A]") -- A
 
@@ -120,8 +113,6 @@ local POWER_LIMIT_CURRENT = property.getNumber("Power Limit Current [A]") -- A
 local BRAKE_MIN_PRESSURE = 4         -- atm
 local BRAKE_LIMIT_300 = 300
 local BRAKE_LIMIT_400 = 400
-local ECB_OFFSET_EB_ACTIVE = 0
-local ECB_OFFSET_EB_INACTIVE = 5
 local REGEN_BC_MIN = -0.1
 local BC_TARGET_MIN = -0.05
 
@@ -167,9 +158,6 @@ M.INPUT_BITS_LAYOUT = {
     { name = "notch_pos",              bits = 3 }, -- 0-7
     { name = "controller_stop",        bits = 1 },
     { name = "regen_flag",             bits = 1 },
-    { name = "forward_signal",         bits = 1 },
-    { name = "backward_signal",        bits = 1 },
-    { name = "eb_signal",              bits = 1 },
 }
 
 M.STATUS_BITS_LAYOUT = {
@@ -460,17 +448,14 @@ function M.encode_stateless_in(f)
         notch_pos = f.notch_pos,
         controller_stop = f.controller_stop,
         regen_flag = f.regen_flag,
-        forward_signal = f.forward_signal,
-        backward_signal = f.backward_signal,
-        eb_signal = f.eb_signal,
     })
     return {
         f.speed or 0,
         f.catenary_voltage_sw or 0,
-        f.sap_raw or 0,
+        f.brake_pressure_sw or 0,
+        f.sap_pressure_sw or 0,
+        f.direction or 0,
         bits,
-        f.bp_atm or 0,
-        f.sap_atm or 0,
         0, 0,
     }
 end
@@ -501,35 +486,33 @@ end
 --------------------------------------------------------------------------
 
 local function decode_inputs(stateless_in)
-    local bits = unpack_bits(M.INPUT_BITS_LAYOUT, stateless_in[4])
+    local bits = unpack_bits(M.INPUT_BITS_LAYOUT, stateless_in[6])
     return {
         speed = stateless_in[1],
         catenary_voltage_sw = stateless_in[2],
-        sap_raw = stateless_in[3],
-        bp_atm = stateless_in[5],  -- only used when SAP_ECB_IS_SAP (live property)
-        sap_atm = stateless_in[6], -- only used when SAP_ECB_IS_SAP (live property)
+        -- brake_pressure_sw/sap_pressure_sw arrive pre-resolved from gates
+        -- (SAP sensor passthrough or ECB-offset conversion already applied
+        -- there, matching main.sw-net's brake_pressure_sw/sap_pressure_sw
+        -- NUM_SWITCHBOX outputs) -- this module no longer needs to know
+        -- whether the vehicle is in SAP or ECB mode.
+        brake_pressure_sw = stateless_in[3],
+        sap_pressure_sw = stateless_in[4],
+        -- direction arrives pre-resolved as -1/0/+1 from gates (main.sw-net's
+        -- `direction` SUBTRACT node), instead of two separate forward/
+        -- backward booleans.
+        direction = stateless_in[5],
         notch_pos = bits.notch_pos,
         controller_stop = bool(bits.controller_stop),
         regen_flag = bool(bits.regen_flag),
-        forward_signal = bool(bits.forward_signal),
-        backward_signal = bool(bits.backward_signal),
-        eb_signal = bool(bits.eb_signal),
     }
 end
 
--- SPEC §3.5 (EB / power-cut condition) + the brake-pressure half of §3.8.
+-- SPEC §3.5 (EB / power-cut condition).
 local function eb_and_brake_pressure(inp)
-    local direction = (inp.forward_signal and 1 or 0) - (inp.backward_signal and 1 or 0)
     local overspeed = math.abs(inp.speed) > OVERSPEED_THRESHOLD
-    local ecb_pressure_sw = inp.eb_signal and ECB_OFFSET_EB_ACTIVE or ECB_OFFSET_EB_INACTIVE
-    -- SAP_ECB_IS_SAP (live "SAP or ECB" property) selects between the
-    -- physical SAP sensor pressure and the ECB offset chain, matching
-    -- main.sw-net's brake_pressure_sw NUM_SWITCHBOX.
-    local brake_pressure_sw = SAP_ECB_IS_SAP and inp.bp_atm or ecb_pressure_sw
-    local brake_below_min = brake_pressure_sw < BRAKE_MIN_PRESSURE
+    local brake_below_min = inp.brake_pressure_sw < BRAKE_MIN_PRESSURE
     local power_cut = false -- provably dead, see README "Simplifications"
-    local eb_condition = inp.controller_stop or power_cut or (direction == 0) or overspeed or brake_below_min
-    return direction, eb_condition, ecb_pressure_sw, power_cut
+    return inp.controller_stop or power_cut or (inp.direction == 0) or overspeed or brake_below_min
 end
 
 -- SPEC §3.3 (notch processing) + §3.2's cam-position echo ("notch_fb").
@@ -552,11 +535,10 @@ local function notch_and_cam_feedback(inp, st, eb_condition)
     }
 end
 
--- SPEC §3.8 (regen-BC target chain, fresh every tick).
-local function brake_demand(inp, ecb_pressure_sw)
-    local ecb_sap_pressure = clamp(inp.sap_raw + (5 - ecb_pressure_sw) * 7, 0, 36) / 8 + 1
-    local sap_pressure_sw = SAP_ECB_IS_SAP and inp.sap_atm or ecb_sap_pressure
-    local regen_bc_target = -math.floor((sap_pressure_sw - 1) * 2) / 7.2
+-- SPEC §3.8 (regen-BC target chain, fresh every tick). sap_pressure_sw
+-- arrives pre-resolved from gates (see decode_inputs).
+local function brake_demand(inp)
+    local regen_bc_target = -math.floor((inp.sap_pressure_sw - 1) * 2) / 7.2
     local bc_target_below_min = regen_bc_target < BC_TARGET_MIN
     return {
         regen_bc_target = regen_bc_target,
@@ -687,9 +669,9 @@ function M.calculateTick(stateless_in, state_in)
     local st = M.decode_state(state_in)
     local inp = decode_inputs(stateless_in)
 
-    local direction, eb_condition, ecb_pressure_sw = eb_and_brake_pressure(inp)
+    local eb_condition = eb_and_brake_pressure(inp)
     local notch = notch_and_cam_feedback(inp, st, eb_condition)
-    local demand = brake_demand(inp, ecb_pressure_sw)
+    local demand = brake_demand(inp)
 
     -- Physics always uses OLD phase1/phase2/regen (breaks the physics <->
     -- state-machine cycle; see module header "Modeling rule").
@@ -697,7 +679,7 @@ function M.calculateTick(stateless_in, state_in)
         speed = inp.speed,
         vl = inp.catenary_voltage_sw,
         position_counter = st.position_counter,
-        direction = direction,
+        direction = inp.direction,
         notch_eff = notch.notch_eff,
         phase1 = st.phase1_latch,
         phase2 = st.phase2_latch,

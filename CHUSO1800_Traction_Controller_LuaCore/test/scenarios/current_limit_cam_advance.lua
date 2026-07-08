@@ -16,7 +16,7 @@ return function(h)
         current_below_limit_cap_counter = 0,
     })
     local above_limit_inputs = core.encode_stateless_in({
-        speed = 0, catenary_voltage_sw = 1500, notch_pos = 2, forward_signal = true,
+        speed = 0, catenary_voltage_sw = 1500, notch_pos = 2, direction = 1, brake_pressure_sw = 5,
     })
     for tick = 1, 30 do
         local _, ns = core.calculateTick(above_limit_inputs, state_a)
@@ -36,7 +36,7 @@ return function(h)
         current_below_limit_cap_counter = 0,
     })
     local below_limit_inputs = core.encode_stateless_in({
-        speed = 20, catenary_voltage_sw = 1500, notch_pos = 2, forward_signal = true,
+        speed = 20, catenary_voltage_sw = 1500, notch_pos = 2, direction = 1, brake_pressure_sw = 5,
     })
     local advanced_tick = nil
     for tick = 1, 30 do

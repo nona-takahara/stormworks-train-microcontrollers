@@ -31,7 +31,8 @@ return function(h)
         speed = 0,
         catenary_voltage_sw = 1500,
         notch_pos = 0,
-        forward_signal = true,
+        direction = 1,
+        brake_pressure_sw = 5,
     })
 
     local reached_zero_tick = nil

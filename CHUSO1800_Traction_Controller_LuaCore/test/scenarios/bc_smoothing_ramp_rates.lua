@@ -11,8 +11,12 @@ return function(h)
         position_counter = 3, phase1_latch = true, phase1_cap_counter = 6,
         OLD_I = 50, OLD_IF_A = 150, OLD_PHI = 0.03, bc_target_smooth = -1,
     })
+    -- sap_pressure_sw=1 makes regen_bc_target=0 (matching the manual
+    -- physics_tick cross-check call below), equivalent to the former
+    -- default sap_raw=0/eb_signal=false.
     local stateless_in = core.encode_stateless_in({
-        speed = 5, catenary_voltage_sw = 1500, notch_pos = 4, forward_signal = true,
+        speed = 5, catenary_voltage_sw = 1500, notch_pos = 4, direction = 1,
+        brake_pressure_sw = 5, sap_pressure_sw = 1,
     })
 
     for tick = 1, 5 do
@@ -39,7 +43,7 @@ return function(h)
     -- regen_bc_enable=true, i.e. regen_bc_sw=0, so the smoother climbs
     -- toward 0 from below at the +0.02 rate.
     local rise_state = core.zero_state()
-    local rise_inputs = core.encode_stateless_in({ forward_signal = true })
+    local rise_inputs = core.encode_stateless_in({ direction = 1, brake_pressure_sw = 5 })
     local prev = 0
     for tick = 1, 5 do
         local _, ns = core.calculateTick(rise_inputs, rise_state)
@@ -50,10 +54,13 @@ return function(h)
     end
 
     -- regen_bc_smooth falling ramp (-0.1/tick): regen_flag=true and a very
-    -- negative regen_bc_target (sap_raw=36, max) forces regen_bc_sw to sit
-    -- far below old-0.1, pinning the fall rate at exactly -0.1/tick.
+    -- negative regen_bc_target (sap_pressure_sw=5.5, equivalent to the
+    -- former sap_raw=36 max) forces regen_bc_sw to sit far below old-0.1,
+    -- pinning the fall rate at exactly -0.1/tick.
     local fall_state = core.zero_state()
-    local fall_inputs = core.encode_stateless_in({ forward_signal = true, regen_flag = true, sap_raw = 36 })
+    local fall_inputs = core.encode_stateless_in({
+        direction = 1, brake_pressure_sw = 5, regen_flag = true, sap_pressure_sw = 5.5,
+    })
     local prev_fall = 0
     for tick = 1, 5 do
         local _, ns = core.calculateTick(fall_inputs, fall_state)

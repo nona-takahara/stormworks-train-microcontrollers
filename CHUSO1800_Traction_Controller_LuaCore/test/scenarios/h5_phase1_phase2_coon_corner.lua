@@ -29,7 +29,8 @@ return function(h)
         speed = 1,
         catenary_voltage_sw = 1500,
         notch_pos = 3,
-        forward_signal = true,
+        direction = 1,
+        brake_pressure_sw = 5,
     })
 
     for tick = 1, 10 do
@@ -48,7 +49,8 @@ return function(h)
         speed = 20,
         catenary_voltage_sw = 1500,
         notch_pos = 3,
-        forward_signal = true,
+        direction = 1,
+        brake_pressure_sw = 5,
     })
 
     local resolved = false

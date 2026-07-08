@@ -38,7 +38,8 @@ return function(h)
             speed = speed,
             catenary_voltage_sw = 1500,
             notch_pos = 3,
-            forward_signal = true,
+            direction = 1,
+            brake_pressure_sw = 5,
         })
         local stateless_out, new_state = core.calculateTick(stateless_in, state)
         state = new_state

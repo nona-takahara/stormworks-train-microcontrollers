@@ -16,15 +16,19 @@ return function(h)
         OLD_PHI = 0.02,
     })
 
-    -- controller_stop=true triggers eb_condition; sap_raw=10 gives a nonzero
-    -- regen_bc_target so bcT's EB substitution is actually distinguishable
-    -- from a coincidental zero.
+    -- controller_stop=true triggers eb_condition; sap_pressure_sw=2.25
+    -- (equivalent to the former sap_raw=10, ECB, eb_signal=false) gives a
+    -- nonzero regen_bc_target so bcT's EB substitution is actually
+    -- distinguishable from a coincidental zero. direction=1/brake_pressure_sw=5
+    -- keep the OTHER two EB triggers inactive, isolating this test to
+    -- controller_stop specifically.
     local ebstateless = core.encode_stateless_in({
         speed = 5,
         catenary_voltage_sw = 1500,
-        sap_raw = 10,
+        sap_pressure_sw = 2.25,
+        brake_pressure_sw = 5,
         notch_pos = 3,
-        forward_signal = true,
+        direction = 1,
         controller_stop = true,
     })
 

@@ -20,8 +20,8 @@ return function(h)
         OLD_IF_A = 300, OLD_I = 1000,
     })
     local charge_inputs = core.encode_stateless_in({
-        speed = 5, catenary_voltage_sw = 1500, notch_pos = 0, forward_signal = true,
-        regen_flag = true, sap_raw = 10,
+        speed = 5, catenary_voltage_sw = 1500, notch_pos = 0, direction = 1, brake_pressure_sw = 5,
+        regen_flag = true, sap_pressure_sw = 2.25, -- equivalent to the former sap_raw=10 (ECB, eb_signal=false)
     })
     for tick = 1, 10 do
         local _, ns = core.calculateTick(charge_inputs, charge_state)
@@ -48,7 +48,7 @@ return function(h)
         position_counter = 5, phase1_latch = false, regen_delay_level = 100,
     })
     local idle_inputs = core.encode_stateless_in({
-        speed = 5, catenary_voltage_sw = 1500, notch_pos = 0, forward_signal = true,
+        speed = 5, catenary_voltage_sw = 1500, notch_pos = 0, direction = 1, brake_pressure_sw = 5,
     })
     for tick = 1, 10 do
         local _, ns = core.calculateTick(idle_inputs, discharge_state)
@@ -67,10 +67,11 @@ return function(h)
     -- Charged threshold: exactly 600 is charged, 599 is not -- observable
     -- via regen_bc_enable's effect on regen_bc_smooth (charged -> ramps
     -- toward 0 at +0.02/tick; not charged, with regen_flag=true and a very
-    -- negative regen_bc_target via sap_raw=36 -> ramps toward it at -0.1/tick).
+    -- negative regen_bc_target via sap_pressure_sw=5.5 (equivalent to the
+    -- former sap_raw=36) -> ramps toward it at -0.1/tick).
     local drift_inputs = core.encode_stateless_in({
-        speed = 5, catenary_voltage_sw = 1500, notch_pos = 0, forward_signal = true,
-        regen_flag = true, sap_raw = 36,
+        speed = 5, catenary_voltage_sw = 1500, notch_pos = 0, direction = 1, brake_pressure_sw = 5,
+        regen_flag = true, sap_pressure_sw = 5.5,
     })
     local charged_state = core.encode_state({
         position_counter = 5, phase1_latch = false, regen_delay_level = 600, regen_bc_smooth = -0.5,
