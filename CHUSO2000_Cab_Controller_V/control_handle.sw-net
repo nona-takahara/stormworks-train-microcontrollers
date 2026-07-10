@@ -1,23 +1,24 @@
 module control_handle
-  port in seat_input : composite
-  port in position_reset : boolean
-  port in eb_q : boolean
-  port in eb_not_q : boolean
-  port out mastercontroller_position : number
-  port out handle_neg_rise : boolean
-  port out center_ax_pos_rise : boolean
+  port in "seat_input" : composite
+  port in "position_reset" : boolean
+  port in "eb_q" : boolean
+  port in "eb_not_q" : boolean
+  port out "mastercontroller_position" : number
+  port out "handle_neg_rise" : boolean
+  port out "center_ax_pos_rise" : boolean
+  port out "handle_pos" : boolean # ハンドルをpositive方向に動かす信号
 
-  inst COMPOSITE_READ_NUMBER seat_handle_ax_read (channel=2) : composite=seat_input -> out=handle_ax # [W][S]軸
-  inst THRESHOLD handle_pos_thr (min=0.5, max=1) : value=handle_ax -> out=handle_pos
+  inst COMPOSITE_READ_NUMBER seat_handle_ax_read (channel=2) : composite="seat_input" -> out=handle_ax # [W][S]軸
+  inst THRESHOLD handle_pos_thr (min=0.5, max=1) : value=handle_ax -> out="handle_pos"
   inst THRESHOLD handle_neg_thr (min=-1, max=-0.5) : value=handle_ax -> out=handle_neg
-  inst PULSE handle_pos_rise_pulse (mode="rise") : a=handle_pos -> out=handle_pos_rise
-  inst PULSE handle_neg_rise_pulse (mode="rise") : a=handle_neg -> out=handle_neg_rise
+  inst PULSE handle_pos_rise_pulse (mode="rise") : a="handle_pos" -> out=handle_pos_rise
+  inst PULSE handle_neg_rise_pulse (mode="rise") : a=handle_neg -> out="handle_neg_rise"
 
   # 押し続け時のリピートパルス生成 (pos 側 = ノッチup方向) ブレーキ方向
-  inst CAPACITOR pos_hold_cap (charge_time=0.3, discharge_time=0) : enable=handle_pos -> out=pos_hold_cap_out
+  inst CAPACITOR pos_hold_cap (charge_time=0.3, discharge_time=0) : enable="handle_pos" -> out=pos_hold_cap_out
   inst BLINKER pos_hold_blink (on_time=0.1, off_time=0.1) : enable=pos_hold_cap_out -> out=pos_hold_blink_out
   inst PULSE pos_hold_blink_pulse (mode="both") : a=pos_hold_blink_out -> out=pos_hold_blink_tick
-  inst AND pos_hold_tick_and : a=pos_hold_blink_tick, b=handle_pos -> out=pos_hold_tick
+  inst AND pos_hold_tick_and : a=pos_hold_blink_tick, b="handle_pos" -> out=pos_hold_tick
 
   # 押し続け時のリピートパルス生成 (neg 側 = ノッチdown方向) 加速方向
   inst CAPACITOR neg_hold_cap (charge_time=0.3, discharge_time=0) : enable=handle_neg -> out=neg_hold_cap_out
@@ -26,9 +27,9 @@ module control_handle
   inst AND neg_hold_tick_and : a=neg_hold_blink_tick, b=handle_neg -> out=neg_hold_tick
 
   # ニュートラル方向への移動
-  inst COMPOSITE_READ_NUMBER seat_center_ax_read (channel=1) : composite=seat_input -> out=center_ax # [A][D]軸
+  inst COMPOSITE_READ_NUMBER seat_center_ax_read (channel=1) : composite="seat_input" -> out=center_ax # [A][D]軸
   inst THRESHOLD center_ax_pos_thr (min=0.5, max=1) : value=center_ax -> out=center_ax_pos   # [D]
-  inst PULSE center_ax_pos_rise_pulse (mode="rise") : a=center_ax_pos -> out=center_ax_pos_rise # [D]パルス
+  inst PULSE center_ax_pos_rise_pulse (mode="rise") : a=center_ax_pos -> out="center_ax_pos_rise" # [D]パルス
 
   inst CAPACITOR center_hold_cap (charge_time=0.3, discharge_time=0) : enable=center_ax_pos -> out=center_hold_cap_out
   inst BLINKER center_hold_blink (on_time=0.1, off_time=0.1) : enable=center_hold_cap_out -> out=center_hold_blink_out
@@ -36,20 +37,20 @@ module control_handle
   inst AND center_hold_tick_and : a=center_hold_blink_tick, b=center_ax_pos -> out=center_hold_tick
 
   # ニュートラル方向判定、移動パルス生成
-  inst LESS_THAN notch_is_neg : a=mastercontroller_position -> out=notch_neg
-  inst GREATER_THAN notch_is_pos : a=mastercontroller_position -> out=notch_pos
-  inst BOOL_FUNC_4 center_notch_up_and (expression="(x|y)&z") : x=center_hold_tick, y=center_ax_pos_rise, z=notch_neg -> out=center_notch_up
-  inst BOOL_FUNC_4 center_notch_dn_and (expression="(x|y)&z") : x=center_hold_tick, y=center_ax_pos_rise, z=notch_pos -> out=center_notch_dn
+  inst LESS_THAN notch_is_neg : a="mastercontroller_position" -> out=notch_neg
+  inst GREATER_THAN notch_is_pos : a="mastercontroller_position" -> out=notch_pos
+  inst BOOL_FUNC_4 center_notch_up_and (expression="(x|y)&z") : x=center_hold_tick, y="center_ax_pos_rise", z=notch_neg -> out=center_notch_up
+  inst BOOL_FUNC_4 center_notch_dn_and (expression="(x|y)&z") : x=center_hold_tick, y="center_ax_pos_rise", z=notch_pos -> out=center_notch_dn
 
   # ノッチカウンタ up/down 合成
-  inst BOOL_FUNC_4 notch_dn_src (expression="x|y|z|w") : x=pos_hold_tick, y=handle_pos_rise, z=eb_not_q, w=center_notch_dn -> out=notch_dn
-  inst BOOL_FUNC_4 notch_up_src (expression="(x|y|z)&w") : x=neg_hold_tick, y=handle_neg_rise, z=center_notch_up, w=eb_q -> out=notch_up
+  inst BOOL_FUNC_4 notch_dn_src (expression="x|y|z|w") : x=pos_hold_tick, y=handle_pos_rise, z="eb_not_q", w=center_notch_dn -> out=notch_dn
+  inst BOOL_FUNC_4 notch_up_src (expression="(x|y|z)&w") : x=neg_hold_tick, y="handle_neg_rise", z=center_notch_up, w="eb_q" -> out=notch_up
 
   # ニュートラルへ一発で飛ばす操作
-  inst OR eb_set_or : a=seat_eb_force, b=center_ax_neg -> out=eb_set_src # 強制ニュートラル操作
-  inst COMPOSITE_READ_BOOLEAN seat_eb_force_read (channel=31) : composite=seat_input -> out=seat_eb_force # 強制ニュートラル操作
+  inst OR eb_set_or : a=seat_eb_force, b=center_ax_neg -> out="position_reset" # 強制ニュートラル操作
+  inst COMPOSITE_READ_BOOLEAN seat_eb_force_read (channel=31) : composite="seat_input" -> out=seat_eb_force # 強制ニュートラル操作
   inst THRESHOLD center_ax_neg_thr (min=-1, max=-0.5) : value=center_ax -> out=center_ax_neg # [A]。軸操作から移動
 
   # マスコン(物理)位置。min, maxの値はミス？
-  inst COUNTER notch_counter (reset_value=0, increment=1, min=-4, max=7, m=1) : down=notch_dn, reset=eb_set_src, up=notch_up -> out=mastercontroller_position
+  inst COUNTER notch_counter (reset_value=0, increment=1, min=-4, max=7, m=1) : down=notch_dn, reset="position_reset", up=notch_up -> out="mastercontroller_position"
 end

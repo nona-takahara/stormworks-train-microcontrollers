@@ -32,7 +32,7 @@ module main
   port in "Rolling Stock Settings" : composite
 
   # マスコン(物理)位置。-4が加速最大、7がブレーキ最大
-  use ch.control_handle handle : seat_input="Seat Input", position_reset=eb_set_src, eb_q=eb_q, eb_not_q=eb_not_q -> mastercontroller_position=notch, handle_neg_rise=handle_neg_rise, center_ax_pos_rise=center_ax_pos_rise
+  use ch.control_handle handle : seat_input="Seat Input", position_reset=eb_set_src, eb_q=eb_q, eb_not_q=eb_not_q -> mastercontroller_position=notch, handle_neg_rise=handle_neg_rise, center_ax_pos_rise=center_ax_pos_rise, handle_pos=handle_pos
 
   # ================================================================
   # 非常ブレーキ関係
