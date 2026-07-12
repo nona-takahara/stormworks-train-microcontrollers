@@ -182,9 +182,10 @@ lua test/run_all.lua
   が変更されていないことの受動的な再確認にもなる）
 - SPEC.md §3.6 状態遷移図の完全な走査
 - SPEC.md記載のコーナーケース（H4/H5/H6/H7）の検証
-- `deploy/chuso1800_deploy.lua`（実際に生成される単一ファイル）を
-  `loadfile` して、ブリッジの変換（後述）と `onTick()` の多tick実行が
-  破綻しないことを検証（`state_sync_bridge.lua`）
+- `deploy/main.lua`（後述）をサブプロセスで実行し、ブリッジの変換と
+  `onTick()` の多tick実行が破綻しないことを検証（`state_sync_bridge.lua`。
+  `main.lua`の`dofile`が作業ディレクトリ相対のため、テスト本体とは別
+  プロセス・別カレントディレクトリで動かす必要がある）
 
 ## デプロイ（実機組み込み用スクリプト）
 
@@ -202,7 +203,7 @@ lua test/run_all.lua
 `STATE_TIMERS_LAYOUT`）こそ元から32bit整数だが、スロット3-7
 （`OLD_I`/`OLD_IF_A`/`OLD_PHI`/`regen_bc_smooth`/`bc_target_smooth`）は
 生のLua doubleであり、このままでは`state_sync.lua`の想定と噛み合わない。
-`deploy/bridge.lua`がこの差を吸収する：スロット3-7を`state_sync.lua`自身の
+`deploy/main.lua`がこの差を吸収する：スロット3-7を`state_sync.lua`自身の
 `f2i`/`i2f`（float32のビットパターンをuint32として運ぶ、`pack_bits`と同じ
 `string.pack`/`string.unpack`の応用）でスロット境界だけ変換する。
 `src/chuso1800_core.lua`自体はこの変換を一切知らず、内部では常にフル
@@ -211,24 +212,27 @@ float32への丸めはこの境界を1回通るときだけ発生し、これは
 composite `number` チャンネル自体が元々float32精度である以上、実機配線
 すれば避けられない制約を明示化したものにすぎない。
 
-`deploy/build.sh` を実行すると、`../../lib/state_sync.lua` +
-`src/chuso1800_core.lua`（`require`が無いため、`local core = (function()
-... end)()`でラップしてインライン化）+ `deploy/bridge.lua` を連結した
-`deploy/chuso1800_deploy.lua` が生成される。これがStormworksの単一LUA
-ノードへそのまま貼り付けられる完成品。3つのソースいずれかを変更したら
-再生成すること。生成物自体もリポジトリにコミットしてあるので、
-`build.sh`を実行しなくてもコピーはできる。
+`deploy/main.lua`は単一のフラットなファイルで、`dofile("../../lib/state_sync.lua")`
+／`dofile("../src/chuso1800_core.lua")`でこの2ファイルをその場に展開する
+形を取る（Stormworksに`require`/`dofile`は無いが、実機投入用の最終
+フラット化は開発者側のビルドツール`storm-lua-minify`が`dofile(...)`呼び出し
+をリテラル文字列パスとして検出しその場に展開する形で行う想定のため、
+このリポジトリ側では独自のビルドスクリプトや生成済み成果物は持たない）。
+`main.lua`の`dofile`呼び出しは`deploy/`ディレクトリを作業ディレクトリと
+して実行する前提の相対パスなので、`deploy/`内から実行すること
+（`lua`単体でも、`storm-lua-minify`でも同様）。
 
 ## 今後の実配線について（本プロトタイプのスコープ外）
 
 `main.sw-net` へ実際に組み込む場合、以下が必要になる（今回は着手していない）：
 
-1. `LUA current_sim` ノードの `script_ref` を、`deploy/chuso1800_deploy.lua`
-   の内容を貼り付けたスクリプトへ差し替える。8＋8本のスロットは、
-   上記「デプロイ」節の通り`state_sync.lua`が2組のComposite Read/Write
-   （ステート用は自己ループ、ステートレス入出力用は実際のゲートと接続）
-   でパック／アンパックする（32チャンネル全体の配線規約は`lib/state_sync.lua`
-   冒頭コメント、`deploy/bridge.lua`のコメント参照）。
+1. `LUA current_sim` ノードの `script_ref` を、`deploy/main.lua`を
+   `storm-lua-minify`でフラット化した最終スクリプトへ差し替える。
+   8＋8本のスロットは、上記「デプロイ」節の通り`state_sync.lua`が2組の
+   Composite Read/Write（ステート用は自己ループ、ステートレス入出力用は
+   実際のゲートと接続）でパック／アンパックする（32チャンネル全体の
+   配線規約は`lib/state_sync.lua`冒頭コメント、`deploy/main.lua`のコメント
+   参照）。
 2. `catenary_voltage_sw`／`brake_pressure_sw`／`sap_pressure_sw`／
    `direction` を新Luaノードへの正式な入力として配線する（いずれも既存
    ノードの出力をそのまま使える）。これらの解決に使う `sap_ecb_toggle`／

@@ -207,20 +207,24 @@
   （`OLD_I`/`OLD_IF_A`/`OLD_PHI`/`regen_bc_smooth`/`bc_target_smooth`）は
   生のLua doubleであり、このままでは`state_sync.lua`が想定する形と
   一致しない。
-- **現在の設計**：新規ディレクトリ`deploy/`を追加。
-  - `deploy/bridge.lua`：`state_sync.lua`が呼ぶ生グローバル関数
-    `calculateTick(stateless_in, state_in)`を実装するブリッジ。スロット
-    1-2は無変換で素通し、スロット3-7は`state_sync.lua`自身が定義する
-    `f2i`/`i2f`（float32のビットパターンをuint32として運ぶ、
-    `pack_bits`/`unpack_bits`と同じ`string.pack`/`string.unpack`の応用）で
-    このスロット境界だけ変換する。`src/chuso1800_core.lua`自体はこの変換
-    を一切知らず、内部では常にフル精度のdoubleで計算する（既存テスト
-    スイートは無変更・無影響）。
-  - `deploy/build.sh`：`lib/state_sync.lua` + `src/chuso1800_core.lua`
-    （`require`が無いため`local core = (function() ... end)()`でラップ
-    してインライン化） + `deploy/bridge.lua` を連結し、
-    `deploy/chuso1800_deploy.lua`（Stormworksの単一LUAノードへそのまま
-    貼り付けられる完成品）を生成する。
+- **現在の設計**：新規ディレクトリ`deploy/`に単一ファイル`deploy/main.lua`
+  を追加。`state_sync.lua`が呼ぶ生グローバル関数
+  `calculateTick(stateless_in, state_in)`を実装するブリッジで、スロット
+  1-2は無変換で素通し、スロット3-7は`state_sync.lua`自身が定義する
+  `f2i`/`i2f`（float32のビットパターンをuint32として運ぶ、
+  `pack_bits`/`unpack_bits`と同じ`string.pack`/`string.unpack`の応用）で
+  このスロット境界だけ変換する。`src/chuso1800_core.lua`自体はこの変換
+  を一切知らず、内部では常にフル精度のdoubleで計算する（既存テスト
+  スイートは無変更・無影響）。`../../lib/state_sync.lua`・
+  `../src/chuso1800_core.lua`は`dofile(...)`で読み込む（`require`が無い
+  Stormworks向けの実機フラット化は、開発者側のビルドツール
+  `storm-lua-minify`が`dofile(...)`のリテラル文字列パスをその場に展開する
+  形で行う想定のため、こちら側で独自のビルドスクリプトや生成済み
+  成果物は持たない ─ 当初は`deploy/build.sh`で連結した単一ファイル
+  `deploy/chuso1800_deploy.lua`を生成・コミットしていたが、
+  ユーザー指摘「スクリプト生成はstorm-lua-minifyが実施するので埋め込みは
+  dofileを使ってほしい。コード規模も無駄に大きい」を受けて撤回し、この
+  形に置き換えた）。
 - **理由**：float32への丸めは`f2i`/`i2f`を通るスロット境界で1回だけ発生する。
   これは新たに導入した損失ではなく、Stormworksのcomposite `number`
   チャンネル自体が元々float32精度である以上、実機配線すれば避けられない
@@ -232,6 +236,7 @@
   ─ 標準Luaでのテスト容易性という当初からの一次要件（README「契約」）を
   損なわずに済む、境界だけの変換の方が影響範囲が小さいため。
 - **影響箇所**：`lib/state_sync.lua`（タイポ修正のみ）、新規
-  `deploy/bridge.lua`・`deploy/build.sh`・`deploy/chuso1800_deploy.lua`、
-  `test/scenarios/state_sync_bridge.lua`、README.md「デプロイ」節・
-  「今後の実配線について」1項。
+  `deploy/main.lua`、`test/scenarios/state_sync_bridge.lua`（`main.lua`の
+  `dofile`が作業ディレクトリ相対のため、サブプロセスで`deploy/`から実行して
+  検証する形を取る）、README.md「デプロイ」節・「今後の実配線について」
+  1項。
