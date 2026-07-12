@@ -20,7 +20,7 @@ s2 = {0,0,0,0,0,0,0,0} -- 2tick前. integerで保存
 
 function onTick()
   local i0, i1, o2_fb, s2_fb = {}, {}, {}, {}
-  local o0, s0
+  local o0, s0, o1
   for i = 1, 8 do
     i0[i] = input.getNumber(i)
     i1[i] = input.getNumber(i + 8)
@@ -36,10 +36,6 @@ function onTick()
 
   -- もし不一致ならば、入力を正として1tick前のステートを再計算
   if not eq then
-    for i = 1, 8 do
-      inputs[i]=input.getNumber(i+8)
-    end
-    local o1
     o1, s1 = calculateTick(i1, s2_fb)
   end
 
@@ -54,8 +50,6 @@ function onTick()
   end
 
   -- ステートを次tick用に順繰り
-  local ts
-  ts = s1
+  s2 = s1
   s1 = s0
-  s2 = ts
 end
