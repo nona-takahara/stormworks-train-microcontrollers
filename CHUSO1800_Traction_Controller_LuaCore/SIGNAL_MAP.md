@@ -20,9 +20,13 @@
 tick N+1の `state_in` として戻ってくる。各スロットは次のどちらか：
 
 - **生のdouble** ─ 1スロット1信号。
-- **パック済み32bit整数** ─ `pack_bits(layout, fields)` で生成し
-  `unpack_bits(layout, value)` で分解する。複数のbool・小整数を1スロットに
-  同居させる（両関数は `src/chuso1800_core.lua` に直接書かれている）。
+- **パック済み32bit整数** ─ `to_u32`/`get_bits`/`put_bits`/`get_bit`/`put_bit`
+  （いずれも `src/chuso1800_core.lua` に直接書かれている）でビット位置ごとに
+  直接組み立て・分解する。複数のbool・小整数を1スロットに同居させる。
+  当初は汎用の「レイアウトテーブル＋`pack_bits(layout, fields)`」方式
+  だったが、フィールド名の文字列がstorm-lua-minifyで短縮できず
+  Stormworksの8192文字制限を圧迫していたため、ビット位置（shift/width）を
+  直接指定する方式に置き換えた（経緯は `DESIGN_LOG.md` #13）。
 
 ---
 
@@ -48,8 +52,8 @@ tick N+1の `state_in` として戻ってくる。各スロットは次のどち
 
 | slot | 内容 | 種別 |
 |---|---|---|
-| 1 | カム段＋3個のSRラッチ＋2個の周期カウンタ | パック済み `STATE_LATCHES_LAYOUT` |
-| 2 | `regen_delay`レベル＋3個のデバウンスカウンタ | パック済み `STATE_TIMERS_LAYOUT` |
+| 1 | カム段＋3個のSRラッチ＋2個の周期カウンタ | パック済み STATE_LATCHES_LAYOUT |
+| 2 | `regen_delay`レベル＋3個のデバウンスカウンタ | パック済み STATE_TIMERS_LAYOUT |
 | 3 | `OLD_I`（前tickの電機子電流） | 準ステート・生double |
 | 4 | `OLD_IF_A`（前tickの界磁電流） | 準ステート・生double |
 | 5 | `OLD_PHI`（前tickの磁束） | 準ステート・生double |
@@ -65,7 +69,7 @@ tick N+1の `state_in` として戻ってくる。各スロットは次のどち
 | 2 | `W` | 生double |
 | 3 | `bc_target_smooth`（平滑化後） | 生double |
 | 4 | `bcT` | 生double |
-| 5 | カム/フェーズ状態など8bool | パック済み `STATUS_BITS_LAYOUT` |
+| 5 | カム/フェーズ状態など8bool | パック済み STATUS_BITS_LAYOUT |
 | 6 | 予備（常に0） | ─ |
 | 7 | 予備（常に0） | ─ |
 | 8 | 予備（常に0） | ─ |
@@ -74,7 +78,13 @@ tick N+1の `state_in` として戻ってくる。各スロットは次のどち
 
 ## ステートスロットのレイアウト
 
-### `state_in[1]`／`state_out[1]` — `STATE_LATCHES_LAYOUT`（32bit中17bit使用）
+STATE_LATCHES_LAYOUT／STATE_TIMERS_LAYOUT／STATUS_BITS_LAYOUTという名称は
+以下、各ビット群を指す**説明用のラベル**であり、`src/chuso1800_core.lua`
+内に同名のLua識別子（テーブル）としては存在しない（`M.decode_state`/
+`M.encode_state`/`M.decode_stateless_out`内でビット位置を直接指定して
+組み立て・分解している。経緯は `DESIGN_LOG.md` #13）。
+
+### `state_in[1]`／`state_out[1]` — STATE_LATCHES_LAYOUT（32bit中17bit使用）
 
 | 順序 | フィールド | bit数 | 範囲 |
 |---|---|---|---|
@@ -102,7 +112,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 `field_current_excess_*` は旧名 `regen_warning_*`（`main.sw-net`・`SPEC.md`と
 合わせて改名。経緯は `DESIGN_LOG.md` #10）。
 
-### `state_in[2]`／`state_out[2]` — `STATE_TIMERS_LAYOUT`（32bit中19bit使用）
+### `state_in[2]`／`state_out[2]` — STATE_TIMERS_LAYOUT（32bit中19bit使用）
 
 | 順序 | フィールド | bit数 | 範囲 |
 |---|---|---|---|
@@ -174,7 +184,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 | 2 | `W` | 出力ポート `W` へ直結 |
 | 3 | `bc_target_smooth` | `BC target [atm]` 出力系列へ |
 | 4 | `bcT` | 既存の（ラベルは紛らわしいが変更していない）`speed_display`／Momelink ch25 経路へ |
-| 5 | `STATUS_BITS_LAYOUT` のパック済みビットフィールド（32bit中8bit、下記参照） | RSS／Momelink側のゲート |
+| 5 | STATUS_BITS_LAYOUT のパック済みビットフィールド（32bit中8bit、下記参照） | RSS／Momelink側のゲート |
 | 6-8 | 予備（0） | |
 
 元 `current_src_mux` チャンネルとの対応：
@@ -187,7 +197,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
   に置き換わっている ─ `accel` の唯一の用途だった `bc_target_raw` のEMA計算が
   本モジュールに内部化された（分類(b)）ため。
 
-### `STATUS_BITS_LAYOUT`（8bit）
+### STATUS_BITS_LAYOUT（8bit）
 
 | 順序 | フィールド | bit数 | 現状ゲート側で消費されているか |
 |---|---|---|---|
@@ -228,7 +238,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 
 2組の `BLINKER`+`PULSE(rise)` ペアは、それぞれ単一の経過tickカウンタ
 （`traction_advance_counter`／`field_current_excess_counter`）として
-表現している ─ 意味論・挙動差は上記 `STATE_LATCHES_LAYOUT` 節を参照
+表現している ─ 意味論・挙動差は上記 STATE_LATCHES_LAYOUT 節を参照
 （経緯は `DESIGN_LOG.md` #7）。
 
 意図的にステートとして持たせていないもの：
@@ -256,7 +266,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 
 `regen_delay_cap`（分類(a)の`regen_delay_level`）はここには**含まれない**
 ─ 平滑化用の自己参照ではなく、単純な充放電タイマーなのでパック済み整数
-フィールド（`STATE_TIMERS_LAYOUT`）に収めている。
+フィールド（STATE_TIMERS_LAYOUT）に収めている。
 
 ### 分類(c) — ステートレス（毎tick再計算）
 

@@ -20,14 +20,14 @@
 local core = require("chuso1800_core")
 
 return function(h)
-    local state = core.encode_state({
+    local state = h.encode_state(core, {
         position_counter = 2,
         phase1_latch = false,
         phase2_latch = false,
         regen_latch = false,
     })
 
-    local idle_inputs = core.encode_stateless_in({
+    local idle_inputs = h.encode_stateless_in(core, {
         speed = 0,
         catenary_voltage_sw = 1500,
         notch_pos = 0,
@@ -39,7 +39,7 @@ return function(h)
     for tick = 1, 400 do
         local stateless_out, new_state = core.calculateTick(idle_inputs, state)
         state = new_state
-        local st = core.decode_state(state)
+        local st = h.decode_state(core, state)
         h.assert_false(st.phase1_latch, "stays idle (phase1) tick " .. tick)
         h.assert_false(st.phase2_latch, "stays idle (phase2) tick " .. tick)
         h.assert_false(st.regen_latch, "stays idle (regen) tick " .. tick)
@@ -56,7 +56,7 @@ return function(h)
     for tick = 1, 50 do
         local stateless_out, new_state = core.calculateTick(idle_inputs, state)
         state = new_state
-        local st = core.decode_state(state)
+        local st = h.decode_state(core, state)
         h.assert_true(st.position_counter == 0 or st.position_counter == 1,
             "cam stays homed (no overshoot) tick " .. tick .. ", got " .. tostring(st.position_counter))
     end

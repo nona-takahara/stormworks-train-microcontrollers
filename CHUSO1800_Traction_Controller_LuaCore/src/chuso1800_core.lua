@@ -43,11 +43,13 @@
 -- CHUSO1800_Traction_Controller/scripts/n409.lua -- that file is NOT modified;
 -- test/scenarios/physics_regression_vs_n409.lua checks numeric parity.
 --
--- This file is entirely self-contained (no `require`): Stormworks' Lua
--- sandbox has no module loader, so this whole file must be pastable
--- directly into a single Stormworks LUA node as-is. The bit-packing helpers
--- below (pack_bits/unpack_bits) are a plain string.pack("I4",...)/
--- string.unpack("I4",...) implementation inlined here for that reason.
+-- This file makes no `require`/`dofile` calls of its own: it is `require`d
+-- by deploy/main.lua (see DESIGN_LOG.md #12/#13) for actual Stormworks
+-- deployment, and `require`d directly by the plain-`lua` test suite. The
+-- bit-field helpers below (to_u32/get_bits/put_bits) are a plain
+-- string.pack("I4",...)/string.unpack("I4",...) implementation inlined
+-- here so this file has no dependency on anything else to be tested
+-- standalone.
 
 local M = {}
 
@@ -135,37 +137,6 @@ local REGEN_DELAY_CHARGE_STEP = REGEN_DELAY_FULL // REGEN_DELAY_CHARGE_TICKS -- 
 local REGEN_DELAY_DISCHARGE_STEP = 1
 
 --------------------------------------------------------------------------
--- Bit layouts (must match SIGNAL_MAP.md exactly)
---------------------------------------------------------------------------
-
-M.STATE_LATCHES_LAYOUT = {
-    { name = "position_counter",              bits = 5 }, -- 0-20
-    { name = "phase1_latch",                  bits = 1 },
-    { name = "phase2_latch",                  bits = 1 },
-    { name = "regen_latch",                   bits = 1 },
-    { name = "traction_advance_counter",      bits = 4 }, -- 0-12, periodic_pulse_step
-    { name = "field_current_excess_counter",         bits = 5 }, -- 0-30, periodic_pulse_step
-}
-
-M.STATE_TIMERS_LAYOUT = {
-    { name = "regen_delay_level",                 bits = 10 }, -- 0-600, see REGEN_DELAY_* constants
-    { name = "phase1_cap_counter",                bits = 3 },  -- 0-6
-    { name = "phase2_cap_counter",                bits = 3 },  -- 0-6
-    { name = "current_below_limit_cap_counter",   bits = 3 },  -- 0-6
-}
-
-M.STATUS_BITS_LAYOUT = {
-    { name = "cam_pulse",               bits = 1 },
-    { name = "phase1_latch",            bits = 1 },
-    { name = "phase2_latch",            bits = 1 },
-    { name = "regen_latch",             bits = 1 },
-    { name = "notch_ge1",               bits = 1 },
-    { name = "low_bc_with_regen_flag",  bits = 1 },
-    { name = "field_current_excess_cond",      bits = 1 },
-    { name = "power_cut",               bits = 1 }, -- always 0, see README "Simplifications"
-}
-
---------------------------------------------------------------------------
 -- Small helpers
 --------------------------------------------------------------------------
 
@@ -175,46 +146,41 @@ local function clamp(x, lo, hi)
     return x
 end
 
--- Bit packing: several small integer/boolean fields into one 32-bit slot
--- value. `layout` is an ordered list of { name = string, bits = 1..32 };
--- layout[1] occupies the lowest bits. The 32-bit boundary is enforced by
--- round-tripping through string.pack("I4",...)/string.unpack("I4",...) so
--- overflow wraps like a real 32-bit unsigned value instead of silently
--- growing past what a single slot can hold.
-local function pack_bits(layout, fields)
-    local acc = 0
-    local shift = 0
-    for _, field in ipairs(layout) do
-        local width = field.bits
-        local max = (1 << width) - 1
-        local raw = fields[field.name] or 0
-        if type(raw) == "boolean" then
-            raw = raw and 1 or 0
-        end
-        raw = math.floor(raw)
-        if raw < 0 then raw = 0 end
-        if raw > max then raw = max end
-        acc = acc | (raw << shift)
-        shift = shift + width
-    end
-    return string.unpack("I4", string.pack("I4", acc))
+-- Bit-field helpers for the packed state/status slots (bit layout is
+-- documented in SIGNAL_MAP.md, not restated as a Lua table here -- see
+-- DESIGN_LOG.md #13 for why). `to_u32` enforces the 32-bit boundary by
+-- round-tripping through string.pack("I4",...)/string.unpack("I4",...), so
+-- overflow wraps like a real 32-bit unsigned value; `get_bits`/`put_bits`
+-- then extract/build individual fields by plain shift+mask, addressed by
+-- bit position instead of by name. (state_sync.lua's own f2i/i2f use the
+-- same string.pack/string.unpack round-trip technique for a different
+-- purpose -- float32 bit-reinterpretation, not integer field packing --
+-- so they aren't reusable here directly, but this file must stay
+-- self-contained regardless: it's `require`d standalone by the test suite
+-- with no state_sync.lua in scope.)
+local function to_u32(value)
+    return string.unpack("I4", string.pack("I4", math.floor(value or 0) & 0xFFFFFFFF))
 end
 
-local function unpack_bits(layout, value)
-    local acc = string.unpack("I4", string.pack("I4", math.floor(value or 0)))
-    local fields = {}
-    local shift = 0
-    for _, field in ipairs(layout) do
-        local width = field.bits
-        local mask = (1 << width) - 1
-        fields[field.name] = (acc >> shift) & mask
-        shift = shift + width
-    end
-    return fields
+local function get_bits(acc, shift, width)
+    return (acc >> shift) & ((1 << width) - 1)
 end
 
-local function bool(intval)
-    return intval ~= 0
+-- Single-bit field, returned as a boolean directly (most fields in
+-- state_in[1]/[2] and stateless_out[5] are 1-bit latches/flags) -- shorter
+-- at each call site than get_bits(acc, shift, 1) ~= 0.
+local function get_bit(acc, shift)
+    return (acc >> shift) & 1 ~= 0
+end
+
+local function put_bits(value, shift, width)
+    return (math.floor(value or 0) & ((1 << width) - 1)) << shift
+end
+
+-- Counterpart to get_bit: packs a boolean directly, shorter at each call
+-- site than put_bits(b and 1 or 0, shift, 1).
+local function put_bit(b, shift)
+    return (b and 1 or 0) << shift
 end
 
 -- Reset-priority SR latch (SPEC.md §0.1).
@@ -317,45 +283,43 @@ local function calc_current_phi(Vt, n, RpN, pF, iF_a, seed)
     return i, calc_phi(calc_iF(pF, i, iF_a))
 end
 
--- physics_tick: byte-for-byte port of n409.lua's onTick body. `p` fields
--- mirror the original sim_input composite channels / traction_status_bool:
---   p.speed, p.vl (=catenary_voltage_sw), p.position_counter (OLD cam),
---   p.direction, p.notch_eff, p.regen_bc_smooth_seed (OLD, ch7),
---   p.regen_bc_target (fresh, ch8), p.phase1/p.phase2/p.regen (OLD latches),
---   p.notch_ge1, p.low_bc_with_regen_flag (fresh bools),
---   p.OLD_I, p.OLD_IF_A, p.OLD_PHI (OLD physics quasi-state).
-function M.physics_tick(p)
-    local rpm = p.speed * 9.55 * GEAR_RATIO / WHEEL_R
-    local vl = p.vl
-    local notch = p.position_counter + 1 -- n409.lua's "notch" var is actually cam-position+1
-    local direction = p.direction
+-- physics_tick: byte-for-byte port of n409.lua's onTick body. Positional
+-- params mirror the original sim_input composite channels /
+-- traction_status_bool, in this order: speed, vl (=catenary_voltage_sw),
+-- position_counter (OLD cam), direction, notch_eff, phase1, phase2, regen
+-- (OLD latches), notch_ge1, low_bc_with_regen_flag (fresh bools),
+-- regen_bc_smooth_seed (OLD, ch7), regen_bc_target (fresh, ch8), OLD_I,
+-- OLD_IF_A, OLD_PHI (OLD physics quasi-state). Returns: motor_current,
+-- back_emf, accel, W, iF_a, bcT, OLD_I, OLD_IF_A, OLD_PHI (new quasi-state).
+function M.physics_tick(speed, vl, position_counter, direction, notch_eff, phase1, phase2, regen,
+    notch_ge1, low_bc_with_regen_flag, regen_bc_smooth_seed, regen_bc_target, OLD_I, OLD_IF_A, OLD_PHI)
+    local rpm = speed * 9.55 * GEAR_RATIO / WHEEL_R
+    local notch = position_counter + 1 -- n409.lua's "notch" var is actually cam-position+1
     local res = 100000
     local srsmtr = 4
     local iF_a = 150
     local target_i = NEWTON_SEED
 
-    if (not p.phase1) and (not p.phase2) then vl = 0 end
-    if p.phase1 then srsmtr = 8 end
-    if p.phase2 and notch == 1 then srsmtr = 4 end
+    if (not phase1) and (not phase2) then vl = 0 end
+    if phase1 then srsmtr = 8 end
+    if phase2 and notch == 1 then srsmtr = 4 end
 
-    local OLD_I, OLD_IF_A, OLD_PHI = p.OLD_I, p.OLD_IF_A, p.OLD_PHI
-
-    if p.regen then
-        if p.low_bc_with_regen_flag then
+    if regen then
+        if low_bc_with_regen_flag then
             local oldtrq = direction * (MOT_CTRL * 9.55 * K * OLD_PHI * OLD_I * GEAR_RATIO * 0.99 / WHEEL_R / WEIGHT)
-            iF_a = OLD_IF_A + (oldtrq - p.regen_bc_smooth_seed) * 20
+            iF_a = OLD_IF_A + (oldtrq - regen_bc_smooth_seed) * 20
             iF_a = iF_a * math.min(1, (470 / (K * math.abs(rpm))) / calc_phi(iF_a + OLD_I * 0.15))
         else
-            if p.notch_ge1 and p.notch_eff <= 3 then target_i = OLD_IF_A end
-            if not p.notch_ge1 then target_i = 0 end
+            if notch_ge1 and notch_eff <= 3 then target_i = OLD_IF_A end
+            if not notch_ge1 then target_i = 0 end
             if target_i == 0 then target_i = math.max(math.min(0, OLD_I + 20), OLD_I - 20) end
             iF_a = OLD_IF_A + (OLD_I - target_i) * 0.1
         end
     else
         target_i = OLD_IF_A
-        if p.notch_eff == 0 then target_i = 0 end
+        if notch_eff == 0 then target_i = 0 end
         iF_a = OLD_IF_A + (OLD_I - target_i) * 0.1
-        if p.notch_eff ~= 0 and iF_a > 180 then iF_a = 180 end
+        if notch_eff ~= 0 and iF_a > 180 then iF_a = 180 end
     end
 
     if srsmtr == 8 then res = SR[notch] end
@@ -367,207 +331,168 @@ function M.physics_tick(p)
     if vl == 0 then i = 0; phi = 0 end
 
     local trqN = 9.55 * K * phi * i
-    local bcT = math.min(direction * MOT_CTRL * trqN * GEAR_RATIO / WHEEL_R / WEIGHT, 0) - p.regen_bc_target
+    local bcT = math.min(direction * MOT_CTRL * trqN * GEAR_RATIO / WHEEL_R / WEIGHT, 0) - regen_bc_target
     if bcT < 0.01 and i < 0 then bcT = 0 end
 
-    return {
-        motor_current = i,
-        back_emf = K * phi * rpm,
-        accel = MOT_CTRL * trqN * GEAR_RATIO * 0.99 / WHEEL_R / WEIGHT,
-        W = vl * i * (MOT_CTRL / srsmtr) * 2,
-        iF_a = iF_a,
-        bcT = bcT,
-        OLD_I = i,
-        OLD_IF_A = iF_a,
-        OLD_PHI = phi,
-    }
+    return i, K * phi * rpm, MOT_CTRL * trqN * GEAR_RATIO * 0.99 / WHEEL_R / WEIGHT, vl * i * (MOT_CTRL / srsmtr) * 2,
+        iF_a, bcT, i, iF_a, phi
 end
 
 --------------------------------------------------------------------------
--- State (de)serialization helpers (used by the test scenarios and by
--- calculateTick itself)
+-- State (de)serialization helpers (used by calculateTick itself, and
+-- directly by the test suite via test/harness.lua's named-table wrappers
+-- -- these take/return plain positional values, not tables, for the same
+-- minified-size reason as the tick sub-steps above; DESIGN_LOG.md #13).
 --------------------------------------------------------------------------
 
 function M.zero_state()
     return { 0, 0, 0, 0, 0, 0, 0, 0 }
 end
 
+-- Bit positions below (state_in[1]/[2], stateless_out[5]) must match
+-- SIGNAL_MAP.md exactly.
+
+-- Returns: position_counter, phase1_latch, phase2_latch, regen_latch,
+-- traction_advance_counter, field_current_excess_counter,
+-- regen_delay_level, phase1_cap_counter, phase2_cap_counter,
+-- current_below_limit_cap_counter, OLD_I, OLD_IF_A, OLD_PHI,
+-- regen_bc_smooth, bc_target_smooth.
 function M.decode_state(state_in)
-    local latches = unpack_bits(M.STATE_LATCHES_LAYOUT, state_in[1])
-    local timers = unpack_bits(M.STATE_TIMERS_LAYOUT, state_in[2])
-    return {
-        position_counter = latches.position_counter,
-        phase1_latch = bool(latches.phase1_latch),
-        phase2_latch = bool(latches.phase2_latch),
-        regen_latch = bool(latches.regen_latch),
-        traction_advance_counter = latches.traction_advance_counter,
-        field_current_excess_counter = latches.field_current_excess_counter,
-        regen_delay_level = timers.regen_delay_level,
-        phase1_cap_counter = timers.phase1_cap_counter,
-        phase2_cap_counter = timers.phase2_cap_counter,
-        current_below_limit_cap_counter = timers.current_below_limit_cap_counter,
-        OLD_I = state_in[3],
-        OLD_IF_A = state_in[4],
-        OLD_PHI = state_in[5],
-        regen_bc_smooth = state_in[6],
-        bc_target_smooth = state_in[7],
-    }
+    local latches = to_u32(state_in[1])
+    local timers = to_u32(state_in[2])
+    return get_bits(latches, 0, 5), get_bit(latches, 5), get_bit(latches, 6), get_bit(latches, 7),
+        get_bits(latches, 8, 4), get_bits(latches, 12, 5),
+        get_bits(timers, 0, 10), get_bits(timers, 10, 3), get_bits(timers, 13, 3), get_bits(timers, 16, 3),
+        state_in[3], state_in[4], state_in[5], state_in[6], state_in[7]
 end
 
-function M.encode_state(f)
-    local slot1 = pack_bits(M.STATE_LATCHES_LAYOUT, {
-        position_counter = f.position_counter,
-        phase1_latch = f.phase1_latch,
-        phase2_latch = f.phase2_latch,
-        regen_latch = f.regen_latch,
-        traction_advance_counter = f.traction_advance_counter,
-        field_current_excess_counter = f.field_current_excess_counter,
-    })
-    local slot2 = pack_bits(M.STATE_TIMERS_LAYOUT, {
-        regen_delay_level = f.regen_delay_level,
-        phase1_cap_counter = f.phase1_cap_counter,
-        phase2_cap_counter = f.phase2_cap_counter,
-        current_below_limit_cap_counter = f.current_below_limit_cap_counter,
-    })
+-- Params in the same order as M.decode_state's returns.
+function M.encode_state(position_counter, phase1_latch, phase2_latch, regen_latch,
+    traction_advance_counter, field_current_excess_counter,
+    regen_delay_level, phase1_cap_counter, phase2_cap_counter, current_below_limit_cap_counter,
+    OLD_I, OLD_IF_A, OLD_PHI, regen_bc_smooth, bc_target_smooth)
+    local slot1 = put_bits(position_counter, 0, 5)
+        | put_bit(phase1_latch, 5)
+        | put_bit(phase2_latch, 6)
+        | put_bit(regen_latch, 7)
+        | put_bits(traction_advance_counter, 8, 4)
+        | put_bits(field_current_excess_counter, 12, 5)
+    local slot2 = put_bits(regen_delay_level, 0, 10)
+        | put_bits(phase1_cap_counter, 10, 3)
+        | put_bits(phase2_cap_counter, 13, 3)
+        | put_bits(current_below_limit_cap_counter, 16, 3)
     return {
         slot1, slot2,
-        f.OLD_I or 0, f.OLD_IF_A or 0, f.OLD_PHI or 0,
-        f.regen_bc_smooth or 0, f.bc_target_smooth or 0,
+        OLD_I or 0, OLD_IF_A or 0, OLD_PHI or 0,
+        regen_bc_smooth or 0, bc_target_smooth or 0,
         0, -- spare
     }
 end
 
-function M.encode_stateless_in(f)
+-- Params: speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw,
+-- direction, notch_pos, controller_stop, regen_flag.
+function M.encode_stateless_in(speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw,
+    direction, notch_pos, controller_stop, regen_flag)
     return {
-        f.speed or 0,
-        f.catenary_voltage_sw or 0,
-        f.brake_pressure_sw or 0,
-        f.sap_pressure_sw or 0,
-        f.direction or 0,
-        f.notch_pos or 0,
-        (f.controller_stop and 1) or 0,
-        (f.regen_flag and 1) or 0,
+        speed or 0, catenary_voltage_sw or 0, brake_pressure_sw or 0, sap_pressure_sw or 0,
+        direction or 0, notch_pos or 0,
+        (controller_stop and 1) or 0,
+        (regen_flag and 1) or 0,
     }
 end
 
+-- Returns: motor_current, W, bc_target_smooth, bcT, cam_pulse,
+-- phase1_latch, phase2_latch, regen_latch, notch_ge1,
+-- low_bc_with_regen_flag, field_current_excess_cond, power_cut.
 function M.decode_stateless_out(stateless_out)
-    local status = unpack_bits(M.STATUS_BITS_LAYOUT, stateless_out[5])
-    return {
-        motor_current = stateless_out[1],
-        W = stateless_out[2],
-        bc_target_smooth = stateless_out[3],
-        bcT = stateless_out[4],
-        cam_pulse = bool(status.cam_pulse),
-        phase1_latch = bool(status.phase1_latch),
-        phase2_latch = bool(status.phase2_latch),
-        regen_latch = bool(status.regen_latch),
-        notch_ge1 = bool(status.notch_ge1),
-        low_bc_with_regen_flag = bool(status.low_bc_with_regen_flag),
-        field_current_excess_cond = bool(status.field_current_excess_cond),
-        power_cut = bool(status.power_cut),
-    }
+    local status = to_u32(stateless_out[5])
+    return stateless_out[1], stateless_out[2], stateless_out[3], stateless_out[4],
+        get_bit(status, 0), get_bit(status, 1), get_bit(status, 2), get_bit(status, 3),
+        get_bit(status, 4), get_bit(status, 5), get_bit(status, 6), get_bit(status, 7)
 end
 
 --------------------------------------------------------------------------
--- Tick sub-steps, each roughly one SPEC.md §3.x section. `st` throughout is
--- always the OLD decoded state (this tick's input); functions return plain
--- values/tables, calculateTick threads them together and does all state_out
--- assembly at the end.
+-- Tick sub-steps, each roughly one SPEC.md §3.x section. Positional
+-- parameters/multi-return instead of named tables (see DESIGN_LOG.md #13):
+-- storm-lua-minify can't rename table keys the way it renames identifiers,
+-- so named intermediate tables cost real bytes against Stormworks' 8192-
+-- character LUA node limit. This trades readability at these call
+-- boundaries for that. M.decode_state/M.encode_state/M.decode_stateless_out
+-- keep their named-table shape unchanged -- they're the public contract
+-- every test scenario calls directly by field name.
 --------------------------------------------------------------------------
 
 local function decode_inputs(stateless_in)
-    return {
-        speed = stateless_in[1],
-        catenary_voltage_sw = stateless_in[2],
-        -- brake_pressure_sw/sap_pressure_sw arrive pre-resolved from gates
-        -- (SAP sensor passthrough or ECB-offset conversion already applied
-        -- there, matching main.sw-net's brake_pressure_sw/sap_pressure_sw
-        -- NUM_SWITCHBOX outputs) -- this module no longer needs to know
-        -- whether the vehicle is in SAP or ECB mode.
-        brake_pressure_sw = stateless_in[3],
-        sap_pressure_sw = stateless_in[4],
-        -- direction arrives pre-resolved as -1/0/+1 from gates (main.sw-net's
-        -- `direction` SUBTRACT node), instead of two separate forward/
-        -- backward booleans.
-        direction = stateless_in[5],
-        -- notch_pos/controller_stop/regen_flag are each their own raw-double
-        -- slot (not bit-packed): they arrive from Stormworks composite
-        -- channels as doubles already (a Simple IF number and two booleans
-        -- from Extended IF), and slots 6-8 were otherwise unused, so packing
-        -- them into one slot bought nothing but an extra pack/unpack step.
-        notch_pos = clamp(math.floor(stateless_in[6] or 0), 0, 7),
-        controller_stop = (stateless_in[7] or 0) ~= 0,
-        regen_flag = (stateless_in[8] or 0) ~= 0,
-    }
+    -- Returns: speed, catenary_voltage_sw, brake_pressure_sw (pre-resolved
+    -- by gates -- SAP passthrough or ECB-offset conversion already
+    -- applied, so this module no longer needs to know SAP vs ECB),
+    -- sap_pressure_sw (same), direction (pre-resolved -1/0/+1, gates
+    -- already combined forward/backward), notch_pos, controller_stop,
+    -- regen_flag.
+    return stateless_in[1], stateless_in[2], stateless_in[3], stateless_in[4], stateless_in[5],
+        clamp(math.floor(stateless_in[6] or 0), 0, 7),
+        (stateless_in[7] or 0) ~= 0,
+        (stateless_in[8] or 0) ~= 0
 end
 
--- SPEC §3.5 (EB / power-cut condition).
-local function eb_and_brake_pressure(inp)
-    local overspeed = math.abs(inp.speed) > OVERSPEED_THRESHOLD
-    local brake_below_min = inp.brake_pressure_sw < BRAKE_MIN_PRESSURE
-    local power_cut = false -- provably dead, see README "Simplifications"
-    return inp.controller_stop or power_cut or (inp.direction == 0) or overspeed or brake_below_min
+-- SPEC §3.5 (EB / power-cut condition). `power_cut` itself is provably
+-- dead (see README "Simplifications") and folded out entirely.
+local function eb_and_brake_pressure(speed, brake_pressure_sw, direction, controller_stop)
+    local overspeed = math.abs(speed) > OVERSPEED_THRESHOLD
+    local brake_below_min = brake_pressure_sw < BRAKE_MIN_PRESSURE
+    return controller_stop or (direction == 0) or overspeed or brake_below_min
 end
 
 -- SPEC §3.3 (notch processing) + §3.2's cam-position echo ("notch_fb").
-local function notch_and_cam_feedback(inp, st, eb_condition)
-    local notch_enable_sw = eb_condition and 0 or 1
-    local notch_eff = inp.notch_pos * notch_enable_sw
+-- Returns: notch_eff, notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1,
+-- notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14.
+local function notch_and_cam_feedback(notch_pos, position_counter, eb_condition)
+    local notch_eff = notch_pos * (eb_condition and 0 or 1)
     -- Cam-position echo zeroed under EB, matching the original
     -- current_src_mux substitution (only ch7 survives EB).
-    local notch_fb = eb_condition and 0 or st.position_counter
-    return {
-        notch_eff = notch_eff,
-        notch_ge1 = notch_eff >= 1 and notch_eff <= 7,
-        notch_ge2 = notch_eff >= 2 and notch_eff <= 7,
-        notch_ge3 = notch_eff >= 3 and notch_eff <= 7,
-        notch_fb_ge1 = notch_fb >= 0 and notch_fb <= 1,
-        notch_fb_range_low = notch_fb >= 0 and notch_fb <= 13,
-        notch_fb_range_high = notch_fb >= 14 and notch_fb <= 20,
-        notch_fb_eq14 = notch_fb == 14,
-        notch_fb_ne14 = notch_fb ~= 14,
-    }
+    local notch_fb = eb_condition and 0 or position_counter
+    return notch_eff,
+        notch_eff >= 1 and notch_eff <= 7,
+        notch_eff >= 2 and notch_eff <= 7,
+        notch_eff >= 3 and notch_eff <= 7,
+        notch_fb >= 0 and notch_fb <= 1,
+        notch_fb >= 0 and notch_fb <= 13,
+        notch_fb >= 14 and notch_fb <= 20,
+        notch_fb == 14,
+        notch_fb ~= 14
 end
 
 -- SPEC §3.8 (regen-BC target chain, fresh every tick). sap_pressure_sw
--- arrives pre-resolved from gates (see decode_inputs).
-local function brake_demand(inp)
-    local regen_bc_target = -math.floor((inp.sap_pressure_sw - 1) * 2) / 7.2
-    local bc_target_below_min = regen_bc_target < BC_TARGET_MIN
-    return {
-        regen_bc_target = regen_bc_target,
-        low_bc_with_regen_flag = bc_target_below_min and inp.regen_flag,
-        regen_current = math.max(-regen_bc_target, 0),
-    }
+-- arrives pre-resolved from gates (see decode_inputs). Returns:
+-- regen_bc_target, low_bc_with_regen_flag, regen_current.
+local function brake_demand(sap_pressure_sw, regen_flag)
+    local regen_bc_target = -math.floor((sap_pressure_sw - 1) * 2) / 7.2
+    return regen_bc_target, regen_bc_target < BC_TARGET_MIN and regen_flag, math.max(-regen_bc_target, 0)
 end
 
 -- current_src_mux EB substitution: under EB only ch7 (bcT, here holding
--- regen_current) survives; everything else reads 0.
-local function eb_substitute(phys, eb_condition, regen_current)
-    return {
-        motor_current = eb_condition and 0 or phys.motor_current,
-        W = eb_condition and 0 or phys.W,
-        accel = eb_condition and 0 or phys.accel,
-        iF_a = eb_condition and 0 or phys.iF_a,
-        bcT = eb_condition and regen_current or phys.bcT,
-    }
+-- regen_current) survives; everything else reads 0. Params/returns both in
+-- physics_tick's own order: motor_current, W, accel, iF_a, bcT.
+local function eb_substitute(motor_current, W, accel, iF_a, bcT, eb_condition, regen_current)
+    if eb_condition then
+        return 0, 0, 0, 0, regen_current
+    end
+    return motor_current, W, accel, iF_a, bcT
 end
 
 -- SPEC §3.6/§3.7 debounce timers (current-limit and phase1/phase2's own
 -- "has been on for 0.1s" gates). "*_charged" reflects the OLD counter (this
 -- tick's decision input); "*_next" is what gets stored for next tick.
-local function debounce_block(st, motor_current)
-    local current_limit_sw = st.phase2_latch and (POWER_LIMIT_CURRENT - 20) or POWER_LIMIT_CURRENT
+-- Returns: current_below_limit_cap_charged, current_below_limit_cap_counter_next,
+-- phase1_cap_charged, phase1_cap_counter_next, phase2_cap_charged,
+-- phase2_cap_counter_next.
+local function debounce_block(phase1_latch, phase2_latch, current_below_limit_cap_counter,
+    phase1_cap_counter, phase2_cap_counter, motor_current)
+    local current_limit_sw = phase2_latch and (POWER_LIMIT_CURRENT - 20) or POWER_LIMIT_CURRENT
     local current_below_limit = motor_current < current_limit_sw
-    return {
-        current_limit_sw = current_limit_sw,
-        current_below_limit_cap_charged = debounce_charged(st.current_below_limit_cap_counter),
-        current_below_limit_cap_counter_next = debounce_step(st.current_below_limit_cap_counter, current_below_limit),
-        phase1_cap_charged = debounce_charged(st.phase1_cap_counter),
-        phase1_cap_counter_next = debounce_step(st.phase1_cap_counter, st.phase1_latch),
-        phase2_cap_charged = debounce_charged(st.phase2_cap_counter),
-        phase2_cap_counter_next = debounce_step(st.phase2_cap_counter, st.phase2_latch),
-    }
+    return debounce_charged(current_below_limit_cap_counter), debounce_step(current_below_limit_cap_counter, current_below_limit),
+        debounce_charged(phase1_cap_counter), debounce_step(phase1_cap_counter, phase1_latch),
+        debounce_charged(phase2_cap_counter), debounce_step(phase2_cap_counter, phase2_latch)
 end
 
 -- SPEC §3.6 field-current-excess detection chain (see SPEC.md §3.6 naming
@@ -576,89 +501,79 @@ end
 -- the same channel n409.lua calls "brake_current_fb"/channel=6. The
 -- condition detects "notch went to 0 but iF_a is still above the 300/400A
 -- threshold" and forces phase1/phase2 to fold early instead of waiting for
--- coasting_cond's natural current decay).
-local function field_current_excess_block(st, iF_a, notch_ge1, phase1_cap_charged)
-    local regen_bc_below_min = st.regen_bc_smooth < REGEN_BC_MIN
-    local phase1_low_bc = st.phase1_latch and regen_bc_below_min
+-- coasting_cond's natural current decay). Returns: brake_current_high_phase1,
+-- field_current_excess_cond, field_current_excess_counter_next,
+-- field_current_excess_pulse.
+local function field_current_excess_block(phase1_latch, regen_bc_smooth, field_current_excess_counter,
+    iF_a, notch_ge1, phase1_cap_charged)
+    local phase1_low_bc = phase1_latch and regen_bc_smooth < REGEN_BC_MIN
     local brake_limit_sw = phase1_low_bc and BRAKE_LIMIT_400 or BRAKE_LIMIT_300
     local brake_current_above_300 = iF_a > BRAKE_LIMIT_300
     local field_current_excess_cond = (iF_a > brake_limit_sw) and (not notch_ge1)
     local counter_next, pulse = periodic_pulse_step(
-        st.field_current_excess_counter, field_current_excess_cond, FIELD_CURRENT_EXCESS_PERIOD_TICKS)
-    return {
-        brake_current_high_phase1 = brake_current_above_300 and phase1_cap_charged,
-        field_current_excess_cond = field_current_excess_cond,
-        field_current_excess_counter_next = counter_next,
-        field_current_excess_pulse = pulse,
-    }
+        field_current_excess_counter, field_current_excess_cond, FIELD_CURRENT_EXCESS_PERIOD_TICKS)
+    return brake_current_above_300 and phase1_cap_charged, field_current_excess_cond, counter_next, pulse
 end
 
--- SPEC §3.6 core state machine: phase1/phase2/regen SR latches. `notch`
--- (from notch_and_cam_feedback) already carries both the notch_ge* fields
--- and the cam-position-echo notch_fb_* fields in one table.
-local function phase_state_machine(st, notch, cond)
-    local phase1_notch_active = st.phase1_latch and notch.notch_ge1
-    local phase1_regen_active = st.phase1_latch and notch.notch_fb_ne14 and st.regen_latch
-    local power_with_regen = notch.notch_ge1 and notch.notch_fb_ge1
+-- SPEC §3.6 core state machine: phase1/phase2/regen SR latches. Returns:
+-- phase1_latch, phase2_latch, regen_latch, traction_any_active.
+local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
+    notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1, notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14,
+    motor_current, low_bc_with_regen_flag, field_current_excess_pulse, regen_flag,
+    phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged)
+    local phase1_notch_active = phase1_latch and notch_ge1
+    local phase1_regen_active = phase1_latch and notch_fb_ne14 and regen_latch
+    local power_with_regen = notch_ge1 and notch_fb_ge1
 
-    local current_near_zero = cond.motor_current >= -50 and cond.motor_current <= 50
-    local no_notch_no_regen_brake_demand = not (notch.notch_ge1 or cond.low_bc_with_regen_flag)
-    local neutral_cond = current_near_zero and no_notch_no_regen_brake_demand
-    local coasting_cond = neutral_cond and (not st.regen_latch)
-    local regen_pulse_regen_flag_off = cond.field_current_excess_pulse and (not cond.regen_flag)
-    local phase_reset_cond = coasting_cond or regen_pulse_regen_flag_off
+    local current_near_zero = motor_current >= -50 and motor_current <= 50
+    local neutral_cond = current_near_zero and not (notch_ge1 or low_bc_with_regen_flag)
+    local coasting_cond = neutral_cond and (not regen_latch)
+    local phase_reset_cond = coasting_cond or (field_current_excess_pulse and (not regen_flag))
 
-    local phase1_set_cond = notch.notch_ge2 and notch.notch_fb_range_low
-        and cond.phase1_cap_charged and cond.current_below_limit_cap_charged
-    local phase1_set = (power_with_regen and (not st.phase2_latch))
-        or (cond.field_current_excess_pulse and st.phase2_latch)
-    local phase1_reset = phase_reset_cond
-        or (cond.field_current_excess_pulse and cond.phase1_cap_charged)
+    local phase1_set_cond = notch_ge2 and notch_fb_range_low
+        and phase1_cap_charged and current_below_limit_cap_charged
+    local phase1_set = (power_with_regen and (not phase2_latch))
+        or (field_current_excess_pulse and phase2_latch)
 
-    local phase2_blinker_cond = notch.notch_ge3 and notch.notch_fb_range_high
-        and cond.phase2_cap_charged and cond.current_below_limit_cap_charged
-    local phase2_set_cond = notch.notch_ge3 and notch.notch_fb_eq14 and cond.current_below_limit_cap_charged
-    local phase2_reset = phase_reset_cond or (st.phase1_latch and not (notch.notch_ge3 and notch.notch_fb_eq14))
+    local phase2_blinker_cond = notch_ge3 and notch_fb_range_high
+        and phase2_cap_charged and current_below_limit_cap_charged
+    local phase2_set_cond = notch_ge3 and notch_fb_eq14 and current_below_limit_cap_charged
+    local phase2_reset = phase_reset_cond or (phase1_latch and not (notch_ge3 and notch_fb_eq14))
 
     -- phase2_set_cond doubles as an extra phase1-reset trigger (Series ->
     -- Parallel transition resets phase1 the same tick phase2 sets).
-    phase1_reset = phase1_reset or phase2_set_cond
+    local phase1_reset = phase_reset_cond
+        or (field_current_excess_pulse and phase1_cap_charged)
+        or phase2_set_cond
 
-    local traction_all_off = (not st.phase1_latch) and (not st.phase2_latch)
-    local regen_set_cond = st.phase2_latch and notch.notch_fb_ge1
-    local regen_reset = phase1_notch_active or traction_all_off
-    local regen_off_all = (not notch.notch_fb_ge1) and traction_all_off
+    local traction_all_off = (not phase1_latch) and (not phase2_latch)
+    local regen_off_all = (not notch_fb_ge1) and traction_all_off
 
-    return {
-        phase1_latch = sr_latch(st.phase1_latch, phase1_set, phase1_reset),
-        phase2_latch = sr_latch(st.phase2_latch, phase2_set_cond, phase2_reset),
-        regen_latch = sr_latch(st.regen_latch, regen_set_cond, regen_reset),
-        traction_any_active = phase1_set_cond or phase2_blinker_cond or regen_off_all or phase1_regen_active,
-    }
+    return sr_latch(phase1_latch, phase1_set, phase1_reset),
+        sr_latch(phase2_latch, phase2_set_cond, phase2_reset),
+        sr_latch(regen_latch, phase2_latch and notch_fb_ge1, phase1_notch_active or traction_all_off),
+        phase1_set_cond or phase2_blinker_cond or regen_off_all or phase1_regen_active
 end
 
 -- SPEC §3.2 cam advance (periodic pulse while traction_any_active).
-local function advance_cam(st, traction_any_active)
+-- Returns: position_counter, cam_pulse, traction_advance_counter_next.
+local function advance_cam(position_counter, traction_advance_counter, traction_any_active)
     local counter_next, pulse = periodic_pulse_step(
-        st.traction_advance_counter, traction_any_active, CAM_ADVANCE_PERIOD_TICKS)
-    local position_counter = (st.position_counter + (pulse and 1 or 0)) % 21
-    local delta = position_counter - st.position_counter
-    return {
-        position_counter = position_counter,
-        cam_pulse = not (delta >= 0 and delta <= 1), -- true only on the 20->0 ring wrap
-        traction_advance_counter_next = counter_next,
-    }
+        traction_advance_counter, traction_any_active, CAM_ADVANCE_PERIOD_TICKS)
+    local new_position = (position_counter + (pulse and 1 or 0)) % 21
+    local delta = new_position - position_counter
+    return new_position, not (delta >= 0 and delta <= 1), counter_next -- cam_pulse true only on the 20->0 ring wrap
 end
 
--- SPEC §3.8 BC / regen-BC smoothing.
-local function smooth_bc(st, accel, regen_bc_target, regen_flag, brake_current_high_phase1)
-    local regen_bc_enable = regen_delay_charged(st.regen_delay_level) or (not regen_flag)
+-- SPEC §3.8 BC / regen-BC smoothing. Returns: bc_target_smooth,
+-- regen_bc_smooth, regen_delay_level.
+local function smooth_bc(bc_target_smooth, regen_bc_smooth, regen_delay_level,
+    accel, regen_bc_target, regen_flag, brake_current_high_phase1)
+    local regen_bc_enable = regen_delay_charged(regen_delay_level) or (not regen_flag)
     local regen_bc_sw = regen_bc_enable and 0 or regen_bc_target
-    return {
-        bc_target_smooth = accel * 0.2 + st.bc_target_smooth * 0.8,
-        regen_bc_smooth = math.min(clamp(regen_bc_sw, st.regen_bc_smooth - 0.1, st.regen_bc_smooth + 0.02), 0),
-        regen_delay_level = regen_delay_step(st.regen_delay_level, brake_current_high_phase1),
-    }
+    return accel * 0.2 + bc_target_smooth * 0.8,
+        math.min(clamp(regen_bc_sw, regen_bc_smooth - 0.1, regen_bc_smooth + 0.02), 0),
+        regen_delay_step(regen_delay_level, brake_current_high_phase1)
 end
 
 --------------------------------------------------------------------------
@@ -666,99 +581,92 @@ end
 --------------------------------------------------------------------------
 
 function M.calculateTick(stateless_in, state_in)
-    local st = M.decode_state(state_in)
-    local inp = decode_inputs(stateless_in)
+    local st_position_counter, st_phase1_latch, st_phase2_latch, st_regen_latch,
+        st_traction_advance_counter, st_field_current_excess_counter,
+        st_regen_delay_level, st_phase1_cap_counter, st_phase2_cap_counter, st_current_below_limit_cap_counter,
+        st_OLD_I, st_OLD_IF_A, st_OLD_PHI, st_regen_bc_smooth, st_bc_target_smooth = M.decode_state(state_in)
+    local speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw, direction,
+        notch_pos, controller_stop, regen_flag = decode_inputs(stateless_in)
 
-    local eb_condition = eb_and_brake_pressure(inp)
-    local notch = notch_and_cam_feedback(inp, st, eb_condition)
-    local demand = brake_demand(inp)
+    local eb_condition = eb_and_brake_pressure(speed, brake_pressure_sw, direction, controller_stop)
+    local notch_eff, notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1,
+        notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14 =
+        notch_and_cam_feedback(notch_pos, st_position_counter, eb_condition)
+    local regen_bc_target, low_bc_with_regen_flag, regen_current = brake_demand(sap_pressure_sw, regen_flag)
 
     -- Physics always uses OLD phase1/phase2/regen (breaks the physics <->
-    -- state-machine cycle; see module header "Modeling rule").
-    local phys = M.physics_tick({
-        speed = inp.speed,
-        vl = inp.catenary_voltage_sw,
-        position_counter = st.position_counter,
-        direction = inp.direction,
-        notch_eff = notch.notch_eff,
-        phase1 = st.phase1_latch,
-        phase2 = st.phase2_latch,
-        regen = st.regen_latch,
-        notch_ge1 = notch.notch_ge1,
-        low_bc_with_regen_flag = demand.low_bc_with_regen_flag,
-        regen_bc_smooth_seed = st.regen_bc_smooth,
-        regen_bc_target = demand.regen_bc_target,
-        OLD_I = st.OLD_I,
-        OLD_IF_A = st.OLD_IF_A,
-        OLD_PHI = st.OLD_PHI,
-    })
-    local elec = eb_substitute(phys, eb_condition, demand.regen_current)
+    -- state-machine cycle; see module header "Modeling rule"). physics_tick
+    -- returns 9 values in this order: motor_current, back_emf (unused here
+    -- -- only physics_regression_vs_n409.lua reads it, calling
+    -- physics_tick directly), accel, W, iF_a, bcT, OLD_I, OLD_IF_A, OLD_PHI.
+    local physics_motor_current, _back_emf, accel, physics_W, physics_iF_a, physics_bcT,
+        phys_OLD_I, phys_OLD_IF_A, phys_OLD_PHI =
+        M.physics_tick(speed, catenary_voltage_sw, st_position_counter, direction, notch_eff,
+            st_phase1_latch, st_phase2_latch, st_regen_latch, notch_ge1, low_bc_with_regen_flag,
+            st_regen_bc_smooth, regen_bc_target, st_OLD_I, st_OLD_IF_A, st_OLD_PHI)
+    local motor_current, elec_W, elec_accel, iF_a, bcT = eb_substitute(
+        physics_motor_current, physics_W, accel, physics_iF_a, physics_bcT, eb_condition, regen_current)
 
-    local debounce = debounce_block(st, elec.motor_current)
-    local warn = field_current_excess_block(st, elec.iF_a, notch.notch_ge1, debounce.phase1_cap_charged)
+    local current_below_limit_cap_charged, current_below_limit_cap_counter_next,
+        phase1_cap_charged, phase1_cap_counter_next, phase2_cap_charged, phase2_cap_counter_next =
+        debounce_block(st_phase1_latch, st_phase2_latch, st_current_below_limit_cap_counter,
+            st_phase1_cap_counter, st_phase2_cap_counter, motor_current)
 
-    local phase = phase_state_machine(st, notch, {
-        motor_current = elec.motor_current,
-        low_bc_with_regen_flag = demand.low_bc_with_regen_flag,
-        field_current_excess_pulse = warn.field_current_excess_pulse,
-        regen_flag = inp.regen_flag,
-        phase1_cap_charged = debounce.phase1_cap_charged,
-        phase2_cap_charged = debounce.phase2_cap_charged,
-        current_below_limit_cap_charged = debounce.current_below_limit_cap_charged,
-    })
-    local cam = advance_cam(st, phase.traction_any_active)
-    local bc = smooth_bc(st, elec.accel, demand.regen_bc_target, inp.regen_flag, warn.brake_current_high_phase1)
+    local brake_current_high_phase1, field_current_excess_cond,
+        field_current_excess_counter_next, field_current_excess_pulse =
+        field_current_excess_block(st_phase1_latch, st_regen_bc_smooth, st_field_current_excess_counter,
+            iF_a, notch_ge1, phase1_cap_charged)
+
+    local phase1_latch, phase2_latch, regen_latch, traction_any_active = phase_state_machine(
+        st_phase1_latch, st_phase2_latch, st_regen_latch,
+        notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1, notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14,
+        motor_current, low_bc_with_regen_flag, field_current_excess_pulse, regen_flag,
+        phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged)
+
+    local position_counter, cam_pulse, traction_advance_counter_next =
+        advance_cam(st_position_counter, st_traction_advance_counter, traction_any_active)
+    local bc_target_smooth, regen_bc_smooth, regen_delay_level =
+        smooth_bc(st_bc_target_smooth, st_regen_bc_smooth, st_regen_delay_level,
+            elec_accel, regen_bc_target, regen_flag, brake_current_high_phase1)
 
     ----------------------------------------------------------------
     -- Assemble outputs
     ----------------------------------------------------------------
 
-    local status_bits = pack_bits(M.STATUS_BITS_LAYOUT, {
-        cam_pulse = cam.cam_pulse,
-        phase1_latch = phase.phase1_latch,
-        phase2_latch = phase.phase2_latch,
-        regen_latch = phase.regen_latch,
-        notch_ge1 = notch.notch_ge1,
-        low_bc_with_regen_flag = demand.low_bc_with_regen_flag,
-        field_current_excess_cond = warn.field_current_excess_cond,
-        power_cut = false,
-    })
+    local status_bits = put_bit(cam_pulse, 0)
+        | put_bit(phase1_latch, 1)
+        | put_bit(phase2_latch, 2)
+        | put_bit(regen_latch, 3)
+        | put_bit(notch_ge1, 4)
+        | put_bit(low_bc_with_regen_flag, 5)
+        | put_bit(field_current_excess_cond, 6)
+        -- power_cut (bit 7) always 0, see README "Simplifications"
 
     local stateless_out = {
-        elec.motor_current,
-        elec.W,
-        bc.bc_target_smooth,
-        elec.bcT,
+        motor_current,
+        elec_W,
+        bc_target_smooth,
+        bcT,
         status_bits,
         0, 0, 0,
     }
 
-    local state_out = M.encode_state({
-        position_counter = cam.position_counter,
-        phase1_latch = phase.phase1_latch,
-        phase2_latch = phase.phase2_latch,
-        regen_latch = phase.regen_latch,
-        traction_advance_counter = cam.traction_advance_counter_next,
-        field_current_excess_counter = warn.field_current_excess_counter_next,
-        regen_delay_level = bc.regen_delay_level,
-        phase1_cap_counter = debounce.phase1_cap_counter_next,
-        phase2_cap_counter = debounce.phase2_cap_counter_next,
-        current_below_limit_cap_counter = debounce.current_below_limit_cap_counter_next,
-        OLD_I = phys.OLD_I,
-        OLD_IF_A = phys.OLD_IF_A,
-        OLD_PHI = phys.OLD_PHI,
-        regen_bc_smooth = bc.regen_bc_smooth,
-        bc_target_smooth = bc.bc_target_smooth,
-    })
+    local state_out = M.encode_state(
+        position_counter, phase1_latch, phase2_latch, regen_latch,
+        traction_advance_counter_next, field_current_excess_counter_next,
+        regen_delay_level, phase1_cap_counter_next, phase2_cap_counter_next, current_below_limit_cap_counter_next,
+        phys_OLD_I, phys_OLD_IF_A, phys_OLD_PHI, regen_bc_smooth, bc_target_smooth)
 
     return stateless_out, state_out
 end
 
 -- Exposed for tests only (bitpack_selftest.lua, sr_latch_reset_priority_sanity.lua);
 -- not used by calculateTick's own callers.
-M.pack_bits = pack_bits
-M.unpack_bits = unpack_bits
-M.bool = bool
+M.to_u32 = to_u32
+M.get_bits = get_bits
+M.get_bit = get_bit
+M.put_bits = put_bits
+M.put_bit = put_bit
 M.sr_latch = sr_latch
 
 return M

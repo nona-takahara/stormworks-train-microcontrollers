@@ -16,7 +16,7 @@ local core = require("chuso1800_core")
 
 return function(h)
     local state = core.zero_state()
-    local st = core.decode_state(state)
+    local st = h.decode_state(core, state)
     h.assert_false(st.phase1_latch, "starts in Idle: phase1 off")
     h.assert_false(st.phase2_latch, "starts in Idle: phase2 off")
     h.assert_false(st.regen_latch, "starts in Idle: regen off")
@@ -34,7 +34,7 @@ return function(h)
         -- current as the real controller would experience), letting the
         -- state machine actually clear the zero-resistance transition point.
         local speed = 1 + tick * 0.03
-        local stateless_in = core.encode_stateless_in({
+        local stateless_in = h.encode_stateless_in(core, {
             speed = speed,
             catenary_voltage_sw = 1500,
             notch_pos = 3,
@@ -43,7 +43,7 @@ return function(h)
         })
         local stateless_out, new_state = core.calculateTick(stateless_in, state)
         state = new_state
-        st = core.decode_state(state)
+        st = h.decode_state(core, state)
 
         if st.phase1_latch and not seen_phase1 then
             seen_phase1 = true

@@ -13,19 +13,19 @@
 
 local core = require("chuso1800_core")
 
-local function notch_ge1_after_one_tick(direction)
+local function notch_ge1_after_one_tick(h, direction)
     local state = core.zero_state()
-    local stateless_in = core.encode_stateless_in({
+    local stateless_in = h.encode_stateless_in(core, {
         notch_pos = 1,
         direction = direction,
         brake_pressure_sw = 5,
     })
     local stateless_out = core.calculateTick(stateless_in, state)
-    return core.decode_stateless_out(stateless_out).notch_ge1
+    return h.decode_stateless_out(core, stateless_out).notch_ge1
 end
 
 return function(h)
-    h.assert_true(notch_ge1_after_one_tick(1), "forward (+1): power available, no EB")
-    h.assert_true(notch_ge1_after_one_tick(-1), "backward (-1): power available, no EB")
-    h.assert_false(notch_ge1_after_one_tick(0), "neutral (direction==0): EB trips, power cut")
+    h.assert_true(notch_ge1_after_one_tick(h, 1), "forward (+1): power available, no EB")
+    h.assert_true(notch_ge1_after_one_tick(h, -1), "backward (-1): power available, no EB")
+    h.assert_false(notch_ge1_after_one_tick(h, 0), "neutral (direction==0): EB trips, power cut")
 end

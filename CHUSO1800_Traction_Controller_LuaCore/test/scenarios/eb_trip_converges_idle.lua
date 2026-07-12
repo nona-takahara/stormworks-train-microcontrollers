@@ -6,7 +6,7 @@ local core = require("chuso1800_core")
 
 return function(h)
     -- Start mid-Series with some plausible physics quasi-state already warmed up.
-    local state = core.encode_state({
+    local state = h.encode_state(core, {
         position_counter = 5,
         phase1_latch = true,
         phase2_latch = false,
@@ -22,7 +22,7 @@ return function(h)
     -- distinguishable from a coincidental zero. direction=1/brake_pressure_sw=5
     -- keep the OTHER two EB triggers inactive, isolating this test to
     -- controller_stop specifically.
-    local ebstateless = core.encode_stateless_in({
+    local ebstateless = h.encode_stateless_in(core, {
         speed = 5,
         catenary_voltage_sw = 1500,
         sap_pressure_sw = 2.25,
@@ -33,8 +33,8 @@ return function(h)
     })
 
     local stateless_out, new_state = core.calculateTick(ebstateless, state)
-    local st = core.decode_state(new_state)
-    local out = core.decode_stateless_out(stateless_out)
+    local st = h.decode_state(core, new_state)
+    local out = h.decode_stateless_out(core, stateless_out)
 
     h.assert_false(st.phase1_latch, "phase1 resets on the EB tick itself")
     h.assert_false(st.phase2_latch, "phase2 resets on the EB tick itself")
@@ -50,7 +50,7 @@ return function(h)
     for tick = 1, 50 do
         local stateless_out2, new_state2 = core.calculateTick(ebstateless, state)
         state = new_state2
-        local st2 = core.decode_state(state)
+        local st2 = h.decode_state(core, state)
         h.assert_false(st2.phase1_latch, "phase1 stays off tick " .. tick)
         h.assert_false(st2.phase2_latch, "phase2 stays off tick " .. tick)
         h.assert_false(st2.regen_latch, "regen stays off tick " .. tick)

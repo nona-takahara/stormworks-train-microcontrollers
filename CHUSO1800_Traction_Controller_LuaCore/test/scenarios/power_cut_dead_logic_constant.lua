@@ -11,16 +11,16 @@ local core = require("chuso1800_core")
 return function(h)
     local extreme_states = {
         core.zero_state(),
-        core.encode_state({ position_counter = 13, phase1_latch = true, OLD_I = 100000, OLD_IF_A = 500, OLD_PHI = 5 }),
-        core.encode_state({ position_counter = 14, phase2_latch = true, regen_latch = true }),
-        core.encode_state({ regen_delay_level = 600, regen_bc_smooth = -50, bc_target_smooth = -999 }),
+        h.encode_state(core, { position_counter = 13, phase1_latch = true, OLD_I = 100000, OLD_IF_A = 500, OLD_PHI = 5 }),
+        h.encode_state(core, { position_counter = 14, phase2_latch = true, regen_latch = true }),
+        h.encode_state(core, { regen_delay_level = 600, regen_bc_smooth = -50, bc_target_smooth = -999 }),
     }
 
     local extreme_inputs = {
-        core.encode_stateless_in({}),
-        core.encode_stateless_in({ speed = 1000, catenary_voltage_sw = 999999, notch_pos = 7, direction = 1, brake_pressure_sw = 5 }),
-        core.encode_stateless_in({ controller_stop = true, brake_pressure_sw = 0 }),
-        core.encode_stateless_in({ speed = -1000, direction = -1, notch_pos = 7, brake_pressure_sw = 5 }),
+        h.encode_stateless_in(core, {}),
+        h.encode_stateless_in(core, { speed = 1000, catenary_voltage_sw = 999999, notch_pos = 7, direction = 1, brake_pressure_sw = 5 }),
+        h.encode_stateless_in(core, { controller_stop = true, brake_pressure_sw = 0 }),
+        h.encode_stateless_in(core, { speed = -1000, direction = -1, notch_pos = 7, brake_pressure_sw = 5 }),
     }
 
     for si, state in ipairs(extreme_states) do
@@ -29,7 +29,7 @@ return function(h)
             for tick = 1, 20 do
                 local stateless_out, ns = core.calculateTick(stateless_in, s)
                 s = ns
-                local out = core.decode_stateless_out(stateless_out)
+                local out = h.decode_stateless_out(core, stateless_out)
                 h.assert_false(out.power_cut, string.format("power_cut stays false (state %d, input %d, tick %d)", si, ii, tick))
             end
         end

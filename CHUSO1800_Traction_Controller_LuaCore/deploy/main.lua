@@ -1,26 +1,36 @@
 -- Stormworks deployment entry point for the CHUSO1800 traction controller.
 --
 -- NOT meant to be pasted into a Stormworks LUA node as-is: this file is the
--- storm-lua-minify build input. storm-lua-minify recognizes dofile(...)
--- calls with a literal string path and expands them in place, producing
--- the single flattened script that actually gets pasted in-game
--- (Stormworks itself has no require/dofile). Run/build this file from
--- WITHIN this directory (deploy/) so the relative paths below resolve --
--- that also holds for plain `lua` (no minify tool), since dofile()
--- resolves against the process's working directory, not this file's own
--- location.
+-- storm-lua-minify build input (run `node build.js` from this directory --
+-- see that file for why a plain `dofile`/`require` with relative paths
+-- doesn't work directly).
 --
 -- ../../lib/state_sync.lua is a repo-wide reusable sync driver (not
 -- specific to this module). It defines globals i2f/f2i/onTick, and calls a
 -- bare global calculateTick(stateless_in, state_in) every tick, requiring
 -- BOTH state_in and state_out to be 8 "integer" values (its own header
--- comment: "state入出力はinteger前提").
-dofile("../../lib/state_sync.lua")
+-- comment: "state入出力はinteger前提"). Loaded via require (not dofile):
+-- storm-lua-minify's `-m` mode wraps every require()-referenced module in
+-- exactly one place (its synthesized require() dispatcher); dofile(...)
+-- targets get spliced in AGAIN wherever referenced, so using dofile here
+-- would duplicate this file's content in the final output for no reason
+-- (it defines globals directly, so nothing needs its return value --
+-- confirmed the assignment still lands in _G even from inside the
+-- dispatcher's IIFE wrapper, since Lua's global environment isn't
+-- per-function-scoped).
+require("state_sync")
 
 -- ../src/chuso1800_core.lua returns its module table (see that file's own
 -- M.calculateTick, which test/run_all.lua exercises directly via `require`
--- in full double precision, unaffected by anything below).
-local core = dofile("../src/chuso1800_core.lua")
+-- in full double precision, unaffected by anything below). This one is
+-- loaded via require, not dofile: storm-lua-minify's `-m` (module-like-lua)
+-- mode wraps every parsed module in an IIFE for its synthesized require()
+-- dispatcher, so a module ending in `return M` works correctly in this
+-- expression position (`local core = require(...)`). dofile(...) used the
+-- same way does NOT get that IIFE wrapping and corrupts the output when
+-- the target module has more than a single trailing expression -- verified
+-- empirically against storm-lua-minify 0.1.3 while building this.
+local core = require("chuso1800_core")
 
 -- chuso1800_core.lua's state_in/state_out slots 1-2
 -- (STATE_LATCHES_LAYOUT/STATE_TIMERS_LAYOUT) are already exact uint32

@@ -82,7 +82,7 @@ return function(h)
 
             onTick()
 
-            local phys = core.physics_tick({
+            local phys = h.physics_tick(core, {
                 speed = sc.speed, vl = sc.vl, position_counter = sc.cam,
                 direction = sc.direction, notch_eff = sc.notch_eff,
                 phase1 = sc.phase1, phase2 = sc.phase2, regen = sc.regen,

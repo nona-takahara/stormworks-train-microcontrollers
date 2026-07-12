@@ -246,3 +246,123 @@
 - **影響箇所**：`lib/state_sync.lua`（タイポ修正のみ）、新規
   `deploy/main.lua`、README.md「デプロイ」節・「テスト」節・
   「今後の実配線について」1項。
+
+## #12 実機フラット化をstorm-lua-minify（Node.js）へ委譲
+
+- **当初案**：`deploy/build.sh`（bash）が`lib/state_sync.lua` +
+  `src/chuso1800_core.lua`（`local core = (function() ... end)()`で
+  ラップ） + `deploy/bridge.lua`を単純にテキスト連結し、
+  `deploy/chuso1800_deploy.lua`を生成していた。
+- **変更のきっかけ**：ユーザー「スクリプト生成は、私のプロジェクトである
+  storm-lua-minifyが実施しますので、埋め込みはdofileを使ってください
+  （その場に展開されます）。また、コード規模が無駄にでかいです。
+  モジュール化せず、べた書きにしてください」。続けて「生成スクリプトは、
+  私がWindowsで実行する都合上、Node.jsで書いていただけると助かります」
+  「storm-lua-minifyはnpmで公開済みのツールです。そいつ自体のバグも
+  多いのですが、いったんそのバグの多さは無視してください」。
+- **現在の設計**：`deploy/build.js`（Node.js、`storm-lua-minify`パッケージ
+  ─ `nona-takahara/storm-lua-minify`、npm公開済み ─ を呼び出す）が
+  `deploy/main.lua`をエントリポイントとしてビルドし、
+  `deploy/chuso1800_deploy.lua`（実機貼り付け用の最終成果物）を生成する。
+- **実装中に発見した`storm-lua-minify`固有の制約・バグ**（ユーザーの
+  「バグの多さは無視してください」指示を踏まえ、これらを回避する形で
+  設計した。ライブラリ自体は変更していない）：
+  1. `require`/`dofile`のモジュール名解決は、**エントリファイル自身の
+     ディレクトリからの下り（descend-only）専用**で、`..`による親
+     ディレクトリ参照に対応していない（`moduleName.replaceAll(".",
+     path.sep)`という素朴な実装のため、`..`のドットもセパレータとして
+     破壊的に置換されてしまう）。このため`deploy/main.lua`
+     （`CHUSO1800_Traction_Controller_LuaCore/deploy/`配下）から
+     `lib/state_sync.lua`（リポジトリルート直下、`deploy/`から見て2階層
+     上）を直接参照することはできない。
+     → `deploy/build.js`が`lib/state_sync.lua`と`src/chuso1800_core.lua`を
+     ビルド直前に`deploy/`へ一時コピーし（`state_sync.lua`／
+     `chuso1800_core.lua`という同名ファイルとして）、`main.lua`からは
+     兄弟ファイルとして`require`できるようにし、ビルド後に削除する
+     （ユーザー提案「libのライブラリを事前にNode.js側でコピーして、
+     その後storm-lua-minifyにかけるとスマートかもしれませんね」）。
+  2. `dofile(...)`をLuaの**式（expression）の位置**（例：
+     `local core = dofile("chuso1800_core")`）で使うと、対象モジュールが
+     複数文＋末尾`return`という構成の場合、IIFE（`(function() ... end)()`）
+     で包まれずに文の並びがそのまま式の位置へ展開されてしまい、
+     `local a=local a={}...`のような**構文エラーになる実バグ**を確認した
+     （`-m`モードの有無に関わらず発生）。一方`require(...)`は`-m`モードでは
+     常にIIFEで包まれた形で解決される（内部の`require`ディスパッチャ関数
+     経由）ため、この問題が起きない。
+     → `chuso1800_core.lua`（`return M`で終わる）は`require`で読み込み、
+     `state_sync.lua`（returnなし、グローバル定義のみ）は当初`dofile`で
+     読み込んでいたが、次項の理由で結局こちらも`require`に統一した。
+  3. `-m`モードの`require`ディスパッチャは、**実際に`require`で参照された
+     かdofileで参照されたかに関わらず、パースした全モジュールを
+     ディスパッチャに含めてしまう**。`state_sync.lua`を`dofile`で
+     読み込んでいた際、その内容がディスパッチャ内（未使用のまま）と
+     直接展開箇所の**両方**に重複して出力され、無駄にサイズを消費して
+     いた（実測で約600バイト）。
+     → `state_sync.lua`も`require("state_sync")`に統一し、重複を解消した。
+- **影響箇所**：`deploy/build.sh`・`deploy/bridge.lua`・生成物
+  `deploy/chuso1800_deploy.lua`を削除し、新規`deploy/build.js`・
+  `deploy/main.lua`（全面書き換え）に置換。ルート`package.json`に
+  `storm-lua-minify`を追加。README.md「デプロイ」節。
+
+## #13 Stormworksの8192文字制限に収めるためのサイズ最適化
+
+- **背景**：#12の作業中に判明した実測値として、`src/chuso1800_core.lua`
+  単体をstorm-lua-minifyで圧縮しただけで12,386文字あり、Stormworksの
+  LUAノード1個あたり8192文字という制限を単体ですでに51%超過していた。
+  `state_sync.lua`＋ブリッジを含めた完成品`deploy/chuso1800_deploy.lua`は
+  当初14,126文字（65%超過）。
+- **原因**：storm-lua-minifyはローカル変数・関数名などの識別子は短縮
+  できるが、テーブルのキー文字列（`t.field_name`という形での参照）は
+  短縮できない。`chuso1800_core.lua`は`calculateTick`内の9個のヘルパー
+  関数（`decode_inputs`／`notch_and_cam_feedback`／`phase_state_machine`
+  等）＋`M.physics_tick`／`M.decode_state`／`M.encode_state`等の状態
+  (de)シリアライズ関数が、いずれも名前付きテーブルで値を受け渡す設計
+  だったため、フィールド名の文字列（`position_counter`や
+  `field_current_excess_counter`等、数十種）が圧縮後もそのまま残っていた。
+  さらにビットレイアウトの汎用機構（`STATE_LATCHES_LAYOUT`等の
+  `*_LAYOUT`テーブル＋`pack_bits`/`unpack_bits`）も、各フィールド名を
+  レイアウトテーブル側に重複して保持していた。
+- **現在の設計**（ユーザーの段階的な指摘・承認を経て実施。実測値の推移）：
+  1. **ビットレイアウトの直書き化**（ユーザー「ビットレイアウターをカット
+     して直書きに変えることで1000～2000文字程度は確実に削減できると
+     考えます」→「単にビットレイアウターをカットするだけだと大変だと
+     思うので、f2i, i2fを活用し、かつ特定ビットのみ読み書きする補助関数を
+     追加するとよいです」→「get_bitsもいいのですが、get_bit（booleanを
+     返す）を加えるともう少し圧縮特性が良くなると思います」）：
+     `*_LAYOUT`テーブルと`pack_bits`/`unpack_bits`を廃止し、ビット位置
+     （shift/width）を直接指定する`to_u32`/`get_bits`/`put_bits`/
+     `get_bit`/`put_bit`に置き換えた（`get_bit`/`put_bit`は1bitフィールド
+     専用の省略形）。14,126→12,037文字。
+  2. **calculateTick内ヘルパー関数の全面位置引数化**（ユーザー「連想配列
+     的なtableを使うと圧縮が効きにくいです...table渡しをやめると圧縮率が
+     向上します」→スコープ確認の結果「全面的に位置引数化（推奨）」を
+     選択）：9個のヘルパー関数すべてを名前付きテーブルではなく位置引数・
+     多値返却に書き換えた。12,037→9,627文字。
+  3. **`M.physics_tick`／`M.decode_state`／`M.encode_state`／
+     `M.encode_stateless_in`／`M.decode_stateless_out`の位置引数化**
+     （ユーザー「すべて位置引数化してください」）：これらの状態(de)
+     シリアライズ関数・物理演算関数も同様に位置引数・多値返却化した。
+     9,627→**7,873文字**（8192文字制限内に収まった）。
+- **テスト側への影響**：上記3関数群は全12テストシナリオが直接呼んでいた
+  公開APIだったため、`test/harness.lua`に名前付きテーブル⇔位置引数の
+  変換ラッパー（`harness.encode_state`/`decode_state`/
+  `encode_stateless_in`/`decode_stateless_out`/`physics_tick`）を新設し、
+  全テストファイルの呼び出し箇所を`core.encode_state({...})`から
+  `h.encode_state(core, {...})`のような形へ書き換えた。ラッパーは
+  deployビルドに一切含まれないため、テストの可読性を保ったままコア
+  モジュールのサイズには影響しない。
+- **可読性とのトレードオフ**：位置引数化した各関数には、直前のコメントで
+  引数・戻り値の順序を明示している（ユーザー「位置引数化にともなって
+  returnの意味が分かりづらくなるので、returnの直上などに返却順序を
+  わかりやすくするコメントを加えてください」）。`M.decode_state`/
+  `M.encode_state`/`M.encode_stateless_in`/`M.decode_stateless_out`の
+  シグネチャ自体は「公開API」としてこの文書・SIGNAL_MAP.md・
+  test/harness.luaに記録されているので、実装を読まなくても呼び出し方が
+  わかるようにしてある。
+- **影響箇所**：`src/chuso1800_core.lua`全体（`*_LAYOUT`テーブル・
+  `pack_bits`/`unpack_bits`の削除、9個のヘルパー関数＋5個の状態(de)
+  シリアライズ・物理演算関数の位置引数化、`M.calculateTick`本体の書き換え）、
+  `test/harness.lua`（名前付きテーブル変換ラッパーを新設）、全12
+  テストシナリオファイル（呼び出し箇所の書き換え）、`SIGNAL_MAP.md`
+  （`*_LAYOUT`が説明用ラベルであり実在のLua識別子ではない旨を明記）、
+  README.md「コードの構成」節・「デプロイ」節。

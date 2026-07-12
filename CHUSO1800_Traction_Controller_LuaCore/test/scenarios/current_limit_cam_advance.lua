@@ -9,19 +9,19 @@ return function(h)
     -- Sub-test A: current pinned above the limit (cam=10, speed=0 -> low
     -- resistance + no back-EMF => ~1250A, far above the 210A phase1 limit).
     -- The cam must never advance.
-    local state_a = core.encode_state({
+    local state_a = h.encode_state(core, {
         position_counter = 10,
         phase1_latch = true,
         phase1_cap_counter = 6, -- already past its own debounce, isolating this test to the current-limit debounce
         current_below_limit_cap_counter = 0,
     })
-    local above_limit_inputs = core.encode_stateless_in({
+    local above_limit_inputs = h.encode_stateless_in(core, {
         speed = 0, catenary_voltage_sw = 1500, notch_pos = 2, direction = 1, brake_pressure_sw = 5,
     })
     for tick = 1, 30 do
         local _, ns = core.calculateTick(above_limit_inputs, state_a)
         state_a = ns
-        local st = core.decode_state(state_a)
+        local st = h.decode_state(core, state_a)
         h.assert_eq(st.position_counter, 10, "cam never advances while current stays above the limit, tick " .. tick)
         h.assert_eq(st.current_below_limit_cap_counter, 0, "debounce counter never charges, tick " .. tick)
     end
@@ -29,20 +29,20 @@ return function(h)
     -- Sub-test B: current below the limit (cam=0, speed=20 -> ~29A, well
     -- under 210A). Cam must NOT advance before the debounce has had its full
     -- 6-tick charge window, but must eventually advance.
-    local state_b = core.encode_state({
+    local state_b = h.encode_state(core, {
         position_counter = 0,
         phase1_latch = true,
         phase1_cap_counter = 6,
         current_below_limit_cap_counter = 0,
     })
-    local below_limit_inputs = core.encode_stateless_in({
+    local below_limit_inputs = h.encode_stateless_in(core, {
         speed = 20, catenary_voltage_sw = 1500, notch_pos = 2, direction = 1, brake_pressure_sw = 5,
     })
     local advanced_tick = nil
     for tick = 1, 30 do
         local _, ns = core.calculateTick(below_limit_inputs, state_b)
         state_b = ns
-        local st = core.decode_state(state_b)
+        local st = h.decode_state(core, state_b)
         if tick <= 5 then
             h.assert_eq(st.position_counter, 0, "cam does not advance before the debounce window closes, tick " .. tick)
         end
