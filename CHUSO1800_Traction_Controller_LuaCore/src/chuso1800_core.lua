@@ -118,24 +118,46 @@ function to_u32(value)
     return string.unpack("I4", string.pack("I4", math.floor(value or 0) & 0xFFFFFFFF))
 end
 
+-- storm-lua-minify（および元ネタのluamin、上流issue
+-- https://github.com/mathiasbynens/luamin/issues/76 参照）は、再出力時に
+-- 「本来Luaの演算子優先順位を上書きするために必要な括弧」を、優先順位表を
+-- 踏まえずに削ってしまうバグを持つ（例：`(a & b) >> c`のような、通常の
+-- 優先順位（`>>`は`&`より高い）とは逆順に評価させるための括弧が、
+-- 再出力時に落ちて`a & (b >> c)`相当に化ける）。detail経緯は
+-- `DESIGN_LOG.md` #18。以下のビットヘルパーはすべて、二項演算子1個につき
+-- 1行の`local`代入に分解してあり、これは見た目の簡潔さのためではなく
+-- **上記バグの回避が目的**：どの行も「削られて困る括弧」を含まない形に
+-- なっている。1行の複合式へ戻さないこと（今後追加するビット演算コードも
+-- 同様に、複数の異なる優先順位の演算子が混在する式を1行にまとめない）。
+
 function get_bits(acc, shift, width)
-    return (acc >> shift) & ((1 << width) - 1)
+    local shifted = acc >> shift
+    local one_shifted = 1 << width
+    local mask = one_shifted - 1
+    return shifted & mask
 end
 
 -- 1bitフィールドをboolean直接で返す版（state_in[1]/[2]・stateless_out[5]の
 -- 大半は1bitラッチ/フラグ）。呼び出し側で get_bits(acc, shift, 1) ~= 0 と
 -- 書くより短い。
 function get_bit(acc, shift)
-    return (acc >> shift) & 1 ~= 0
+    local shifted = acc >> shift
+    local bit = shifted & 1
+    return bit ~= 0
 end
 
 function put_bits(value, shift, width)
-    return (math.floor(value or 0) & ((1 << width) - 1)) << shift
+    local one_shifted = 1 << width
+    local mask = one_shifted - 1
+    local floored = math.floor(value or 0)
+    local masked = floored & mask
+    return masked << shift
 end
 
 -- get_bitの対:booleanを直接パックする（put_bits(b and 1 or 0, shift, 1)より短い）。
 function put_bit(b, shift)
-    return (b and 1 or 0) << shift
+    local bit = b and 1 or 0
+    return bit << shift
 end
 
 -- リセット優先SRラッチ（SPEC.md §0.1）。
