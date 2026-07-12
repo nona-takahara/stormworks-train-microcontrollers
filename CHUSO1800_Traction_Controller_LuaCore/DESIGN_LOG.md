@@ -184,3 +184,54 @@
   `src/chuso1800_core.lua`（`field_current_excess_block`とその内部・
   `STATE_LATCHES_LAYOUT`/`STATUS_BITS_LAYOUT`のフィールド名）、
   `SIGNAL_MAP.md`・README.md 内の「回生警告」表記。
+
+## #11 `lib/state_sync.lua`（汎用ステート同期ドライバ）との統合
+
+- **背景**：ユーザーがリポジトリ共通ライブラリとして`lib/state_sync.lua`を
+  masterに追加した（本モジュール専用ではなく、`calculateTick(stateless_in,
+  state_in)`という同じ形の純関数を持つ任意のマイコンモジュールから使う
+  想定）。composite チャンネルの自己ループ配線が実機で何tick遅延するか
+  不確実な問題に対し、「2tick前に自分が出した state と、外部からの
+  フィードバック値が一致するか」を毎tick確認し、不一致なら再計算して
+  追いつくという設計で対処している。
+- **発見したバグ**：`lib/state_sync.lua`の`onTick()`内、無条件に毎tick
+  実行される行が`caluculateTick(i0, s1)`とタイポしていた（正しくは
+  `calculateTick`）。存在しないグローバル関数呼び出しのため、そのまま
+  では**毎tickエラーで即クラッシュ**する状態だった。1文字の綴り間違いと
+  判断し、`lib/state_sync.lua`側で直接修正した（設計判断ではなく
+  バグ修正）。
+- **判明した契約の不一致**：`state_sync.lua`は自身の冒頭コメントで
+  「state入出力はinteger前提」と明記している。`chuso1800_core.lua`の
+  `state_in`/`state_out`はスロット1-2（`STATE_LATCHES_LAYOUT`/
+  `STATE_TIMERS_LAYOUT`）こそ元から32bit整数だが、スロット3-7
+  （`OLD_I`/`OLD_IF_A`/`OLD_PHI`/`regen_bc_smooth`/`bc_target_smooth`）は
+  生のLua doubleであり、このままでは`state_sync.lua`が想定する形と
+  一致しない。
+- **現在の設計**：新規ディレクトリ`deploy/`を追加。
+  - `deploy/bridge.lua`：`state_sync.lua`が呼ぶ生グローバル関数
+    `calculateTick(stateless_in, state_in)`を実装するブリッジ。スロット
+    1-2は無変換で素通し、スロット3-7は`state_sync.lua`自身が定義する
+    `f2i`/`i2f`（float32のビットパターンをuint32として運ぶ、
+    `pack_bits`/`unpack_bits`と同じ`string.pack`/`string.unpack`の応用）で
+    このスロット境界だけ変換する。`src/chuso1800_core.lua`自体はこの変換
+    を一切知らず、内部では常にフル精度のdoubleで計算する（既存テスト
+    スイートは無変更・無影響）。
+  - `deploy/build.sh`：`lib/state_sync.lua` + `src/chuso1800_core.lua`
+    （`require`が無いため`local core = (function() ... end)()`でラップ
+    してインライン化） + `deploy/bridge.lua` を連結し、
+    `deploy/chuso1800_deploy.lua`（Stormworksの単一LUAノードへそのまま
+    貼り付けられる完成品）を生成する。
+- **理由**：float32への丸めは`f2i`/`i2f`を通るスロット境界で1回だけ発生する。
+  これは新たに導入した損失ではなく、Stormworksのcomposite `number`
+  チャンネル自体が元々float32精度である以上、実機配線すれば避けられない
+  制約を明示化したにすぎない（idempotency・往復精度は
+  `test/scenarios/state_sync_bridge.lua`で検証済み：float32で正確に表現
+  できる値は`f2i(i2f(x))`が完全往復し、そうでない値も相対誤差
+  2e-7程度に収まる）。`chuso1800_core.lua`自体を「全スロット整数」制約に
+  合わせて作り替える案（生doubleスロットを廃止する等）は採らなかった
+  ─ 標準Luaでのテスト容易性という当初からの一次要件（README「契約」）を
+  損なわずに済む、境界だけの変換の方が影響範囲が小さいため。
+- **影響箇所**：`lib/state_sync.lua`（タイポ修正のみ）、新規
+  `deploy/bridge.lua`・`deploy/build.sh`・`deploy/chuso1800_deploy.lua`、
+  `test/scenarios/state_sync_bridge.lua`、README.md「デプロイ」節・
+  「今後の実配線について」1項。

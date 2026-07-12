@@ -24,6 +24,7 @@ local scenario_names = {
     "bc_smoothing_ramp_rates",
     "direction_eb_interlock_corrected_semantics",
     "power_cut_dead_logic_constant",
+    "state_sync_bridge",
 }
 
 local total, failed = 0, 0

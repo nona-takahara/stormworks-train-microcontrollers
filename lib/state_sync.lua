@@ -40,7 +40,7 @@ function onTick()
   end
 
   -- いまのステートを計算
-  o0, s0 = caluculateTick(i0, s1)
+  o0, s0 = calculateTick(i0, s1)
 
   for i = 1, 8 do
     output.setNumber(i, o2_fb[i]) -- 2tick前

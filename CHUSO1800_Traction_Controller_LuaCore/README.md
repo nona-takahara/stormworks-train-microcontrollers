@@ -6,7 +6,10 @@
 スタンドアロンのプロトタイプです。
 
 - **`CHUSO1800_Traction_Controller/` 配下のファイルは一切変更していません。**
-- `main.sw-net` への実配線はまだ行っていません（「今後の実配線について」参照）。
+- `main.sw-net` へのLUAノード配線差し替え自体はまだ行っていません
+  （`script_ref`をどう向けるかはゲート網側の作業のため）。ただし
+  Stormworksへそのまま貼り付けられる状態のデプロイ用スクリプトは
+  `deploy/`に用意済み（「デプロイ（実機組み込み用スクリプト）」参照）。
 - Stormworks実機なしで、素の `lua` インタプリタだけでテストできます（「テスト」参照）。
 
 ### ドキュメントの読み方
@@ -17,6 +20,7 @@
 | [`SIGNAL_MAP.md`](./SIGNAL_MAP.md) | 全信号→スロット/ビット割付の**一次情報源** |
 | [`DESIGN_LOG.md`](./DESIGN_LOG.md) | 「なぜそうなったか」の意思決定ログ（当初案と変更経緯） |
 | `../CHUSO1800_Traction_Controller/SPEC.md` | 元のゲート網の仕様。本文中の `§x.y` はこれを指す |
+| `../../lib/state_sync.lua` | リポジトリ共通の汎用ステート同期ドライバ（本モジュール専用ではない） |
 
 ## スコープ：Lua化したもの／ゲート側に残したもの
 
@@ -171,22 +175,60 @@ Stormworks実機は不要、素のLuaだけで動く：
 lua test/run_all.lua
 ```
 
-12本のシナリオ（`test/scenarios/*.lua`）。カバー範囲：
+13本のシナリオ（`test/scenarios/*.lua`）。カバー範囲：
 
 - **未変更の** `../CHUSO1800_Traction_Controller/scripts/n409.lua` に対する
   数値回帰（小さな `input`/`output` シム経由で `loadfile` するため、同ファイル
   が変更されていないことの受動的な再確認にもなる）
 - SPEC.md §3.6 状態遷移図の完全な走査
 - SPEC.md記載のコーナーケース（H4/H5/H6/H7）の検証
+- `deploy/chuso1800_deploy.lua`（実際に生成される単一ファイル）を
+  `loadfile` して、ブリッジの変換（後述）と `onTick()` の多tick実行が
+  破綻しないことを検証（`state_sync_bridge.lua`）
+
+## デプロイ（実機組み込み用スクリプト）
+
+`../../lib/state_sync.lua` は、リポジトリ共通の汎用ステート同期ドライバ
+（本モジュール専用ではなく、`calculateTick(stateless_in, state_in)` という
+同じ形の純関数を持つ任意のマイコンモジュールから使える想定）。composite
+チャンネル経由の自己ループ配線が実機でどれだけ遅延するか不確実な問題を、
+「2tick前に自分が出した state と、外部からフィードバックされてきた値が
+一致するか」を毎tick確認し、不一致なら再計算して追いつく、という設計で
+吸収している。
+
+`state_sync.lua` は次の契約を要求する（自身の冒頭コメントより）：
+「一般入出力はfloat前提、state入出力はinteger前提」。本モジュールの
+`state_in`/`state_out` はスロット1-2（`STATE_LATCHES_LAYOUT`/
+`STATE_TIMERS_LAYOUT`）こそ元から32bit整数だが、スロット3-7
+（`OLD_I`/`OLD_IF_A`/`OLD_PHI`/`regen_bc_smooth`/`bc_target_smooth`）は
+生のLua doubleであり、このままでは`state_sync.lua`の想定と噛み合わない。
+`deploy/bridge.lua`がこの差を吸収する：スロット3-7を`state_sync.lua`自身の
+`f2i`/`i2f`（float32のビットパターンをuint32として運ぶ、`pack_bits`と同じ
+`string.pack`/`string.unpack`の応用）でスロット境界だけ変換する。
+`src/chuso1800_core.lua`自体はこの変換を一切知らず、内部では常にフル
+精度のdoubleで計算する（既存テストスイートの挙動・許容誤差は無変更）。
+float32への丸めはこの境界を1回通るときだけ発生し、これはStormworksの
+composite `number` チャンネル自体が元々float32精度である以上、実機配線
+すれば避けられない制約を明示化したものにすぎない。
+
+`deploy/build.sh` を実行すると、`../../lib/state_sync.lua` +
+`src/chuso1800_core.lua`（`require`が無いため、`local core = (function()
+... end)()`でラップしてインライン化）+ `deploy/bridge.lua` を連結した
+`deploy/chuso1800_deploy.lua` が生成される。これがStormworksの単一LUA
+ノードへそのまま貼り付けられる完成品。3つのソースいずれかを変更したら
+再生成すること。生成物自体もリポジトリにコミットしてあるので、
+`build.sh`を実行しなくてもコピーはできる。
 
 ## 今後の実配線について（本プロトタイプのスコープ外）
 
 `main.sw-net` へ実際に組み込む場合、以下が必要になる（今回は着手していない）：
 
-1. `LUA current_sim` ノードの `script_ref` を差し替える（あるいは置き換える）。
-   本モジュールをStormworksの `onTick()` として再構成し、8＋8本のスロットを
-   2組のComposite Read/Write（ステート用は自己ループ、ステートレス入出力用は
-   実際のゲートと接続）でパック／アンパックする。
+1. `LUA current_sim` ノードの `script_ref` を、`deploy/chuso1800_deploy.lua`
+   の内容を貼り付けたスクリプトへ差し替える。8＋8本のスロットは、
+   上記「デプロイ」節の通り`state_sync.lua`が2組のComposite Read/Write
+   （ステート用は自己ループ、ステートレス入出力用は実際のゲートと接続）
+   でパック／アンパックする（32チャンネル全体の配線規約は`lib/state_sync.lua`
+   冒頭コメント、`deploy/bridge.lua`のコメント参照）。
 2. `catenary_voltage_sw`／`brake_pressure_sw`／`sap_pressure_sw`／
    `direction` を新Luaノードへの正式な入力として配線する（いずれも既存
    ノードの出力をそのまま使える）。これらの解決に使う `sap_ecb_toggle`／
