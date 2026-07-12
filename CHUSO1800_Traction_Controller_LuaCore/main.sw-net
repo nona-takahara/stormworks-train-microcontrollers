@@ -98,12 +98,13 @@ module main
   inst COMPOSITE_WRITE_NUMBER core_write (count=16, offset=1) : inc=core_out, in1=speed_out, in2=catenary_voltage_sw_out, in3=brake_pressure_sw_out, in4=sap_pressure_sw_out, in5=direction_out, in6=notch_pos_out, in7=controller_stop_num_out, in8=regen_flag_num_out, in9=speed_out_delay, in10=catenary_voltage_sw_out_delay, in11=brake_pressure_sw_out_delay, in12=sap_pressure_sw_out_delay, in13=direction_out_delay, in14=notch_pos_out_delay, in15=controller_stop_num_out_delay, in16=regen_flag_num_out_delay -> out=core_input
   inst LUA core_logic (script_ref="deploy/chuso1800_deploy.lua") : composite=core_input -> composite=core_out
 
-  # --- Core outputs（core_out ch17-24 = 当tickの実出力。ch1-16/25-32は自己ループ専用で未使用） ---
-  inst COMPOSITE_READ_NUMBER motor_current_read (channel=17) : composite=core_out -> out=motor_current_out
-  inst COMPOSITE_READ_NUMBER w_read (channel=18) : composite=core_out -> out="W"
-  inst COMPOSITE_READ_NUMBER bc_target_smooth_read (channel=19) : composite=core_out -> out=bc_target_smooth_out
-  inst COMPOSITE_READ_NUMBER bcT_read (channel=20) : composite=core_out -> out=bcT_out
-  inst COMPOSITE_READ_NUMBER status_bits_read (channel=21) : composite=core_out -> out=status_bits_out
+  # --- Core outputs（core_out ch1-8 = state_sync.luaが再同期済みの2tick遅れた出力。
+  # ch17-24は再同期前の当tick計算値でしかないため外部からは読まない） ---
+  inst COMPOSITE_READ_NUMBER motor_current_read (channel=1) : composite=core_out -> out=motor_current_out
+  inst COMPOSITE_READ_NUMBER w_read (channel=2) : composite=core_out -> out="W"
+  inst COMPOSITE_READ_NUMBER bc_target_smooth_read (channel=3) : composite=core_out -> out=bc_target_smooth_out
+  inst COMPOSITE_READ_NUMBER bcT_read (channel=4) : composite=core_out -> out=bcT_out
+  inst COMPOSITE_READ_NUMBER status_bits_read (channel=5) : composite=core_out -> out=status_bits_out
   inst FUNC_NUM_1 status_cam_bit (expression="x%2") : x=status_bits_out -> out=status_cam_bit_out
   inst THRESHOLD status_cam_pulse (min=1, max=1) : value=status_cam_bit_out -> out="cam"
   inst FUNC_NUM_1 status_power_cut_bit (expression="floor(x/128)%2") : x=status_bits_out -> out=status_power_cut_bit_out
