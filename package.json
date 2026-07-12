@@ -4,10 +4,8 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.28.2",
-  "dependencies": {
-    "storm-microcontroller-language": "file:../storm-microcontroller-language"
-  },
   "devDependencies": {
-    "storm-lua-minify": "^0.1.3"
+    "storm-lua-minify": "^0.1.3",
+    "storm-microcontroller-language": "^0.9.0"
   }
 }
