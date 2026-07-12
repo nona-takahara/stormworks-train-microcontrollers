@@ -9,6 +9,20 @@ package.path = this_dir .. "?.lua;" ..
     this_dir .. "../src/?.lua;" ..
     package.path
 
+-- chuso1800_core.lua expects a real Stormworks `property` global (see its
+-- own header comment) -- it no longer carries its own non-Stormworks
+-- fallback, so the test suite provides one here instead, matching
+-- main.sw-net's PROPERTY_NUMBER node defaults (value= attributes).
+property = {
+    getNumber = function(name)
+        local defaults = {
+            ["Over Speed Th. [m/s]"] = 32,
+            ["Power Limit Current [A]"] = 210,
+        }
+        return defaults[name]
+    end,
+}
+
 -- chuso1800_core.lua is not a module (see its own header comment and
 -- DESIGN_LOG.md #15): it defines plain top-level functions with no
 -- `local`, so a single dofile() here makes them real globals for the rest

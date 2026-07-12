@@ -1,82 +1,38 @@
--- CHUSO1800 traction controller: consolidated state machine + physics.
+-- CHUSO1800 トラクション制御：状態機械＋物理演算の統合コア。
 --
--- Pure-function contract: calculateTick(stateless_in, state_in) -> stateless_out, state_out.
--- stateless_in/out and state_in/out are arrays [1..8] of Lua numbers. state_out
--- from tick N is fed back verbatim as state_in on tick N+1. No persistent Lua
--- globals are used for control state (physics/BC quasi-state and packed
--- latch/timer bitfields live entirely in state_in/state_out).
+-- 純関数契約：calculateTick(stateless_in, state_in) -> stateless_out, state_out。
+-- いずれも要素数8のLua数値配列。tick Nのstate_outはそのままtick N+1の
+-- state_inとしてフィードバックされる。制御状態を持つ永続グローバルは
+-- 使わない（物理・BC平滑化の準ステートもパック済みラッチ/タイマーも、
+-- すべてstate_in/state_outの中だけで完結する）。
 --
--- See ../SIGNAL_MAP.md for the full signal-to-slot/bit mapping and provenance
--- of every formula below (cross-referenced to CHUSO1800_Traction_Controller/SPEC.md).
+-- 信号→スロット/ビット割付の一次情報源は ../SIGNAL_MAP.md（各式の由来
+-- =SPEC.md節番号もそちら）。
 --
--- Modeling rule (see README.md "Tick model"): every node that has a feedback
--- path (SR latches, debounce timers, periodic pulses, the physics
--- quasi-state, BC smoothing) reads its OLD value (state_in) when computing
--- this tick's decisions, and writes a NEW value to state_out for next tick.
--- Purely combinational logic (derived only from fresh external inputs, or
--- from other freshly-computed combinational values) is evaluated fully
--- within the same tick -- unlike the literal gate-net model (SPEC.md §0.2,
--- "every gate output is 1-tick delayed"), this module lets combinational
--- chains settle instantly, which SPEC.md's own closing note anticipates and
--- accepts ("transient corner-case tick-counts may shrink, steady-state
--- conclusions are unchanged"). This collapsing is required to fit the whole
--- control surface in 8 state slots.
+-- tickモデル（詳細はREADME.md「tickモデル」）：フィードバック経路を持つ
+-- ノード（SRラッチ・デバウンス・周期パルス・物理準ステート・BC平滑化）は
+-- OLD値（state_in）を今tickの判断に使い、NEW値をstate_outへ書く。それ以外の
+-- 純粋な組み合わせ論理は同tick内で即座に確定させる（元のゲートネットの
+-- 「全ゲート1tick遅延」モデルより単純化しているが、SPEC.md自身が許容する
+-- 簡略化 ─ 8ステートスロットに収めるために必要）。
 --
--- Below is organized into small functions, each roughly matching one
--- SPEC.md §3.x section, threaded together by calculateTick at the bottom --
--- rather than one large flat transliteration of every main.sw-net gate name
--- into a same-named local variable. Two mechanisms are deliberately
--- SIMPLER than a literal gate-for-gate port, at the cost of shifting exact
--- tick counts in corner cases (never steady-state behavior):
---   * periodic_pulse_step replaces the BLINKER+PULSE(rise) gate pair with a
---     single elapsed-tick counter, since nothing here ever reads a raw
---     on/off duty-cycle output -- only the periodic pulse it drives matters.
---   * regen_delay_step counts in whole ticks (a packed integer, not a
---     seconds-based float): 0.5s charge / 10s discharge is a 20x ratio, so
---     the level is scaled so charging adds 20/tick and discharging removes
---     1/tick, both exact integers -- avoiding the float-accumulation drift
---     a seconds-based accumulator would have (30 additions of 1/60 land at
---     0.49999999999999994, not exactly 0.5, which would need an epsilon
---     guard on every "charged" check; integers need none).
+-- 元のゲート名をそのままローカル変数へ機械移植した1枚の巨大関数にはせず、
+-- SPEC.md §3.x各節にほぼ対応する小関数へ分割し、core_tick（末尾）が順に
+-- 呼び出す。periodic_pulse_step・regen_delay_stepは、逐語移植より意図的に
+-- 単純化した箇所（コーナーケースのtick数がズレる場合があるが定常状態の
+-- 挙動は変わらない）。経緯は各関数のコメントと `DESIGN_LOG.md` #6/#7。
 --
--- Physics (Newton-solve) is ported verbatim from
--- CHUSO1800_Traction_Controller/scripts/n409.lua -- that file is NOT modified;
--- test/scenarios/physics_regression_vs_n409.lua checks numeric parity.
+-- 物理演算（Newton法）は
+-- ../../CHUSO1800_Traction_Controller/scripts/n409.lua からの逐語移植
+-- （n409.lua自体は無改変。数値回帰は test/scenarios/physics_regression_vs_n409.lua）。
 --
--- This file makes no `require`/`dofile` calls of its own, and is NOT a
--- module: it defines plain top-level functions (no `local M = {}` table,
--- no `return M`) directly in the loading chunk's scope. deploy/main.lua
--- pulls it in with `dofile("chuso1800_core")`, which storm-lua-minify
--- splices in as raw statements (see DESIGN_LOG.md #15 for why this
--- replaced the earlier `require("chuso1800_core")` module-table design:
--- storm-lua-minify's `-m` require dispatcher duplicated whatever else was
--- loaded via `dofile`, and dropping `require`/`-m` entirely removes that
--- bug at the root instead of working around it). The plain-`lua` test
--- suite loads this the same way, via `dofile` in test/run_all.lua, once
--- per process -- real Lua's `dofile` shares the caller's global
--- environment, so every function below that omits `local` (i.e. every
--- function this file's own header comment calls out as test-facing, plus
--- the tick sub-steps used only internally but harmless either way) lands
--- as a real global, visible identically to both the Stormworks deploy
--- build and the test scenarios. This is the same mechanism already used
--- for `onTick`/`i2f`/`f2i` in lib/state_sync.lua and `calculateTick` in
--- deploy/main.lua -- see that file's header comment.
---
--- The bit-field helpers below (to_u32/get_bits/put_bits) are a plain
--- string.pack("I4",...)/string.unpack("I4",...) implementation inlined
--- here so this file has no dependency on anything else to be tested
--- standalone.
---
--- NOTE: storm-lua-minify (as of 0.1.3) never shortens global identifiers,
--- only locals (see dist/ast2lua.js's formatExpression: `expression.isLocal
--- ? generateIdentifier(...) : expression.name`), so every function name
--- below currently costs its full, unshortened length at every call site.
--- The author (storm-lua-minify's maintainer) has confirmed global-name
--- shortening is a planned upstream feature; this file is written already
--- assuming that lands, rather than hand-shortening names preemptively.
+-- このファイルはモジュールではない：`local M = {}`を持たず、外部から
+-- 呼ばれる関数はすべて`local`なしのグローバルとして定義する。理由・
+-- `dofile`での読み込み方はリポジトリ共通指針 `../../LUA_CODING_GUIDE.md`
+-- と `DESIGN_LOG.md` #15 を参照。
 
 --------------------------------------------------------------------------
--- Constants (copied from n409.lua verbatim).
+-- 定数（n409.luaからの逐語コピー）
 --------------------------------------------------------------------------
 
 local K = 12.16
@@ -94,64 +50,48 @@ local WEIGHT = 35 * 1000
 local SR = { 7.428,5.137,4.157,3.197,2.681,2.178,1.717,1.317,0.9710,0.7570,0.6386,0.3610,0.2276,0.1334,     0,2.568,1.734,1.218,0.7570,0.4110,0.1334}
 local PR = {     0,5.137,4.157,3.197,2.681,2.178,1.717,1.317,0.9710,0.7570,0.6386,0.3610,0.2276,0.1334, 3.714,2.568,1.734,1.218,0.7570,0.4110,0.1334}
 
--- Newton-solve iteration seed. NOTE: this is NOT OLD_I and NOT the field
--- current control law's `target_i` -- in n409.lua both channel reads (the
--- outer `target_i = input.getNumber(6)` and calc_current_phi's own internal
--- `input.getNumber(6)`) read the SAME hardcoded CONST(200) composite channel
--- independently; `target_i` gets locally reassigned for the field-current
--- law but that reassignment never reaches the Newton solve. Preserved here
--- as two independent uses of the same constant.
+-- Newton法の反復シード。OLD_Iでも界磁電流制御則の`target_i`でもない点に
+-- 注意：n409.luaでは外側の`target_i = input.getNumber(6)`とcalc_current_phi
+-- 内部の`input.getNumber(6)`が、同じ固定CONST(200)チャンネルを互いに独立に
+-- 読んでいる（`target_i`はその後界磁電流則用に再代入されるが、その再代入は
+-- Newton法側には反映されない）。同一定数の2箇所独立使用として、この挙動を
+-- そのまま保持している。
 local NEWTON_SEED = 200
 
 --------------------------------------------------------------------------
--- Stormworks `property` values, read once at script load ("spawn time" --
--- properties don't change mid-flight, so there is no need to re-read them
--- every tick). This is the mechanism that keeps the two numeric limits
--- genuinely tunable per-vehicle in Stormworks' property panel -- matching
--- the original main.sw-net PROPERTY_NUMBER node names exactly -- instead of
--- baking them into source. property.get*() sits entirely outside the 8+8
--- composite-channel budget, so this costs no input slots.
+-- Stormworksの`property`値。spawn時に1回だけ読む（走行中は変化しないため
+-- 毎tick読み直す必要がない）。main.sw-netの対応PROPERTY_NUMBERノードと
+-- 同じプロパティ名を使い、車両ごとの調整をゲーム内property panelで
+-- 引き続き可能にする（詳細経緯は `DESIGN_LOG.md` #3）。property.get*()は
+-- 8+8のcomposite channel予算の外側なので、入力スロットは消費しない。
 --
--- Outside Stormworks (this repo's plain-`lua` test suite), the `property`
--- global does not exist; fall back to the same defaults the original
--- main.sw-net PROPERTY_NUMBER nodes ship with (their value=... attribute).
+-- `property`グローバルはStormworks実機が提供する。素の`lua`のテスト環境
+-- には存在しないため、test/run_all.luaがこのファイルをdofileする前に
+-- main.sw-net側の各ノードのデフォルト値（value=属性）と同じ内容のスタブを
+-- グローバルとして用意する（このファイル自体にフォールバックを書かない
+-- ことで、deployビルドの対象コードから完全に除外する）。
 --------------------------------------------------------------------------
-
-local property = property
-if type(property) ~= "table" then
-    local DEFAULT_NUMBER_PROPERTIES = {
-        ["Over Speed Th. [m/s]"] = 32,       -- main.sw-net's overspeed_threshold
-        ["Power Limit Current [A]"] = 210,   -- main.sw-net's power_limit_current
-    }
-    property = {
-        getNumber = function(name) return DEFAULT_NUMBER_PROPERTIES[name] end,
-    }
-end
 
 local OVERSPEED_THRESHOLD = property.getNumber("Over Speed Th. [m/s]")     -- m/s
 local POWER_LIMIT_CURRENT = property.getNumber("Power Limit Current [A]") -- A
 
--- Plain CONST nodes in main.sw-net (not PROPERTY_* -- never exposed as
--- in-game-tunable in the original design either), so these stay source
--- constants.
+-- main.sw-netでは単純なCONSTノード（PROPERTY_*ではなく元設計でも
+-- ゲーム内調整不可）だったため、ソース定数のままにしてある。
 local BRAKE_MIN_PRESSURE = 4         -- atm
 local BRAKE_LIMIT_300 = 300
 local BRAKE_LIMIT_400 = 400
 local REGEN_BC_MIN = -0.1
 local BC_TARGET_MIN = -0.05
 
--- Tick-rate-derived timer constants (Stormworks assumed 60 ticks/sec, SPEC §0.2).
-local CAP_DEBOUNCE_TICKS = 6              -- 0.1s debounce, instant reset when disabled
-local CAM_ADVANCE_PERIOD_TICKS = 12       -- 0.1s+0.1s traction_blinker period
-local FIELD_CURRENT_EXCESS_PERIOD_TICKS = 30     -- 0.1s+0.4s field_current_excess_blinker period
+-- tick数由来のタイマー定数（Stormworksは60tick/秒前提、SPEC §0.2）。
+local CAP_DEBOUNCE_TICKS = 6              -- 0.1sデバウンス、無効化で即0
+local CAM_ADVANCE_PERIOD_TICKS = 12       -- 0.1s+0.1s（traction_blinker周期）
+local FIELD_CURRENT_EXCESS_PERIOD_TICKS = 30     -- 0.1s+0.4s（同ブリンカ周期）
 
--- regen_delay was CAPACITOR(charge_time=0.5s, discharge_time=10s) --
--- 0.5s = 30 ticks, 10s = 600 ticks. `level` is scaled so that "full" equals
--- the LARGER of the two tick counts (600): discharging then decrements
--- exactly 1/tick (600 ticks to drain, matching 10s by construction), and
--- charging must fill the same 0..600 range in only 30 ticks, so it adds
--- 600/30 = 20/tick. Pure integer arithmetic -- both steps land exactly on
--- whole numbers, so "charged" is a plain `>= 600` with no epsilon needed.
+-- regen_delayは元CAPACITOR(charge_time=0.5s, discharge_time=10s)。
+-- 0.5s=30tick、10s=600tick。levelは大きい方（600）にスケールし、放電は
+-- 1/tick、充電は600/30=20/tickの整数刻みにしてある（浮動小数点の
+-- 誤差蓄積を避けるため。経緯は `DESIGN_LOG.md` #6）。
 local REGEN_DELAY_DISCHARGE_TICKS = 600   -- 10s
 local REGEN_DELAY_CHARGE_TICKS = 30       -- 0.5s
 local REGEN_DELAY_FULL = REGEN_DELAY_DISCHARGE_TICKS
@@ -159,7 +99,7 @@ local REGEN_DELAY_CHARGE_STEP = REGEN_DELAY_FULL // REGEN_DELAY_CHARGE_TICKS -- 
 local REGEN_DELAY_DISCHARGE_STEP = 1
 
 --------------------------------------------------------------------------
--- Small helpers
+-- 小さなヘルパー
 --------------------------------------------------------------------------
 
 local function clamp(x, lo, hi)
@@ -168,18 +108,12 @@ local function clamp(x, lo, hi)
     return x
 end
 
--- Bit-field helpers for the packed state/status slots (bit layout is
--- documented in SIGNAL_MAP.md, not restated as a Lua table here -- see
--- DESIGN_LOG.md #13 for why). `to_u32` enforces the 32-bit boundary by
--- round-tripping through string.pack("I4",...)/string.unpack("I4",...), so
--- overflow wraps like a real 32-bit unsigned value; `get_bits`/`put_bits`
--- then extract/build individual fields by plain shift+mask, addressed by
--- bit position instead of by name. (state_sync.lua's own f2i/i2f use the
--- same string.pack/string.unpack round-trip technique for a different
--- purpose -- float32 bit-reinterpretation, not integer field packing --
--- so they aren't reusable here directly, but this file must stay
--- self-contained regardless: it's `require`d standalone by the test suite
--- with no state_sync.lua in scope.)
+-- パック済みstate/statusスロット用のビット操作ヘルパー（ビット割付は
+-- SIGNAL_MAP.md参照、ここにテーブルとしては持たない。経緯は
+-- `DESIGN_LOG.md` #13）。to_u32はstring.pack/unpack("I4",...)の往復で
+-- 32bit境界を強制（実機のunsigned 32bitと同じくオーバーフローは
+-- wrapする）。get_bits/put_bitsはビット位置指定でフィールドを
+-- 取り出し/組み立てる。
 function to_u32(value)
     return string.unpack("I4", string.pack("I4", math.floor(value or 0) & 0xFFFFFFFF))
 end
@@ -188,9 +122,9 @@ function get_bits(acc, shift, width)
     return (acc >> shift) & ((1 << width) - 1)
 end
 
--- Single-bit field, returned as a boolean directly (most fields in
--- state_in[1]/[2] and stateless_out[5] are 1-bit latches/flags) -- shorter
--- at each call site than get_bits(acc, shift, 1) ~= 0.
+-- 1bitフィールドをboolean直接で返す版（state_in[1]/[2]・stateless_out[5]の
+-- 大半は1bitラッチ/フラグ）。呼び出し側で get_bits(acc, shift, 1) ~= 0 と
+-- 書くより短い。
 function get_bit(acc, shift)
     return (acc >> shift) & 1 ~= 0
 end
@@ -199,22 +133,21 @@ function put_bits(value, shift, width)
     return (math.floor(value or 0) & ((1 << width) - 1)) << shift
 end
 
--- Counterpart to get_bit: packs a boolean directly, shorter at each call
--- site than put_bits(b and 1 or 0, shift, 1).
+-- get_bitの対:booleanを直接パックする（put_bits(b and 1 or 0, shift, 1)より短い）。
 function put_bit(b, shift)
     return (b and 1 or 0) << shift
 end
 
--- Reset-priority SR latch (SPEC.md §0.1).
+-- リセット優先SRラッチ（SPEC.md §0.1）。
 function sr_latch(old_q, set, reset)
     if reset then return false end
     if set then return true end
     return old_q
 end
 
--- Debounce (was CAPACITOR(charge_time=0.1s, discharge_time=0) in
--- main.sw-net): a plain "N consecutive enabled ticks" counter. Enabling
--- resets instantly, matching discharge_time=0.
+-- デバウンス（元CAPACITOR(charge_time=0.1s, discharge_time=0)）：
+-- 「N tick連続でenable」の単純カウンタ。無効化で即0リセット
+-- （discharge_time=0と同じ）。
 local function debounce_step(old_counter, enable)
     if enable then
         return math.min(old_counter + 1, CAP_DEBOUNCE_TICKS)
@@ -226,15 +159,12 @@ local function debounce_charged(old_counter)
     return old_counter >= CAP_DEBOUNCE_TICKS
 end
 
--- Periodic pulse (was BLINKER(on_ticks, off_ticks) + PULSE(rise) in
--- main.sw-net): fires once every `period_ticks` of continuous `enable`,
--- then restarts the count; disabling resets the count to 0. Nothing in this
--- module reads a raw on/off duty-cycle output, only the periodic pulse it
--- would drive (cam advance, regen-warning pulse) -- so a single elapsed-tick
--- counter stands in for the BLINKER+PULSE gate pair, with no separate
--- "previous phase" bit needed. Timing differs slightly from a literal port
--- (first pulse arrives at period_ticks after enabling, not at off_ticks);
--- see README.md "tick model".
+-- 周期パルス（元BLINKER(on_ticks, off_ticks)+PULSE(rise)）：`enable`が
+-- `period_ticks`連続したら1回パルスを出してカウント再開、無効化で0へ。
+-- 生のON/OFF出力を読む箇所がなく周期パルスの方だけが意味を持つため
+-- （カム進段・界磁電流超過検知）、1つの経過tickカウンタで代替している。
+-- 逐語移植とのタイミング差（初回パルスがoff_ticks後ではなくperiod_ticks後）
+-- は `DESIGN_LOG.md` #7・README.md「tickモデル」参照。
 local function periodic_pulse_step(old_counter, enable, period_ticks)
     if not enable then
         return 0, false
@@ -246,9 +176,8 @@ local function periodic_pulse_step(old_counter, enable, period_ticks)
     return counter, false
 end
 
--- regen_delay (was CAPACITOR(charge_time=0.5s, discharge_time=10s)): see the
--- REGEN_DELAY_* constants above for the scaling derivation. `level` is a
--- packed integer field (STATE_TIMERS_LAYOUT), not a raw double.
+-- regen_delay（元CAPACITOR(charge_time=0.5s, discharge_time=10s)）。
+-- スケーリングの導出は上のREGEN_DELAY_*定数群のコメント参照。
 local function regen_delay_step(old_level, enable)
     if enable then
         return math.min(old_level + REGEN_DELAY_CHARGE_STEP, REGEN_DELAY_FULL)
@@ -261,7 +190,7 @@ local function regen_delay_charged(old_level)
 end
 
 --------------------------------------------------------------------------
--- Physics (ported from n409.lua)
+-- 物理演算（n409.luaからの移植）
 --------------------------------------------------------------------------
 
 local function calc_phi(iF)
@@ -305,14 +234,14 @@ local function calc_current_phi(Vt, n, RpN, pF, iF_a, seed)
     return i, calc_phi(calc_iF(pF, i, iF_a))
 end
 
--- physics_tick: byte-for-byte port of n409.lua's onTick body. Positional
--- params mirror the original sim_input composite channels /
--- traction_status_bool, in this order: speed, vl (=catenary_voltage_sw),
--- position_counter (OLD cam), direction, notch_eff, phase1, phase2, regen
--- (OLD latches), notch_ge1, low_bc_with_regen_flag (fresh bools),
--- regen_bc_smooth_seed (OLD, ch7), regen_bc_target (fresh, ch8), OLD_I,
--- OLD_IF_A, OLD_PHI (OLD physics quasi-state). Returns: motor_current,
--- back_emf, accel, W, iF_a, bcT, OLD_I, OLD_IF_A, OLD_PHI (new quasi-state).
+-- physics_tick：n409.luaのonTick本体を1対1で移植したもの。引数は元の
+-- sim_input composite channel/traction_status_boolの並びに対応：
+-- speed, vl(=catenary_voltage_sw), position_counter(OLDカム), direction,
+-- notch_eff, phase1, phase2, regen(いずれもOLDラッチ), notch_ge1,
+-- low_bc_with_regen_flag(いずれも当tickの値), regen_bc_smooth_seed(OLD,
+-- ch7), regen_bc_target(当tick, ch8), OLD_I, OLD_IF_A, OLD_PHI(OLD物理
+-- 準ステート)。戻り値: motor_current, back_emf, accel, W, iF_a, bcT,
+-- OLD_I, OLD_IF_A, OLD_PHI(新しい準ステート)。
 function physics_tick(speed, vl, position_counter, direction, notch_eff, phase1, phase2, regen,
     notch_ge1, low_bc_with_regen_flag, regen_bc_smooth_seed, regen_bc_target, OLD_I, OLD_IF_A, OLD_PHI)
     local rpm = speed * 9.55 * GEAR_RATIO / WHEEL_R
@@ -361,24 +290,23 @@ function physics_tick(speed, vl, position_counter, direction, notch_eff, phase1,
 end
 
 --------------------------------------------------------------------------
--- State (de)serialization helpers (used by calculateTick itself, and
--- directly by the test suite via test/harness.lua's named-table wrappers
--- -- these take/return plain positional values, not tables, for the same
--- minified-size reason as the tick sub-steps above; DESIGN_LOG.md #13).
+-- ステートの直列化/復元ヘルパー（core_tick自身と、test/harness.luaの
+-- 名前付きテーブル変換ラッパー経由でテストスイートから使う。位置引数・
+-- 多値返却である理由は下のtickサブステップと同じ ─ `DESIGN_LOG.md` #13）。
 --------------------------------------------------------------------------
 
 function zero_state()
     return { 0, 0, 0, 0, 0, 0, 0, 0 }
 end
 
--- Bit positions below (state_in[1]/[2], stateless_out[5]) must match
--- SIGNAL_MAP.md exactly.
+-- 以下のビット位置（state_in[1]/[2]、stateless_out[5]）はSIGNAL_MAP.mdと
+-- 完全一致させること。
 
--- Returns: position_counter, phase1_latch, phase2_latch, regen_latch,
+-- 戻り値: position_counter, phase1_latch, phase2_latch, regen_latch,
 -- traction_advance_counter, field_current_excess_counter,
 -- regen_delay_level, phase1_cap_counter, phase2_cap_counter,
 -- current_below_limit_cap_counter, OLD_I, OLD_IF_A, OLD_PHI,
--- regen_bc_smooth, bc_target_smooth.
+-- regen_bc_smooth, bc_target_smooth。
 function decode_state(state_in)
     local latches = to_u32(state_in[1])
     local timers = to_u32(state_in[2])
@@ -388,7 +316,7 @@ function decode_state(state_in)
         state_in[3], state_in[4], state_in[5], state_in[6], state_in[7]
 end
 
--- Params in the same order as decode_state's returns.
+-- 引数の並びはdecode_stateの戻り値と同じ順序。
 function encode_state(position_counter, phase1_latch, phase2_latch, regen_latch,
     traction_advance_counter, field_current_excess_counter,
     regen_delay_level, phase1_cap_counter, phase2_cap_counter, current_below_limit_cap_counter,
@@ -411,8 +339,8 @@ function encode_state(position_counter, phase1_latch, phase2_latch, regen_latch,
     }
 end
 
--- Params: speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw,
--- direction, notch_pos, controller_stop, regen_flag.
+-- 引数: speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw,
+-- direction, notch_pos, controller_stop, regen_flag。
 function encode_stateless_in(speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw,
     direction, notch_pos, controller_stop, regen_flag)
     return {
@@ -423,9 +351,9 @@ function encode_stateless_in(speed, catenary_voltage_sw, brake_pressure_sw, sap_
     }
 end
 
--- Returns: motor_current, W, bc_target_smooth, bcT, cam_pulse,
+-- 戻り値: motor_current, W, bc_target_smooth, bcT, cam_pulse,
 -- phase1_latch, phase2_latch, regen_latch, notch_ge1,
--- low_bc_with_regen_flag, field_current_excess_cond, power_cut.
+-- low_bc_with_regen_flag, field_current_excess_cond, power_cut。
 function decode_stateless_out(stateless_out)
     local status = to_u32(stateless_out[5])
     return stateless_out[1], stateless_out[2], stateless_out[3], stateless_out[4],
@@ -434,45 +362,38 @@ function decode_stateless_out(stateless_out)
 end
 
 --------------------------------------------------------------------------
--- Tick sub-steps, each roughly one SPEC.md §3.x section. Positional
--- parameters/multi-return instead of named tables (see DESIGN_LOG.md #13):
--- storm-lua-minify can't rename table keys the way it renames identifiers,
--- so named intermediate tables cost real bytes against Stormworks' 8192-
--- character LUA node limit. This trades readability at these call
--- boundaries for that. decode_state/encode_state/decode_stateless_out are
--- positional too, for the same reason -- test/harness.lua's named-table
--- wrappers translate at the test boundary only, never part of the deploy
--- build.
+-- tickサブステップ群。それぞれおおむねSPEC.md §3.x各節1つに対応。
+-- 位置引数・多値返却である理由は `DESIGN_LOG.md` #13（storm-lua-minifyは
+-- テーブルキー文字列を短縮できないため）。test/harness.luaの名前付き
+-- テーブルラッパーはテスト境界だけの変換で、deployビルドには含まれない。
 --------------------------------------------------------------------------
 
 local function decode_inputs(stateless_in)
-    -- Returns: speed, catenary_voltage_sw, brake_pressure_sw (pre-resolved
-    -- by gates -- SAP passthrough or ECB-offset conversion already
-    -- applied, so this module no longer needs to know SAP vs ECB),
-    -- sap_pressure_sw (same), direction (pre-resolved -1/0/+1, gates
-    -- already combined forward/backward), notch_pos, controller_stop,
-    -- regen_flag.
+    -- 戻り値: speed, catenary_voltage_sw, brake_pressure_sw（SAP直結/ECB
+    -- オフセット換算いずれもゲート側で解決済みの値。本モジュールはSAP車か
+    -- ECB車かを知らない）, sap_pressure_sw（同）, direction（ゲート側で
+    -- forward/backwardから合成済みの-1/0/+1）, notch_pos, controller_stop,
+    -- regen_flag。
     return stateless_in[1], stateless_in[2], stateless_in[3], stateless_in[4], stateless_in[5],
         clamp(math.floor(stateless_in[6] or 0), 0, 7),
         (stateless_in[7] or 0) ~= 0,
         (stateless_in[8] or 0) ~= 0
 end
 
--- SPEC §3.5 (EB / power-cut condition). `power_cut` itself is provably
--- dead (see README "Simplifications") and folded out entirely.
+-- SPEC §3.5（EB／power-cut条件）。`power_cut`自体は死コードと証明済み
+-- （`DESIGN_LOG.md` #9）でここでは折り畳んで扱わない。
 local function eb_and_brake_pressure(speed, brake_pressure_sw, direction, controller_stop)
     local overspeed = math.abs(speed) > OVERSPEED_THRESHOLD
     local brake_below_min = brake_pressure_sw < BRAKE_MIN_PRESSURE
     return controller_stop or (direction == 0) or overspeed or brake_below_min
 end
 
--- SPEC §3.3 (notch processing) + §3.2's cam-position echo ("notch_fb").
--- Returns: notch_eff, notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1,
--- notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14.
+-- SPEC §3.3（notch処理）＋§3.2のカム位置echo（notch_fb）。
+-- 戻り値: notch_eff, notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1,
+-- notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14。
 local function notch_and_cam_feedback(notch_pos, position_counter, eb_condition)
     local notch_eff = notch_pos * (eb_condition and 0 or 1)
-    -- Cam-position echo zeroed under EB, matching the original
-    -- current_src_mux substitution (only ch7 survives EB).
+    -- カム位置echoはEB下で0（元のcurrent_src_muxの置換 ─ EB時はch7のみ生存）。
     local notch_fb = eb_condition and 0 or position_counter
     return notch_eff,
         notch_eff >= 1 and notch_eff <= 7,
@@ -485,17 +406,17 @@ local function notch_and_cam_feedback(notch_pos, position_counter, eb_condition)
         notch_fb ~= 14
 end
 
--- SPEC §3.8 (regen-BC target chain, fresh every tick). sap_pressure_sw
--- arrives pre-resolved from gates (see decode_inputs). Returns:
--- regen_bc_target, low_bc_with_regen_flag, regen_current.
+-- SPEC §3.8（regen-BCターゲット、毎tick再計算）。sap_pressure_swはゲート側で
+-- 解決済み（decode_inputs参照）。戻り値: regen_bc_target,
+-- low_bc_with_regen_flag, regen_current。
 local function brake_demand(sap_pressure_sw, regen_flag)
     local regen_bc_target = -math.floor((sap_pressure_sw - 1) * 2) / 7.2
     return regen_bc_target, regen_bc_target < BC_TARGET_MIN and regen_flag, math.max(-regen_bc_target, 0)
 end
 
--- current_src_mux EB substitution: under EB only ch7 (bcT, here holding
--- regen_current) survives; everything else reads 0. Params/returns both in
--- physics_tick's own order: motor_current, W, accel, iF_a, bcT.
+-- current_src_mux のEB置換：EB下ではch7（bcT、ここではregen_currentを保持）
+-- のみ生存、他は0。引数・戻り値ともphysics_tickと同じ並び:
+-- motor_current, W, accel, iF_a, bcT。
 local function eb_substitute(motor_current, W, accel, iF_a, bcT, eb_condition, regen_current)
     if eb_condition then
         return 0, 0, 0, 0, regen_current
@@ -503,12 +424,11 @@ local function eb_substitute(motor_current, W, accel, iF_a, bcT, eb_condition, r
     return motor_current, W, accel, iF_a, bcT
 end
 
--- SPEC §3.6/§3.7 debounce timers (current-limit and phase1/phase2's own
--- "has been on for 0.1s" gates). "*_charged" reflects the OLD counter (this
--- tick's decision input); "*_next" is what gets stored for next tick.
--- Returns: current_below_limit_cap_charged, current_below_limit_cap_counter_next,
--- phase1_cap_charged, phase1_cap_counter_next, phase2_cap_charged,
--- phase2_cap_counter_next.
+-- SPEC §3.6/§3.7のデバウンスタイマー（電流リミット、phase1/phase2自身の
+-- 「0.1s継続でON」ゲート）。`*_charged`はOLDカウンタ（今tickの判断用）、
+-- `*_next`は次tick保存用。戻り値: current_below_limit_cap_charged,
+-- current_below_limit_cap_counter_next, phase1_cap_charged,
+-- phase1_cap_counter_next, phase2_cap_charged, phase2_cap_counter_next。
 local function debounce_block(phase1_latch, phase2_latch, current_below_limit_cap_counter,
     phase1_cap_counter, phase2_cap_counter, motor_current)
     local current_limit_sw = phase2_latch and (POWER_LIMIT_CURRENT - 20) or POWER_LIMIT_CURRENT
@@ -518,15 +438,14 @@ local function debounce_block(phase1_latch, phase2_latch, current_below_limit_ca
         debounce_charged(phase2_cap_counter), debounce_step(phase2_cap_counter, phase2_latch)
 end
 
--- SPEC §3.6 field-current-excess detection chain (see SPEC.md §3.6 naming
--- note: this was mislabeled "regen_warning" in main.sw-net, but it isn't a
--- regen-brake warning at all -- iF_a here is the field current, read from
--- the same channel n409.lua calls "brake_current_fb"/channel=6. The
--- condition detects "notch went to 0 but iF_a is still above the 300/400A
--- threshold" and forces phase1/phase2 to fold early instead of waiting for
--- coasting_cond's natural current decay). Returns: brake_current_high_phase1,
+-- SPEC §3.6 界磁電流超過検知チェーン。main.sw-netでは"regen_warning"と
+-- 誤命名されていたが回生ブレーキ警告ではない ─ iF_aはここでは界磁電流
+-- （n409.luaの"brake_current_fb"/channel=6と同じ値）。「notchは0に落ちたが
+-- iF_aがまだ300/400A閾値を超えている」を検知し、coasting_condの自然な
+-- 電流減衰を待たずphase1/phase2を早期に畳む（改名の経緯は
+-- `DESIGN_LOG.md` #10）。戻り値: brake_current_high_phase1,
 -- field_current_excess_cond, field_current_excess_counter_next,
--- field_current_excess_pulse.
+-- field_current_excess_pulse。
 local function field_current_excess_block(phase1_latch, regen_bc_smooth, field_current_excess_counter,
     iF_a, notch_ge1, phase1_cap_charged)
     local phase1_low_bc = phase1_latch and regen_bc_smooth < REGEN_BC_MIN
@@ -538,8 +457,8 @@ local function field_current_excess_block(phase1_latch, regen_bc_smooth, field_c
     return brake_current_above_300 and phase1_cap_charged, field_current_excess_cond, counter_next, pulse
 end
 
--- SPEC §3.6 core state machine: phase1/phase2/regen SR latches. Returns:
--- phase1_latch, phase2_latch, regen_latch, traction_any_active.
+-- SPEC §3.6 中核の状態機械：phase1/phase2/regenのSRラッチ。戻り値:
+-- phase1_latch, phase2_latch, regen_latch, traction_any_active。
 local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
     notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1, notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14,
     motor_current, low_bc_with_regen_flag, field_current_excess_pulse, regen_flag,
@@ -563,8 +482,8 @@ local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
     local phase2_set_cond = notch_ge3 and notch_fb_eq14 and current_below_limit_cap_charged
     local phase2_reset = phase_reset_cond or (phase1_latch and not (notch_ge3 and notch_fb_eq14))
 
-    -- phase2_set_cond doubles as an extra phase1-reset trigger (Series ->
-    -- Parallel transition resets phase1 the same tick phase2 sets).
+    -- phase2_set_condは追加のphase1リセットトリガも兼ねる（直列→並列の
+    -- 遷移で、phase2がセットされる同tickにphase1をリセットする）。
     local phase1_reset = phase_reset_cond
         or (field_current_excess_pulse and phase1_cap_charged)
         or phase2_set_cond
@@ -578,18 +497,18 @@ local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
         phase1_set_cond or phase2_blinker_cond or regen_off_all or phase1_regen_active
 end
 
--- SPEC §3.2 cam advance (periodic pulse while traction_any_active).
--- Returns: position_counter, cam_pulse, traction_advance_counter_next.
+-- SPEC §3.2 カム進段（traction_any_active中の周期パルス）。戻り値:
+-- position_counter, cam_pulse, traction_advance_counter_next。
 local function advance_cam(position_counter, traction_advance_counter, traction_any_active)
     local counter_next, pulse = periodic_pulse_step(
         traction_advance_counter, traction_any_active, CAM_ADVANCE_PERIOD_TICKS)
     local new_position = (position_counter + (pulse and 1 or 0)) % 21
     local delta = new_position - position_counter
-    return new_position, not (delta >= 0 and delta <= 1), counter_next -- cam_pulse true only on the 20->0 ring wrap
+    return new_position, not (delta >= 0 and delta <= 1), counter_next -- cam_pulseは20->0のリング折返し時のみtrue
 end
 
--- SPEC §3.8 BC / regen-BC smoothing. Returns: bc_target_smooth,
--- regen_bc_smooth, regen_delay_level.
+-- SPEC §3.8 BC／regen-BC平滑化。戻り値: bc_target_smooth,
+-- regen_bc_smooth, regen_delay_level。
 local function smooth_bc(bc_target_smooth, regen_bc_smooth, regen_delay_level,
     accel, regen_bc_target, regen_flag, brake_current_high_phase1)
     local regen_bc_enable = regen_delay_charged(regen_delay_level) or (not regen_flag)
@@ -600,17 +519,11 @@ local function smooth_bc(bc_target_smooth, regen_bc_smooth, regen_delay_level,
 end
 
 --------------------------------------------------------------------------
--- Main tick function
+-- tick本体
 --------------------------------------------------------------------------
 
--- Renamed away from "calculateTick" (unlike every other function here,
--- which keeps its name from the days it lived under an M module table):
--- deploy/main.lua's own top-level `calculateTick` is the actual
--- Stormworks-facing global lib/state_sync.lua calls every tick (that name
--- is fixed by state_sync.lua's own contract, not ours to change), and it
--- calls this function internally after the i2f/f2i float32 boundary
--- conversion -- same name for both would silently clobber one with the
--- other once both are real top-level globals in the merged deploy script.
+-- 名前は`calculateTick`ではなく`core_tick`（deploy/main.lua側のグローバル
+-- `calculateTick`との衝突回避。経緯は `DESIGN_LOG.md` #15）。
 function core_tick(stateless_in, state_in)
     local st_position_counter, st_phase1_latch, st_phase2_latch, st_regen_latch,
         st_traction_advance_counter, st_field_current_excess_counter,
@@ -625,11 +538,11 @@ function core_tick(stateless_in, state_in)
         notch_and_cam_feedback(notch_pos, st_position_counter, eb_condition)
     local regen_bc_target, low_bc_with_regen_flag, regen_current = brake_demand(sap_pressure_sw, regen_flag)
 
-    -- Physics always uses OLD phase1/phase2/regen (breaks the physics <->
-    -- state-machine cycle; see module header "Modeling rule"). physics_tick
-    -- returns 9 values in this order: motor_current, back_emf (unused here
-    -- -- only physics_regression_vs_n409.lua reads it, calling
-    -- physics_tick directly), accel, W, iF_a, bcT, OLD_I, OLD_IF_A, OLD_PHI.
+    -- 物理演算は常にOLDのphase1/phase2/regenを使う（physics<->状態機械の
+    -- 循環参照を断ち切るため。ファイル冒頭「tickモデル」参照）。physics_tick
+    -- の戻り値9個の並び: motor_current, back_emf（ここでは未使用 ─
+    -- physics_regression_vs_n409.luaがphysics_tick直接呼び出しで使うのみ）,
+    -- accel, W, iF_a, bcT, OLD_I, OLD_IF_A, OLD_PHI。
     local physics_motor_current, _back_emf, accel, physics_W, physics_iF_a, physics_bcT,
         phys_OLD_I, phys_OLD_IF_A, phys_OLD_PHI =
         physics_tick(speed, catenary_voltage_sw, st_position_counter, direction, notch_eff,
@@ -661,7 +574,7 @@ function core_tick(stateless_in, state_in)
             elec_accel, regen_bc_target, regen_flag, brake_current_high_phase1)
 
     ----------------------------------------------------------------
-    -- Assemble outputs
+    -- 出力の組み立て
     ----------------------------------------------------------------
 
     local status_bits = put_bit(cam_pulse, 0)
@@ -671,7 +584,7 @@ function core_tick(stateless_in, state_in)
         | put_bit(notch_ge1, 4)
         | put_bit(low_bc_with_regen_flag, 5)
         | put_bit(field_current_excess_cond, 6)
-        -- power_cut (bit 7) always 0, see README "Simplifications"
+        -- power_cut（bit 7）は常時0。README「意図的な簡略化」参照
 
     local stateless_out = {
         motor_current,
