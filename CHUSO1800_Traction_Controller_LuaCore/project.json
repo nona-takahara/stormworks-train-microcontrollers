@@ -366,12 +366,12 @@
     {
       "from": {
         "kind": "node",
-        "id": "Phyics Sensor [+Z is front]"
+        "id": "Physics Sensor [+Z is front]"
       },
       "to": {
         "kind": "submodule_port",
         "submodule": "main",
-        "port": "Phyics Sensor [+Z is front]"
+        "port": "Physics Sensor [+Z is front]"
       }
     }
   ],
