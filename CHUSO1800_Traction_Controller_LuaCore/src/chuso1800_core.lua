@@ -200,15 +200,21 @@ end
 
 -- regen_delay（元CAPACITOR(charge_time=0.5s, discharge_time=10s)）。
 -- スケーリングの導出は上のREGEN_DELAY_*定数群のコメント参照。
-local function regen_delay_step(old_level, enable)
-    if enable then
-        return math.min(old_level + REGEN_DELAY_CHARGE_STEP, REGEN_DELAY_FULL)
-    end
-    return math.max(old_level - REGEN_DELAY_DISCHARGE_STEP, 0)
-end
-
-local function regen_delay_charged(old_level)
-    return old_level >= REGEN_DELAY_FULL
+-- 実機CAPACITORの出力はヒステリシス付き（一度満充電でONになったら、放電し
+-- 切って0に達するまでONを保持する ─ 「Offでdt秒かけてOff」という挙動。
+-- `NITS_Simple_Bridge`がCAPACITOR(0,0.1)を「pulse stretcher」として使える
+-- のもこの性質のため）。単純に`level>=FULL`だけを見ると、満充電の1tick後
+-- （level=599）には即座に「未充電」に戻ってしまい、10秒保持という実機の
+-- 意図（新SPEC.md §10.3）を再現できない。そのため`regen_delay_active`
+-- という1bitの状態（前tickにONだったか）を別途持ち、ONだった場合は
+-- level>0の間ずっとONを維持する形にしてある。戻り値: regen_delay_level,
+-- regen_delay_active（いずれも次tick用）。
+local function regen_delay_step(old_level, old_active, enable)
+    local new_level = enable
+        and math.min(old_level + REGEN_DELAY_CHARGE_STEP, REGEN_DELAY_FULL)
+        or math.max(old_level - REGEN_DELAY_DISCHARGE_STEP, 0)
+    local new_active = old_active and (new_level > 0) or (new_level >= REGEN_DELAY_FULL)
+    return new_level, new_active
 end
 
 --------------------------------------------------------------------------
@@ -326,22 +332,22 @@ end
 
 -- 戻り値: position_counter, phase1_latch, phase2_latch, regen_latch,
 -- traction_advance_counter, field_current_excess_counter,
--- regen_delay_level, phase1_cap_counter, phase2_cap_counter,
--- current_below_limit_cap_counter, OLD_I, OLD_IF_A, OLD_PHI,
--- regen_bc_smooth, bc_target_smooth。
+-- regen_delay_level, regen_delay_active, phase1_cap_counter,
+-- phase2_cap_counter, current_below_limit_cap_counter, OLD_I, OLD_IF_A,
+-- OLD_PHI, regen_bc_smooth, bc_target_smooth。
 function decode_state(state_in)
     local latches = to_u32(state_in[1])
     local timers = to_u32(state_in[2])
     return get_bits(latches, 0, 5), get_bit(latches, 5), get_bit(latches, 6), get_bit(latches, 7),
         get_bits(latches, 8, 4), get_bits(latches, 12, 5),
-        get_bits(timers, 0, 10), get_bits(timers, 10, 3), get_bits(timers, 13, 3), get_bits(timers, 16, 3),
+        get_bits(timers, 0, 10), get_bit(timers, 19), get_bits(timers, 10, 3), get_bits(timers, 13, 3), get_bits(timers, 16, 3),
         state_in[3], state_in[4], state_in[5], state_in[6], state_in[7]
 end
 
 -- 引数の並びはdecode_stateの戻り値と同じ順序。
 function encode_state(position_counter, phase1_latch, phase2_latch, regen_latch,
     traction_advance_counter, field_current_excess_counter,
-    regen_delay_level, phase1_cap_counter, phase2_cap_counter, current_below_limit_cap_counter,
+    regen_delay_level, regen_delay_active, phase1_cap_counter, phase2_cap_counter, current_below_limit_cap_counter,
     OLD_I, OLD_IF_A, OLD_PHI, regen_bc_smooth, bc_target_smooth)
     local slot1 = put_bits(position_counter, 0, 5)
         | put_bit(phase1_latch, 5)
@@ -353,6 +359,7 @@ function encode_state(position_counter, phase1_latch, phase2_latch, regen_latch,
         | put_bits(phase1_cap_counter, 10, 3)
         | put_bits(phase2_cap_counter, 13, 3)
         | put_bits(current_below_limit_cap_counter, 16, 3)
+        | put_bit(regen_delay_active, 19)
     return {
         slot1, slot2,
         OLD_I or 0, OLD_IF_A or 0, OLD_PHI or 0,
@@ -530,14 +537,16 @@ local function advance_cam(position_counter, traction_advance_counter, traction_
 end
 
 -- SPEC §3.8 BC／regen-BC平滑化。戻り値: bc_target_smooth,
--- regen_bc_smooth, regen_delay_level。
-local function smooth_bc(bc_target_smooth, regen_bc_smooth, regen_delay_level,
+-- regen_bc_smooth, regen_delay_level, regen_delay_active。
+local function smooth_bc(bc_target_smooth, regen_bc_smooth, regen_delay_level, regen_delay_active,
     accel, regen_bc_target, regen_flag, brake_current_high_phase1)
-    local regen_bc_enable = regen_delay_charged(regen_delay_level) or (not regen_flag)
+    local regen_bc_enable = regen_delay_active or (not regen_flag)
     local regen_bc_sw = regen_bc_enable and 0 or regen_bc_target
+    local regen_delay_level_next, regen_delay_active_next =
+        regen_delay_step(regen_delay_level, regen_delay_active, brake_current_high_phase1)
     return accel * 0.2 + bc_target_smooth * 0.8,
         math.min(clamp(regen_bc_sw, regen_bc_smooth - 0.1, regen_bc_smooth + 0.02), 0),
-        regen_delay_step(regen_delay_level, brake_current_high_phase1)
+        regen_delay_level_next, regen_delay_active_next
 end
 
 --------------------------------------------------------------------------
@@ -549,7 +558,7 @@ end
 function core_tick(stateless_in, state_in)
     local st_position_counter, st_phase1_latch, st_phase2_latch, st_regen_latch,
         st_traction_advance_counter, st_field_current_excess_counter,
-        st_regen_delay_level, st_phase1_cap_counter, st_phase2_cap_counter, st_current_below_limit_cap_counter,
+        st_regen_delay_level, st_regen_delay_active, st_phase1_cap_counter, st_phase2_cap_counter, st_current_below_limit_cap_counter,
         st_OLD_I, st_OLD_IF_A, st_OLD_PHI, st_regen_bc_smooth, st_bc_target_smooth = decode_state(state_in)
     local speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw, direction,
         notch_pos, controller_stop, regen_flag = decode_inputs(stateless_in)
@@ -591,8 +600,8 @@ function core_tick(stateless_in, state_in)
 
     local position_counter, cam_pulse, traction_advance_counter_next =
         advance_cam(st_position_counter, st_traction_advance_counter, traction_any_active)
-    local bc_target_smooth, regen_bc_smooth, regen_delay_level =
-        smooth_bc(st_bc_target_smooth, st_regen_bc_smooth, st_regen_delay_level,
+    local bc_target_smooth, regen_bc_smooth, regen_delay_level, regen_delay_active =
+        smooth_bc(st_bc_target_smooth, st_regen_bc_smooth, st_regen_delay_level, st_regen_delay_active,
             elec_accel, regen_bc_target, regen_flag, brake_current_high_phase1)
 
     ----------------------------------------------------------------
@@ -620,7 +629,7 @@ function core_tick(stateless_in, state_in)
     local state_out = encode_state(
         position_counter, phase1_latch, phase2_latch, regen_latch,
         traction_advance_counter_next, field_current_excess_counter_next,
-        regen_delay_level, phase1_cap_counter_next, phase2_cap_counter_next, current_below_limit_cap_counter_next,
+        regen_delay_level, regen_delay_active, phase1_cap_counter_next, phase2_cap_counter_next, current_below_limit_cap_counter_next,
         phys_OLD_I, phys_OLD_IF_A, phys_OLD_PHI, regen_bc_smooth, bc_target_smooth)
 
     return stateless_out, state_out

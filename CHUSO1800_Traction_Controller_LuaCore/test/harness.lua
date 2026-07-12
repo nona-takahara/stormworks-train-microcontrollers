@@ -43,26 +43,27 @@ end
 
 -- f: { position_counter, phase1_latch, phase2_latch, regen_latch,
 -- traction_advance_counter, field_current_excess_counter,
--- regen_delay_level, phase1_cap_counter, phase2_cap_counter,
+-- regen_delay_level, regen_delay_active, phase1_cap_counter, phase2_cap_counter,
 -- current_below_limit_cap_counter, OLD_I, OLD_IF_A, OLD_PHI,
 -- regen_bc_smooth, bc_target_smooth }
 function harness.encode_state(f)
     return encode_state(
         f.position_counter, f.phase1_latch, f.phase2_latch, f.regen_latch,
         f.traction_advance_counter, f.field_current_excess_counter,
-        f.regen_delay_level, f.phase1_cap_counter, f.phase2_cap_counter, f.current_below_limit_cap_counter,
+        f.regen_delay_level, f.regen_delay_active, f.phase1_cap_counter, f.phase2_cap_counter, f.current_below_limit_cap_counter,
         f.OLD_I, f.OLD_IF_A, f.OLD_PHI, f.regen_bc_smooth, f.bc_target_smooth)
 end
 
 function harness.decode_state(state_in)
     local position_counter, phase1_latch, phase2_latch, regen_latch,
         traction_advance_counter, field_current_excess_counter,
-        regen_delay_level, phase1_cap_counter, phase2_cap_counter, current_below_limit_cap_counter,
+        regen_delay_level, regen_delay_active, phase1_cap_counter, phase2_cap_counter, current_below_limit_cap_counter,
         OLD_I, OLD_IF_A, OLD_PHI, regen_bc_smooth, bc_target_smooth = decode_state(state_in)
     return {
         position_counter = position_counter, phase1_latch = phase1_latch, phase2_latch = phase2_latch,
         regen_latch = regen_latch, traction_advance_counter = traction_advance_counter,
         field_current_excess_counter = field_current_excess_counter, regen_delay_level = regen_delay_level,
+        regen_delay_active = regen_delay_active,
         phase1_cap_counter = phase1_cap_counter, phase2_cap_counter = phase2_cap_counter,
         current_below_limit_cap_counter = current_below_limit_cap_counter,
         OLD_I = OLD_I, OLD_IF_A = OLD_IF_A, OLD_PHI = OLD_PHI,

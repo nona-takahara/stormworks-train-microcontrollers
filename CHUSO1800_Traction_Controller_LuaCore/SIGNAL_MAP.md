@@ -112,7 +112,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 `field_current_excess_*` は旧名 `regen_warning_*`（`main.sw-net`・`SPEC.md`と
 合わせて改名。経緯は `DESIGN_LOG.md` #10）。
 
-### `state_in[2]`／`state_out[2]` — STATE_TIMERS_LAYOUT（32bit中19bit使用）
+### `state_in[2]`／`state_out[2]` — STATE_TIMERS_LAYOUT（32bit中20bit使用）
 
 | 順序 | フィールド | bit数 | 範囲 |
 |---|---|---|---|
@@ -120,18 +120,33 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 | 2 | `phase1_cap_counter` | 3 | 0-6 |
 | 3 | `phase2_cap_counter` | 3 | 0-6 |
 | 4 | `current_below_limit_cap_counter` | 3 | 0-6 |
+| 5 | `regen_delay_active`（bit19） | 1 | 0/1（ヒステリシス出力ラッチ。詳細下記） |
 
-13bit予備（19-31）。
+12bit予備（20-31）。
 
 **`regen_delay_level` のスケール**：`regen_delay_cap`
 （0.5秒充電/10秒放電）を0-600のスケール済み整数として表現する。
 600（=10秒相当のtick数）が「満充電」。放電は -1/tick で正確に600 tick
 （10秒）かけて0へ、充電は同じ0-600の幅を30 tick（0.5秒）で埋めるため
 600/30=+20/tick。両方とも整数の割り算で厳密に割り切れるため浮動小数点誤差が
-一切生じず、「充電完了」判定は単純な `>= 600`。定数の導出は
-`src/chuso1800_core.lua` の `REGEN_DELAY_*` 定数群・`regen_delay_step`/
-`regen_delay_charged` のコメントを参照。生の秒数doubleとして持つ案を却下した
-経緯は `DESIGN_LOG.md` #6。
+一切生じず、レベル自体の充放電計算に浮動小数点誤差は生じない。定数の導出は
+`src/chuso1800_core.lua` の `REGEN_DELAY_*` 定数群・`regen_delay_step`の
+コメントを参照。生の秒数doubleとして持つ案を却下した経緯は
+`DESIGN_LOG.md` #6。
+
+**`regen_delay_active`（ヒステリシス）**：実機の`CAPACITOR(charge, discharge)`は
+レベルの単純比較（`level >= 600`）では正しく再現できない ─ 実際の
+Stormworks CAPACITORは満充電で一度ONになったら、放電ランプの間ずっとONを
+保持し、完全放電（0）に達して初めてOFFに戻るヒステリシス動作をする
+（`NITS_Simple_Bridge/SPEC.md`の`CAPACITOR(0, 0.1)`をパルスストレッチャーとして
+使う用法、新SPEC.md §3.8参照）。`regen_delay_level`だけでは
+「599」が「充電中でまだ未ON」なのか「満充電から放電中でまだON」なのか
+区別できないため、専用の状態bit `regen_delay_active` を追加した：
+ONになるのは`level`が600に達した瞬間のみ、OFFに戻るのは`level`が0に
+達した瞬間のみで、その間は`enable`入力に関わらず維持される。
+Fable 5によるレビューで指摘された実バグ（旧実装は`level >= 600`を毎tick
+再評価しており、放電1tick目で誤ってOFF扱いになっていた）の修正で、
+`DESIGN_LOG.md` #21参照。
 
 ### `state_in[3..7]`／`state_out[3..7]` — 生double（準ステート、「分類(b)」参照）
 
