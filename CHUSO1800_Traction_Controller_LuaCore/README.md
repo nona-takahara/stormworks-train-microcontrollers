@@ -175,17 +175,20 @@ Stormworks実機は不要、素のLuaだけで動く：
 lua test/run_all.lua
 ```
 
-13本のシナリオ（`test/scenarios/*.lua`）。カバー範囲：
+12本のシナリオ（`test/scenarios/*.lua`）。カバー範囲：
 
 - **未変更の** `../CHUSO1800_Traction_Controller/scripts/n409.lua` に対する
   数値回帰（小さな `input`/`output` シム経由で `loadfile` するため、同ファイル
   が変更されていないことの受動的な再確認にもなる）
 - SPEC.md §3.6 状態遷移図の完全な走査
 - SPEC.md記載のコーナーケース（H4/H5/H6/H7）の検証
-- `deploy/main.lua`（後述）をサブプロセスで実行し、ブリッジの変換と
-  `onTick()` の多tick実行が破綻しないことを検証（`state_sync_bridge.lua`。
-  `main.lua`の`dofile`が作業ディレクトリ相対のため、テスト本体とは別
-  プロセス・別カレントディレクトリで動かす必要がある）
+
+`deploy/main.lua`（後述）には自動テストを設けていない。`dofile`が作業
+ディレクトリ相対のためテストにはサブプロセスでの`deploy/`実行が必要になり、
+中身はi2f/f2iの境界変換という薄いグルーコードにとどまる（`calculateTick`
+本体のロジックは上記12本で既にカバー済み）ため、その労力に見合わないと
+判断した。開発時に手元でi2f/f2iの往復精度と`onTick()`の多tick動作は
+個別に確認済み（詳細は `DESIGN_LOG.md` #11）。
 
 ## デプロイ（実機組み込み用スクリプト）
 
