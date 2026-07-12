@@ -1,0 +1,36 @@
+module main
+  port in "Physics Sensor [+Z is front]" : composite
+  port in "Catenary Line Voltage [V]" : number
+  port in "Controller Stop" : boolean
+  port in "SAP [atm]" : number
+  port in "BP [atm]" : number
+  port in "MR [atm abs]" : number
+  port in "BC [atm abs]" : number
+  port in "Simple IF" : composite
+  port in "Extended IF" : composite
+  port in "Momelink inner unit" : composite
+  port out "DANRYU" : boolean
+  port out "cam" : boolean
+  port out "W" : number
+  port out "BC target [atm]" : number
+  port out "Momelink-A" : composite
+  port out "Rolling Stock Status" : composite
+
+  # --- Core program ---
+  inst COMPOSITE_READ_NUMBER speed (channel=9) : composite="Physics Sensor [+Z is front]" -> out=speed_out
+  inst FUNC_NUM_1 speed_delay (expression="x") : x=speed_out -> out=speed_out_delay
+  inst COMPOSITE_WRITE_NUMBER core_write (count=32, offset=1) : inc=core_out, in1=speed_out, in9=speed_out_delay, in2=catenary_voltage_sw_out, in10=catenary_voltage_sw_out_delay -> out=core_input
+  inst LUA core_logic (script_ref="deploy/chuso1800_deploy.lua") : composite=core_input -> composite=core_out
+
+  # --- Catenary voltage control ---
+  inst CONST catenary_rated_voltage (value=1500) : -> value=catenary_rated_voltage_value
+  inst PROPERTY_TOGGLE catenary_voltage_toggle (label="", on_label="On", off_label="Off", n="Catenary Line Voltage", v=true) : -> out=catenary_voltage_toggle_out
+  inst THRESHOLD catenary_active_thresh (min=0, max=0) : value="Catenary Line Voltage [V]" -> out=catenary_dead
+  inst NOT catenary_inactive : a=catenary_dead -> out=catenary_active_out
+  inst AND catenary_voltage_en : a=catenary_voltage_toggle_out, b=catenary_active_out -> out=catenary_voltage_en_out
+  inst OR panta_up : a=panta1_1800_active_out, b=panta2_1800_active_out -> out=panta_up_out
+  inst NUM_SWITCHBOX catenary_voltage_mux : a="Catenary Line Voltage [V]", b=catenary_rated_voltage_value, switch=catenary_voltage_en_out -> out=catenary_voltage_mux_out
+  inst NUM_SWITCHBOX catenary_voltage_sw : a=catenary_voltage_mux_out, switch=panta_up_out -> out=catenary_voltage_sw_out
+  inst FUNC_NUM_1 catenary_voltage_sw_delay (expression="x") : x=catenary_voltage_sw_out -> out=catenary_voltage_sw_out_delay
+
+end

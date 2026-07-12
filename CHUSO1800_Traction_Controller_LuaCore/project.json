@@ -1,0 +1,381 @@
+{
+  "formatVersion": "stormworks-project-json-v10",
+  "sourceName": "CHUSO1800_Main_Circuit_Momelink_A.xml",
+  "name": "CHUSO 1800 Traction Controller",
+  "description": "No description set.",
+  "width": 2,
+  "length": 5,
+  "icon": [
+    ".#.#.#.#.#..#..#",
+    "#..###.#.#.#..#.",
+    "#..#.#.#.#..#.#.",
+    ".#.#.#.###.#...#",
+    "................",
+    "##...#...#...#..",
+    "..#.#.#.#.#.#.#.",
+    ".#..#.#.#.#.#.#.",
+    "#...#.#.#.#.#.#.",
+    "###..#...#...#..",
+    "................",
+    ".#..#...#...#..#",
+    "##.#.#.#.#.#.#.#",
+    ".#..#..#.#.#.#..",
+    ".#.#.#.#.#.#.#..",
+    ".#..#...#...#..."
+  ],
+  "nodes": [
+    {
+      "id": "Catenary Line Voltage [V]",
+      "type": "number_in",
+      "label": "Catenary Line Voltage [V]",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "id": "SAP [atm]",
+      "type": "number_in",
+      "label": "SAP [atm]",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 3
+      }
+    },
+    {
+      "id": "DANRYU",
+      "type": "boolean_out",
+      "label": "DANRYU",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 4
+      }
+    },
+    {
+      "id": "cam",
+      "type": "boolean_out",
+      "label": "cam",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 4
+      }
+    },
+    {
+      "id": "W",
+      "type": "number_out",
+      "label": "W",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "Controller Stop",
+      "type": "boolean_in",
+      "label": "Controller Stop",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 2
+      }
+    },
+    {
+      "id": "BP [atm]",
+      "type": "number_in",
+      "label": "BP [atm]",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 2
+      }
+    },
+    {
+      "id": "BC target [atm]",
+      "type": "number_out",
+      "label": "BC target [atm]",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      }
+    },
+    {
+      "id": "Simple IF",
+      "type": "composite_in",
+      "label": "Simple IF",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 2
+      }
+    },
+    {
+      "id": "Extended IF",
+      "type": "composite_in",
+      "label": "Extended IF",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 3
+      }
+    },
+    {
+      "id": "Momelink-A",
+      "type": "composite_out",
+      "label": "Momelink-A",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 4
+      }
+    },
+    {
+      "id": "BC [atm abs]",
+      "type": "number_in",
+      "label": "BC [atm abs]",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      }
+    },
+    {
+      "id": "Momelink inner unit",
+      "type": "composite_in",
+      "label": "Momelink inner unit",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 4
+      }
+    },
+    {
+      "id": "MR [atm abs]",
+      "type": "number_in",
+      "label": "MR [atm abs]",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 3
+      }
+    },
+    {
+      "id": "Rolling Stock Status",
+      "type": "composite_out",
+      "label": "Rolling Stock Status",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 3
+      }
+    },
+    {
+      "id": "Physics Sensor [+Z is front]",
+      "type": "composite_in",
+      "label": "Physics Sensor [+Z is front]",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "constants": [],
+  "submodules": [
+    {
+      "id": "main",
+      "name": "main",
+      "relativePath": "main.sw-net",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": {
+        "kind": "node",
+        "id": "Catenary Line Voltage [V]"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Catenary Line Voltage [V]"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "SAP [atm]"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "SAP [atm]"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "DANRYU"
+      },
+      "to": {
+        "kind": "node",
+        "id": "DANRYU"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "cam"
+      },
+      "to": {
+        "kind": "node",
+        "id": "cam"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "W"
+      },
+      "to": {
+        "kind": "node",
+        "id": "W"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Controller Stop"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Controller Stop"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "BP [atm]"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "BP [atm]"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "BC target [atm]"
+      },
+      "to": {
+        "kind": "node",
+        "id": "BC target [atm]"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Simple IF"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Simple IF"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Extended IF"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Extended IF"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Momelink-A"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Momelink-A"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "BC [atm abs]"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "BC [atm abs]"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Momelink inner unit"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Momelink inner unit"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "MR [atm abs]"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "MR [atm abs]"
+      }
+    },
+    {
+      "from": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Rolling Stock Status"
+      },
+      "to": {
+        "kind": "node",
+        "id": "Rolling Stock Status"
+      }
+    },
+    {
+      "from": {
+        "kind": "node",
+        "id": "Phyics Sensor [+Z is front]"
+      },
+      "to": {
+        "kind": "submodule_port",
+        "submodule": "main",
+        "port": "Phyics Sensor [+Z is front]"
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 210 nodes, 310 links, and 1 submodules from XML."
+  ]
+}
