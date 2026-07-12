@@ -32,7 +32,7 @@ module main
   port in "Rolling Stock Settings" : composite
 
   # マスコン(物理)位置。-4が加速最大、7がブレーキ最大
-  use ch.control_handle handle : seat_input="Seat Input", position_reset=eb_set_src, eb_q=eb_q, eb_not_q=eb_not_q -> mastercontroller_position=notch, handle_neg_rise=handle_neg_rise, center_ax_pos_rise=center_ax_pos_rise, handle_pos=handle_pos
+  use ch.control_handle handle : seat_input="Seat Input", eb_q=eb_q, eb_not_q=eb_not_q -> mastercontroller_position=notch, handle_neg_rise=handle_neg_rise, center_ax_pos_rise=center_ax_pos_rise, handle_pos=handle_pos, position_reset=eb_set_src
 
   # ================================================================
   # 非常ブレーキ関係
@@ -309,7 +309,7 @@ module main
   inst PULSE sl_indoor_fall_pulse (mode="fall") : a=sl_indoor -> out=sl_indoor_fall
 
   inst COMPOSITE_WRITE_NUMBER tx_num_build (count=7, offset=1) : in1=brake_cmd, in2=power_cmd, in6=ds_nits_mem, in7=nits60_num -> out=tx_num
-  inst COMPOSITE_WRITE_BOOLEAN tx_bool_build (count=1, offset=1) : in1=em_brake, in2=buzzer_no_si, in6=form_is_fwd, in7=form_is_rear2, in9=sl_emrg_sel, in10=sl_pan_up, in11=dl_panto_dn, in16=reverser_is_fwd, in17=reverser_is_rev, in18=regen_on, in19=sl_annc_rise, in20=sl_annc_fall, in21=departure_rise, in22=departure_fall, in23=sl_indoor_rise, in24=sl_indoor_fall, in27=door_a_op, in28=door_a_cl, in29=door_b_op, in30=door_b_cl, in31=not_form_moved_sig, in32=mascon_active, inc=tx_num -> out="Control Commands TX"
+  inst COMPOSITE_WRITE_BOOLEAN tx_bool_build (count=32, offset=1) : in1=em_brake, in2=buzzer_no_si, in6=form_is_fwd, in7=form_is_rear2, in9=sl_emrg_sel, in10=sl_pan_up, in11=dl_panto_dn, in16=reverser_is_fwd, in17=reverser_is_rev, in18=regen_on, in19=sl_annc_rise, in20=sl_annc_fall, in21=departure_rise, in22=departure_fall, in23=sl_indoor_rise, in24=sl_indoor_fall, in27=door_a_op, in28=door_a_cl, in29=door_b_op, in30=door_b_cl, in31=not_form_moved_sig, in32=mascon_active, inc=tx_num -> out="Control Commands TX"
 
   # ================================================================
   # Monitor Status 組み立て

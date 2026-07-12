@@ -1,12 +1,12 @@
 module control_handle
   port in "seat_input" : composite
-  port in "position_reset" : boolean
   port in "eb_q" : boolean
   port in "eb_not_q" : boolean
   port out "mastercontroller_position" : number
   port out "handle_neg_rise" : boolean
   port out "center_ax_pos_rise" : boolean
   port out "handle_pos" : boolean # ハンドルをpositive方向に動かす信号
+  port out "position_reset" : boolean
 
   inst COMPOSITE_READ_NUMBER seat_handle_ax_read (channel=2) : composite="seat_input" -> out=handle_ax # [W][S]軸
   inst THRESHOLD handle_pos_thr (min=0.5, max=1) : value=handle_ax -> out="handle_pos"
