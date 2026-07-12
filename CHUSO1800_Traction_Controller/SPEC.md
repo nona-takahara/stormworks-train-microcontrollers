@@ -1,382 +1,449 @@
-# CHUSO 1800 Traction Controller 詳細仕様・異常ステート分析
+# CHUSO 1800系 牽引制御マイコン仕様書
 
-> - 対象: `CHUSO1800_Traction_Controller/main.sw-net` および `scripts/n409.lua`（sw-net 上の名称は `current_sim`）
-> - 種別: 抵抗制御（直列・並列）＋回生制動を模擬する VVVF 風 牽引制御マイコン（1800 系）
-> - 作成日: 2026-06-14
-> - 更新: 2026-07-07 `eb_signal`(旧ch18)/`low_bc_with_eb`/`regen_pulse_no_eb`/`brake_apply_signal`(ch1) 等の誤命名を `main.sw-net` 上で修正（§5・§6 参照）。
-> - 本書は (1) ロジック構造の俯瞰、(2) **意図しない異常ステートへの突入可能性**の検討、(3) **冗長箇所**の抽出 を目的とする。
+> 対象: `CHUSO1800_Traction_Controller_main_renamed.sw-net`、`scripts/n409.lua`  
+> 適用車種: 中宗電鉄1800形・1900形  
+> 改訂日: 2026-07-12  
+> 旧 `SPEC.md` は本書で置き換える。旧解析に含まれていた誤認は `LEGACY_SPEC_CORRECTIONS.md` に分離した。
 
----
+## 1. 文書の位置づけ
 
-## 0. 凡例・解析モデル
+本マイコンは、直流電動機の抵抗制御、直並列切替、界磁制御、回生制動、空気ブレーキ補完、パンタグラフ制御、Momelink-A Advanced連携、およびRolling Stock Status生成を行う。
 
-### 0.1 表記
-- sw-net の `inst` 行は `型ID 名前 (パラメータ): 入力 -> 出力` 形式。
-- `THRESHOLD(min,max)` は **`min ≤ 入力 ≤ max` のとき On（true）** を返す論理ゲートとして扱う。
-- `NUM_SWITCHBOX a,b,switch` は **`switch ? a : b`**（a=ON 値, b=OFF 値）。未接続入力は **0 / false**。
-- `SR_LATCH` は **リセット優先**（set と reset が同時に真ならば出力 Off）。電源投入時は Off で初期化。
-- `CAPACITOR(ct,dt)` は CHARGE 入力 On が `ct` 秒継続で On、Off で `dt` 秒かけて Off。本機では `dt=0`（即時 Off）の用法が多い。
+1800形と1900形は同じマイコンを使用し、Property `M Type` で動作を切り替える。1900形を別設計の牽引制御マイコンとして扱ってはならない。ただし、1900形モードではMomelink inner unitとの分担が入り、ローカル処理とinner unit由来データの使用範囲が変わる。
 
-### 0.2 ティック・ステップモデル（重要）
-Stormworks のマイコンは **1 tick (1/60 s) ごとに全ゲートの出力を評価し、その出力が次 tick の入力となる**ステップ方式である。本解析では保守的に次を前提とする。
+本書では、現在未消費のロジックも削除せず、実装どおり記載する。
 
-1. **すべてのゲート出力は 1 tick 遅延**を持つ（出力→次 tick 入力）。組合せ段が D 段あれば信号は D tick かけて伝搬する。
-2. **フィードバックループ**（自己参照する FUNC、SR_LATCH、CAPACITOR、Lua、composite 再帰）は各 1 tick の状態レジスタとして矛盾なく定義される。
-3. 異常ステートの多くは **「同一 tick で評価された set / reset の競合」** または **「帰還信号の 1 tick 遅れによる過渡的不整合」** から生じる。本書 §4 はこの観点で検討する。
+## 2. sw-net解釈上の前提
 
-### 0.3 storm-mcl 由来の表記注意（解析前提）
-- 本機の `direction_nonzero` は sw-net 上 `THRESHOLD(min=0, max=1)` と出力されているが、**実機マイコンの値は `min=0, max=0`**（storm-mcl のシリアライズ不具合）。本書は **実機値 `(0,0)`** に基づき解析する（§3.5・§4.2）。
-- `LUA` ノードの `script_ref="scripts/current_sim.lua"` は実ファイル `scripts/n409.lua` と不一致（§6）。
-- `speed (channel=9)` は sw-net 上 composite 入力が省略されているが、**実機では Physics Sensor → ch9 が接続**されている前提（speed = 前後速度 [m/s]）。
+- `THRESHOLD(min,max)` は `min <= input <= max` のときtrue。
+- `NUM_SWITCHBOX` は `switch=true`で入力`a`、falseで入力`b`を選ぶ。未接続入力は0またはfalse。
+- `COMPOSITE_WRITE_*` の `inc` は元コンポジットを引き継ぎ、指定チャンネルだけを上書きする。
+- `SR_LATCH`、`CAPACITOR`、Lua、自己帰還式は状態を持つ。すべての組合せゲートが一律に1 tick遅延するとは仮定しない。
+- 元のsw-net生成処理には、`THRESHOLD`の`max=0`を`max=1`として出力する不具合があった。次の6ノードは実機設定に合わせて`max=0`へ修正済み。
+  - `catenary_input_zero`
+  - `cam_position_unchanged`
+  - `power_notch_zero`
+  - `cam_at_zero`
+  - `field_control_cam_ready`
+  - `direction_neutral`
+- Physics Sensor N9への結線は、元sw-net上では入力指定が欠けている。実機結線では車両前後速度を読むものとして扱う。
+- Luaノードは `scripts/n409.lua` を参照する。
 
----
+## 3. 外部入出力
 
-## 1. モジュール概要
+### 3.1 入力
 
-抵抗制御車（1800 系）の主回路を 1 マイコンで模擬・制御する。マスコン（ノッチ）指令を受け、**カム段（抵抗段）を自動進段**させながら電動機電流・トルク・電力を Lua で算出し、BC（ブレーキシリンダ）目標圧・電力・Momelink・状態表示を出力する。
-
-主な制御モードは Lua（`n409.lua`）内の状態で表現される。
-
-| モード | 駆動条件 | 抵抗器テーブル | 1 電動機電圧 Vt |
-|---|---|---|---|
-| **直列 (series)** | `phase1` ラッチ On | `SR[]` | `vl / 8` |
-| **並列 (parallel)** | `phase2` ラッチ On | `PR[]` | `vl / 4` |
-| **回生 (regen)** | `regen` ラッチ On | — | 界磁制御 |
-| 惰行/無励磁 | phase1・phase2 とも Off | — | `vl = 0` |
-
-### 1.1 入出力ポート
-
-| 方向 | ポート | 型 | 用途 |
-|---|---|---|---|
-| in | Phyics Sensor [+Z is front] | composite | 速度（ch9）※ |
-| in | Catenary Line Voltage [V] | number | 架線電圧実測 |
-| in | SAP [atm] | number | 自動空気ブレーキ管圧 |
-| in | BP [atm] | number | ブレーキ管圧 |
-| in | BC [atm abs] | number | ブレーキシリンダ圧（絶対） |
-| in | MR [atm abs] | number | 元空気だめ圧 |
-| in | Controller Stop | boolean | 制御停止（→ EB 条件） |
-| in | Simple IF | composite | ノッチ・方向・EB 等の指令 |
-| in | Extended IF | composite | パンタ昇降・締切等 |
-| in | Momelink inner unit | composite | 編成内ユニット情報 |
-| out | W | number | 電力 [W] |
-| out | BC target [atm] | number | BC 目標圧 |
-| out | DANRYU | boolean | 断流（電流 ≤ 0） |
-| out | cam | boolean | カム 1 巡完了パルス（カム接点表示と推定） |
-| out | Momelink-A | composite | Momelink 送信 |
-| out | Rolling Stock Status | composite | 表示用 車両状態 |
-
-※ §0.3 参照。
-
----
-
-## 2. 全体データフロー
-
-```
- Simple IF ─┬─ notch_pos(ch2) ─▶ notch_eff ─┬─▶ notch_ge1..4
-            ├─ regen_flag(ch18 bool, DB自動) │
-            ├─ fwd/bwd(ch16/17) ─▶ direction │
-            └─ brake/sap(ch1) ─▶ ブレーキ圧   │
-              ＋eb_signal(ch1 bool, 非常制動) │
-                                              ▼
- Catenary ─▶ catenary_voltage_sw ──┐   ┌─ phase1/phase2/regen 状態機械 ◀─┐
- cam step (position_counter) ──────┼──▶│  （直列/並列/回生 進段）         │
-                                   │   └──────────────┬─────────────────┘
-              sim_input(composite) │                  │ traction_status(bool)
-                    ▼              ▼                  ▼
-            ┌──────────────────────────────────────────────┐
-            │  current_sim  (Lua / n409.lua)                │
-            │   in : speed,Vl,cam,dir,notch,200,regenBC×2   │
-            │   out: ch1 電流, ch2 逆起電力, ch3 加速度,      │
-            │        ch4 電力W, ch5 カム段, ch6 界磁, ch7 bcT │
-            └───────┬───────────────────────────────┬──────┘
-                    │ (eb_condition で regen 書込みに切替)  │
-       current_src_mux ◀── eb_condition ──────────────┘
-                    │
-   ┌────────────────┼─────────────────────────────────────┐
-   ▼                ▼                ▼            ▼          ▼
- motor_current   notch_fb(ch5)   W(ch4)      bc_target   進段判定
- →DANRYU/保護    →状態機械        →出力W      →Momelink   (current_below_limit)
-```
-
-ポイント: **`current_src_mux` が帰還の要**。通常は Lua 出力（`current_sim_composite`）を、`eb_condition` 成立時は `regen_current_write`（ch7 のみ書込み）を電流源として選ぶ。後者では ch1/3/4/5/6 が 0 となり、状態機械を強制的に初期側へ崩す（§4.5）。
-
----
-
-## 3. 機能ブロック詳細
-
-### 3.1 架線電圧選択
-
-```
-Catenary [V] ─▶ catenary_active_thresh = THRESHOLD(0,1)   … V∈[0,1]（≒無電圧）で true
-                       │ NOT
-toggle(既定On) ─AND─▶ catenary_voltage_sub_en             … toggle ∧ (V>1)
-                       │ NUM_SWITCHBOX(a=実測,b=1500)
-                       ▼
-              catenary_voltage_mux  … 実測 or 定格1500
-                       │ NUM_SWITCHBOX(switch=panta_up, b=0)
-                       ▼
-              catenary_voltage_sw   … パンタ上昇時のみ電圧、降下時は 0
-```
-
-- 命名 `active/inactive` は反転気味（`catenary_active_thresh` は「無電圧域 [0,1]」を検出）だが論理は一貫。
-- `panta_up = panta1_1800_active ∨ panta2_1800_active`。いずれも `is_1800_type`（= NOT mtype_toggle）と AND されるため、**mtype=1900 では常に 0 → 架線電圧 0 → 力行不能**。これは **意図通り（1900 はデータ中継専用、牽引は別ユニット）**。
-
-### 3.2 抵抗制御カム（`position_counter`）と `cam` 出力
-
-```
-traction_any_active ─▶ traction_blinker(0.1/0.1) ─▶ PULSE(rise) ─▶ position_inc_sw(1 or 0)
-                                                                          │ (x+y)%21 自己帰還
-                                                                          ▼
-                                                            position_counter  … カム段 0..20（リング）
-                                                                          │ DELTA → THRESHOLD(0,1)
-                                                                          ▼
-                                       position_changing  … 巡回(20→0,Δ=-20)の tick のみ false
-                                                                          │ NOT
-                                                                          ▼  cam（出力）
-```
-
-- `position_counter` は **抵抗カム段**（Lua の `SR/PR` テーブル添字 = `position_counter+1`）。進段は `traction_blinker` の立上りごとに +1、21 でリングする。
-- 進段は実質 `current_below_limit`（電流がリミット未満）でゲートされる自動進段（§3.7）。
-- **カムのホーミング**: 牽引停止中にカムが中途（>1）だと `regen_off_all`（= カム>1 ∧ 全 phase Off）が `traction_any_active` を真に保ち、ブリンカでカムを 0/1 まで送り出して待機させる（§4.3 で評価）。
-- `cam` 出力はカム 1 巡完了の単パルス。
-
-### 3.3 ノッチ処理
-
-| 信号 | 定義 | 意味 |
+| ポート | 型 | 用途 |
 |---|---|---|
-| `notch_pos` | Simple IF ch2 | 生ノッチ指令 |
-| `notch_enable_sw` | `eb_condition ? 0 : 1` | EB 中はノッチ無効化 |
-| `notch_eff` | `clamp(notch_pos,0,7) * notch_enable_sw` | 有効ノッチ 0..7 |
-| `notch_ge1/2/3/4` | `THRESHOLD(k,7)(notch_eff)` | ノッチ ≥ k |
-| `notch_fb` | current_src_mux ch5 | カム段フィードバック（Lua echo） |
-| `notch_fb_ge1` | `THRESHOLD(0,1)(notch_fb)` | カム段 ≤ 1（※名称は誤称） |
-| `notch_fb_range_low` | `THRESHOLD(0,13)` | 直列域 |
-| `notch_fb_range_high` | `THRESHOLD(14,20)` | 並列域 |
-| `notch_fb_eq14` | `THRESHOLD(14,14)` | 直列→並列 転換点 |
+| Physics Sensor [+Z is front] | composite | N9から車両前後速度を取得 |
+| Catenary Line Voltage [V] | number | 外部架線電圧 |
+| SAP [atm] | number | SAP方式でのブレーキ要求圧 |
+| BP [atm] | number | SAP方式でのブレーキ管圧 |
+| BC [atm abs] | number | 実測ブレーキシリンダ絶対圧 |
+| MR [atm abs] | number | 元空気だめ絶対圧 |
+| Controller Stop | boolean | 外部からの牽引制御停止要求 |
+| Simple IF | composite | 力行・制動・方向・DB自動などの指令 |
+| Extended IF | composite | パンタグラフ指令 |
+| Momelink inner unit | composite | 1900形で連携する内側ユニット情報 |
 
-### 3.4 電流シミュレーション（`current_sim` / `n409.lua`）
+### 3.2 出力
 
-ニュートン法で電機子電流 `ia` を解き、トルク・電力・加速度・カム段・界磁・bcT を出力する。
-
-入力 composite（`sim_input`）:
-
-| ch | 値 | bool ch | 値（`traction_status_bool`） |
-|---|---|---|---|
-| 1 | speed | B1 | phase1 |
-| 2 | catenary_voltage_sw | B2 | phase2 |
-| 3 | position_counter（カム） | B3 | regen |
-| 4 | direction | B4 | notch_ge1 |
-| 5 | notch_eff | B5 | low_bc_with_regen_flag |
-| 6 | 200（定数） | B6 | field_current_excess_cond（旧 regen_warning_cond。§3.6「命名注意」参照） |
-| 7 | regen_bc_smooth | | |
-| 8 | regen_bc_target | | |
-
-出力: ch1=電流 i, ch2=K·φ·rpm（逆起電力）, ch3=加速度, ch4=電力 `vl·i·(MOT_CTRL/srsmtr)·2`, ch5=カム段, ch6=界磁 iF_a, ch7=bcT。
-`srsmtr`（直並列係数）: phase1→8（直列, `SR[]`）, phase2 かつカム=0→4（並列, `PR[]`）。`vl=0`（=直列・並列いずれも未成立）で電流・φ=0。
-
-`B5`（`low_bc_with_regen_flag`）は回生中の界磁制御則（`n409.lua` bool5）の切替フラグで、**トルク制御／電機子電流制御の選択**として使われる：`B5=true`（ブレーキ要求あり ∧ 回生フラグ=ON）でトルク制御（前回トルクと回生BC目標の誤差でiF_aを調整、過電圧防止の弱め界磁リミッタ付き）、`B5=false`で電機子電流制御（notch/OLD_Iベースの目標電流とOLD_Iの誤差でiF_aを調整）。`eb_condition`（非常制動そのものではなく力行停止条件）とは無関係。
-
-### 3.5 力行カット条件 `eb_condition`
-
-```
-eb_condition = Controller Stop
-             ∨ power_cut_latch_q          （過電流ラッチ。本機では実質常時 0 ＝ §4.4）
-             ∨ direction_nonzero          （= direction==0：レバーサ中立インターロック ※実機 THRESHOLD(0,0)）
-             ∨ overspeed                  （|speed| > 32 m/s）
-             ∨ brake_below_min            （ブレーキ圧 < 4）
-   ［ b,c,d 入力は未接続 = 0：冗長］
-```
-
-`eb_condition` が真のとき:
-- `notch_enable_sw=0` → `notch_eff=0`（力行カット）
-- `current_src_mux` → 回生書込み側（電流源が ch7 のみ → 帰還チャンネル 0）
-
-> **重要**: `direction_nonzero` の実機しきい値は `(0,0)` であり、**中立(direction==0)でのみ EB**（レバーサ未選択インターロック）。sw-net の `(0,1)` 表記は storm-mcl の不具合で、字面通りだと前進(+1)でも EB を誤発報する（§4.2）。
-
-> **命名注意**: `eb_condition` は本節の 5 項 OR のみで構成され、`eb_signal`（Simple IF ch1 bool＝本物の非常制動 B1）や `regen_flag`（ch18 bool＝ダイナミックブレーキ自動、1800系では実質回生自動）を直接の入力に含まない。ただし `sap_ecb_toggle` が既定の ECB モードでは `brake_below_min` が `eb_signal` に間接的に連動する：`ecb_pressure_sw`（§3.8）が `eb_signal=true` のとき `ecb_offset_eb_active=0` を選び `brake_pressure_sw<4atm` が即成立するため、**ECB車では非常制動(B1)が実質即座に`eb_condition`を成立させる**（SAP車では実測 `BP [atm]` の物理的な圧力降下待ちになる）。§3.5 の「EB」は主にこの `eb_condition`（力行停止条件）を指し、`eb_signal`/`regen_flag` とは別概念であることに注意。
-
-### 3.6 直列 / 並列 / 回生 状態機械（中核）
-
-3 つの SR ラッチ `phase1`（直列進段）・`phase2`（並列進段）・`regen`（回生）が制御モードを保持する。
-
-#### 状態遷移図（概念）
-
-```mermaid
-stateDiagram-v2
-    [*] --> Idle : 電源投入(全Off)
-    Idle --> Series : notch>=1 ∧ カム<=1 ∧ phase2_off (power_with_regen)
-    Series --> Parallel : notch>=3 ∧ カム==14 ∧ 電流<リミット (phase2_set_cond)
-    Parallel --> Series : phase1_set ∧ ¬(notch>=3∧カム==14)
-    Parallel --> Regen : phase2 ∧ カム<=1 (regen_set_cond)
-    Regen --> Series : phase1 ∧ notch>=1 (phase1_notch_active)
-    Series --> Idle : phase_reset_cond（惰行/界磁電流超過検知）
-    Parallel --> Idle : phase_reset_cond
-    Regen --> Idle : 全phase_off (traction_all_off)
-    Idle --> Idle : カム>1ならホーミング進段(regen_off_all)
-```
-
-#### 各ラッチの set / reset 式
-
-| ラッチ | set | reset（リセット優先） |
+| ポート | 型 | 用途 |
 |---|---|---|
-| **phase1** | `(power_with_regen ∧ phase2̄) ∨ (field_current_excess_pulse ∧ phase2)` | `phase_reset_cond ∨ (field_current_excess_pulse ∧ phase1_cap) ∨ phase2_set_cond` |
-| **phase2** | `notch≥3 ∧ カム==14 ∧ current_below_limit_cap` | `phase_reset_cond ∨ (phase1 ∧ ¬(notch≥3 ∧ カム==14))` |
-| **regen** | `phase2 ∧ regen_available(カム≤1)` | `(phase1 ∧ notch≥1) ∨ traction_all_off` |
+| DANRYU | boolean | 電機子電流が正でない状態。回生時の負電流でもtrue |
+| cam | boolean | カム位置カウンタが変化したtickでtrue |
+| W | number | Luaモデルまたはフォールバック後の主回路電力 |
+| BC target [atm] | number | 選択されたMomelinkデータ源のN25 |
+| Momelink-A | composite | 1800形基本フレームまたは1900形Advancedフレーム |
+| Rolling Stock Status | composite | 車両状態、電流、架線電圧、空気圧、パンタ状態 |
 
-補助条件:
-- `power_with_regen = notch≥1 ∧ カム≤1`
-- `phase_reset_cond = coasting_cond ∨ (field_current_excess_pulse ∧ ¬regen_flag)`
-- `coasting_cond = neutral_cond ∧ regen̄`、`neutral_cond = current_near_zero(±50) ∧ ¬(notch≥1 ∨ low_bc_with_regen_flag)`
-- `traction_all_off = phase1̄ ∧ phase2̄`
+## 4. 主要コンポジットチャンネル
 
-> **命名注意**: `field_current_excess_cond`（旧名 `regen_warning_cond`）は「回生ブレーキの警告」ではない。`brake_current_fb`（channel=6）が実際に読んでいるのは `n409.lua` の `output.setNumber(6, iF_a)`＝**界磁電流**であり、`brake_current_high`（`brake_limit_sw` で 300A/400A のいずれかと比較）もブレーキ電流ではなく界磁電流の閾値超過を見ている。`field_current_excess_cond = (iF_a > 300or400A) ∧ (notch_eff==0)` の実体は、**ノッチオフ後も界磁電流 iF_a がまだ閾値を超えたまま残っている過渡状態を検知し、電流の自然減衰（`coasting_cond`）を待たずに直列/並列制御ラッチを強制的に畳んで空回しへ戻す保護的フォールバック**（0A制御が低速域で弱め界磁電流を過大にしないためのクランプの一環）。`regen_warning_pulse`→`field_current_excess_pulse`、`regen_warning_blinker`→`field_current_excess_blinker`とあわせて2026-07-08にリネーム済み。`brake_current_fb`/`brake_limit_300_b`/`brake_limit_300_const`/`brake_limit_400`/`brake_limit_sw`/`brake_current_above_300`/`brake_current_high`/`brake_current_high_phase1` は同根の誤解に基づく命名だが、**今回は意図的にリネーム対象から外してある**（変更範囲を最小に留めるため）。今後これらも直す場合は本節と同じ理解に基づくこと。
+### 4.1 Simple IF
 
-#### 進段の有効化（ブリンカ駆動）
+| 種別 | ch | 意味 |
+|---|---:|---|
+| Number | 1 | ブレーキ指令。ECB方式では圧力相当値へ変換 |
+| Number | 2 | 力行ノッチ0～7 |
+| Boolean | 1 | 非常制動指令 |
+| Boolean | 16 | 前進指令 |
+| Boolean | 17 | 後進指令 |
+| Boolean | 18 | DB自動指令。1800系では自動回生制動の許可に使用 |
 
-`traction_any_active`（= ブリンカ enable, カム進段の元）は次の OR:
-```
-traction_any_active = traction_phase1_set_cond            （直列・自動進段中）
-                    ∨ traction_phase2_blinker_cond        （並列・自動進段中）
-                    ∨ regen_off_all                       （アイドル時のカムホーミング）
-                    ∨ phase1_regen_active
-   ［ a,b,c,d 入力未接続 = 0：冗長］
-```
-- `traction_phase1_set_cond = notch≥2 ∧ 直列域 ∧ phase1_cap ∧ current_below_limit_cap`
-- `traction_phase2_blinker_cond = notch≥3 ∧ 並列域 ∧ phase2_cap ∧ current_below_limit_cap`
+### 4.2 Extended IF
 
-### 3.7 自動進段（電流リミット）
+| Boolean ch | 意味 |
+|---:|---|
+| 4 | パンタ1上昇 |
+| 5 | パンタ1下降 |
+| 6 | パンタ使用許可 |
+| 7 | 全パンタ下降 |
+| 8 | パンタ2上昇 |
+| 9 | パンタ2下降 |
 
-```
-motor_current ─ LESS_THAN(b=current_limit_sw) ─▶ current_below_limit ─ CAP(0.1,0) ─▶ current_below_limit_cap
-current_limit_sw = phase2 ? (power_limit-20) : power_limit   （既定 power_limit=210A、並列時 190A）
-```
-電流がリミット未満になると `current_below_limit_cap` が立ち、進段条件が成立してカムが 1 段進む。電流がリミット以上だとブリンカが止まり**カムはその段で待機**（過電流域へ進段しない）。
+## 5. 架線電圧選択
 
-### 3.8 BC 圧・回生 BC
+外部架線電圧の使用条件は次のとおり。
 
-- `regen_bc_target = -floor((sap_pressure_sw-1)*2)/7.2`（≤0、ブレーキ操作量に比例）。
-- `regen_bc_smooth = min(clamp(prev へ +0.02/-0.1 で追従, x), 0)`（≤0 へランプ、安定 IIR）。
-- `regen_bc_enable = regen_delay_cap ∨ ¬regen_flag`。
-- `bc_target_smooth = 0.2·raw + 0.8·prev`（EMA、安定）。
-- SAP/ECB は `sap_ecb_toggle`（既定 OFF=ECB）で切替。ECB 圧は `eb_signal`(Simple IF ch1 bool＝非常制動 B1) から合成：`eb_signal=true`（EB発生）時は `ecb_offset_eb_active=0` を選び `(5-y)` 項を最大化してECB圧を非常最大側へ張り付かせ、`false` 時は `ecb_offset_eb_inactive=5` で `(5-y)=0`（ブースト無し、通常運用のN1段階に委ねる）。定数名は旧 `ecb_release_pressure`/`ecb_apply_pressure` から改名。
-
-### 3.9 パンタグラフ
-
-```
-Extended IF: up/down/enable/all_down 信号
-panta1_latch / panta2_latch       … 上昇(set)/降下(reset) ラッチ（表示用）
-panta1_en_latch / panta2_en_latch … set=latch̄ ∧ enable、reset=all_down（電源系統許可）
-panta*_1800_active = panta*_en_latch ∧ is_1800_type   … 1800 のみ有効 → panta_up → 架線電圧
+```text
+use_catenary_input
+  = Use Supplied Catenary Voltage
+    AND (Catenary Line Voltage != 0)
 ```
 
-### 3.10 Momelink / Rolling Stock Status
+- 条件成立時: 外部入力電圧を使用。
+- 条件不成立時: 定格1500 Vを使用。
+- その後、1800形用パンタ有効状態が1基以上成立している場合だけLuaモデルへ電圧を供給する。
+- 1900形モードではローカルの1800形パンタ有効信号が無効となる。1900形ではMomelink inner unitとの分担があるため、この事実だけから「1900形は制御対象外」と解釈してはならない。
 
-- `momelink_1900_select = type_is_1911 ∧ mtype_toggle` で 1800 用 / 1900 用フレームを選択。
-- 1900 選択時は `momelink_src_mux` も 1900 出力を参照し、Rolling Stock Status へ ch23/24/25 を中継。
-- Rolling Stock Status: BC 圧 [kPa]、モータ電流、パンタ電流・電圧、MR 圧、パンタ状態ビット等。
+## 6. 力行ノッチとカム軸
 
----
+### 6.1 力行ノッチ
 
-## 4. 異常ステート分析
+Simple IF N2を0～7へ制限し、牽引禁止時には0倍する。
 
-### 4.1 評価サマリ
+```text
+effective_power_notch
+  = clamp(power_notch_command, 0, 7)
+    * (traction_inhibit ? 0 : 1)
+```
 
-| ID | 対象 | 分類 | 重大度 | 到達可能性 | 結論 |
-|---|---|---|---|---|---|
-| H1 | `direction_nonzero` の `(0,1)` 表記 | 表記/ツール不具合 | 高（字面通りなら） | — | 実機は `(0,0)`。**.sw-net を正典にすると誤判定**。要ツール修正 |
-| H2 | カム未リセット（リング段） | 設計挙動 | 低 | 常時 | `regen_off_all` がホーミング。1 tick 過走で 1 周回り込みの可能性のみ |
-| H3 | 過電流ラッチ `power_cut_latch` 不動作 | デッド（設計許容） | 低 | — | 閾値 ±200000 が広すぎ＋`startup_delay` 未接続。**保護は別系統（意図通り）** |
-| H4 | EB 中の帰還ゼロ化 | 設計挙動 | 低 | EB 突入時 | 状態機械を清浄に Idle へ収束。スタックなし |
-| H5 | phase1 ∧ phase2 同時 On | 過渡/隅状態 | 中 | 限定条件 | 通常は相互リセットで排他。準安定共存の隅あり（要確認） |
-| H6 | SR ラッチ set/reset 競合 | 競合 | 低 | 各遷移時 | すべてリセット優先で確定。発振なし |
-| H7 | カムホーミングの 1 tick 過走 | 過渡 | 低 | アイドル収束時 | カム 0/1 で停止。稀に 2 へ過走→1 周回り込み |
+`power_notch_zero`は生のSimple IF N2が0であることを検出する。牽引禁止後の有効ノッチではなく、入力指令そのもののゼロ判定である。
 
-### 4.2 H1 — `direction_nonzero` のしきい値表記（最重要・要注意）
+### 6.2 カム位置
 
-- **現象（字面通り）**: sw-net の `THRESHOLD(min=0, max=1)` を真に受けると、`direction_out ∈ {0, +1}`（中立・**前進**）で真。`eb_condition` に OR 結合されているため、**前進選択中に常時 EB（力行カット）に突入**し、`notch_enable_sw=0`・`current_src_mux→回生側`で力行が一切出ない。後進(-1)でのみ力行可、という不整合状態。
-- **実機の真値**: しきい値は `min=0, max=0`。つまり `direction==0`（**レバーサ中立**）のみ検出する**中立インターロック**で、前進・後進では EB にならない。`(0,1)` は **storm-mcl のシリアライズ不具合**による表記誤り。
-- **リスク**: ロジック解析・再インポート・他者レビューを **.sw-net の字面で行うと、存在しない致命バグを誤検出 / 実バグを見逃す**。THRESHOLD 境界は実機 MC と突合すること。
-- **推奨**: storm-mcl 側のシリアライズ修正。修正までは本ノードに注釈を残す。
+カム位置は0～20の21段で循環する。
 
-### 4.3 H2 / H7 — カム段のリセットとホーミング
+```text
+cam_position_counter = (previous + increment) % 21
+```
 
-- `position_counter` は `(x+y)%21` のリングで、**0 へ戻すのは巡回（20→0）のみ**。EB・牽引停止では明示リセットされない。
-- ただし牽引停止かつカム>1 のとき `regen_off_all` が `traction_any_active` を保持し、**ブリンカでカムを 0/1 まで送って待機**させる（次回 `power_with_regen` が要求する「カム≤1」を満たす）。よって **再力行は必ずカム最小（高抵抗）側から**始まり、突入電流を抑える正しい挙動。
-- **過渡の隅（H7）**: カムが 0/1 に達して enable が落ちるまでに 1 tick 残ったブリンカ立上りが入ると、カムが 2 まで過走し得る。すると `regen_off_all` が再成立し、カムは **リングを 1 周（≈4 秒）回り込んでから** 0/1 に復帰する。機能停止には至らず自己回復。重大度低。
+`cam`出力は、カム位置のDELTAが0でないtickでtrueになる。通常の+1進段と20→0の周回の両方を含む。
 
-### 4.4 H3 — 過電流ラッチが事実上不動作（設計許容）
+Lua出力N5はカム位置のエコーであり、次の条件へデコードされる。
 
-- `motor_current_in_range = THRESHOLD(±200000)` に対し Lua の電流 `i` は概ね数百 A。**`motor_current_oor` は実質常に false**。
-- `startup_delay`（CAPACITOR, charge=5s）は **enable 未接続 → 常時 Off**。起動時パワーカットも発火しない。
-- 結果 `power_cut_set = 0` 固定 → `power_cut_latch_q ≡ 0`。`eb_condition` の `y` 項、Rolling Stock Status の `power_cut` ビットも常時 0。
-- 過電流保護は **別系統が担当（意図通り）**。本ブロック（`startup_delay`/`power_cut_*`/`motor_current_oor` 周り）は本機では**サニティチェック止まりの実質デッド**。
+| 条件 | 範囲 |
+|---|---|
+| cam_at_zero | 0 |
+| cam_in_series_range | 0～13 |
+| cam_at_transition_position | 14 |
+| cam_in_parallel_range | 14～20 |
 
-### 4.5 H4 — EB 突入時の帰還ゼロ化と状態機械の収束
+`cam_zero_epsilon`と`cam_nonzero_epsilon`は現状未消費だが保持する。
 
-`eb_condition` 成立 → `current_src_mux` が回生書込み側（ch7 のみ）に切替 → `motor_current=0`, `notch_fb=0`, `notch_eff=0`。これにより:
-- `notch_ge*`=0, `power_with_regen`=0 → phase set 不成立。
-- `current_near_zero`=1 ∧ `¬(notch≥1∨low_bc_with_regen_flag)` → `neutral_cond=1` → `coasting_cond` → `phase_reset_cond=1` → **phase1/phase2 リセット** → `traction_all_off` → **regen リセット**。
+## 7. 直列・並列・界磁制御
 
-→ EB は状態機械を **矛盾なく Idle へ収束**させ、スタックや発振は生じない。
-（補足: EB 中は `notch_fb=0` により `regen_off_all` が偽になりカムホーミングは停止＝カム値は凍結。EB 解除後に再開するため副作用なし。）
+### 7.1 モード対応
 
-### 4.6 H5 — phase1 と phase2 の同時 On（相互排他の tick 依存性）
+| sw-net状態 | 主回路上の意味 | Lua入力 |
+|---|---|---|
+| series_connection_latch | 直列接続 | B1 |
+| parallel_connection_latch | 並列接続 | B2 |
+| field_control_latch | 並列抵抗制御完了後の界磁制御領域。力行と回生の両方で使用 | B3 |
 
-- 設計上 phase1（直列）と phase2（並列）は排他想定で、相互リセット機構を持つ:
-  - `phase2_set_cond` は `phase1_reset` の OR 項 → 並列移行で直列を落とす。
-  - `phase2_reset` は `phase1 ∧ ¬(notch≥3∧カム==14)` → 直列復帰時に並列を落とす。
-- 1 tick 遅延のため遷移時に**過渡的な共存（1〜数 tick）**は起こり得るが自己解消する。
-- **準安定共存の隅**: `カム==14 ∧ notch≥3 ∧ 電流≥リミット`（= `current_below_limit_cap=0`）の場合、`phase2_set_cond=0` のため phase1 を落とす項が無効化され、かつ `phase2_reset = phase1 ∧ ¬(true) = 0`（カム==14 ∧ notch≥3 が成立）で phase2 も保持され、**両ラッチが同時 On のまま留まる**経路が存在する。
-  - 影響: `current_limit_sw` は並列側（190A）を採用、`traction_status_bool` は phase1・phase2 両ビット On。Lua は `srsmtr=8`（カム≠0 のため並列分岐に入らず直列扱い）。
-  - 機能的な暴走には至らないが、**転換点での電流高止まり時に状態表示・電流リミットが中間状態を示す**。意図した転換シーケンスか要確認（§7-Q）。
+Phase 1/Phase 2という旧称は、それぞれ直列・並列接続を意味する。
 
-### 4.7 H6 — SR ラッチの set/reset 同時成立
+### 7.2 通常力行シーケンス
 
-全 SR ラッチはリセット優先で、同時成立時の出力は確定（Off）し、発振しない。代表例:
-- `regen`: set(`phase2∧カム≤1`) と reset(`phase1∧notch≥1`) が同時 → reset 優先で Off。
-- `phase1`: set(`power_with_regen∧phase2̄`) 成立時に reset 各項が同時成立しないことを確認済み（§3.6 の条件分離）。
+1. ノッチ1以上、カム0、並列OFFで直列ラッチをセットする。
+2. ノッチ2以上、カム0～13、直列成立後0.1秒、かつ電流が進段閾値未満で、直列域を進段する。
+3. ノッチ3以上、カム14、電流が進段閾値未満で並列ラッチをセットし、直列ラッチをリセットする。
+4. ノッチ3以上、カム14～20、並列成立後0.1秒、かつ電流が進段閾値未満で、並列域を進段する。
+5. 並列状態でカム0へ到達すると、界磁制御ラッチをセットする。
 
-→ ラッチ競合由来の不定・発振は認められない。
+Luaの抵抗表はこのカム配置に対応する。
 
----
+- `SR[1..21]`: 直列抵抗表
+- `PR[1..21]`: 並列抵抗表
+- カム14は直並列転換位置
+- 並列進段後にカム0へ戻ると抵抗全短絡側となる
 
-## 5. 冗長・デッドロジック
+### 7.3 限流進段
 
-| 箇所 | 内容 | 種別 | 推奨 |
-|---|---|---|---|
-| `notch_ge4` | `THRESHOLD(4,7)` 出力が**未消費** | デッド | 削除可 |
-| `notch_fb_nonzero` | `NOT(notch_fb_zero)` 出力が**未消費** | デッド | 削除可 |
-| `brake_limit_current` | PROPERTY「Brake Limit@320kPa [A]」(=290) が**未消費** | デッド | 削除 or 配線 |
-| `regen_available` | `THRESHOLD(0,1)(notch_fb)` が `notch_fb_ge1` と**完全重複** | 重複 | 片方に統合 |
-| `startup_delay` | CAPACITOR の enable **未接続**（常時 Off） | デッド | §4.4。起動カット意図なら配線 |
-| `power_cut_*` 一式 | 過電流保護が実質不動作（§4.4、別系統が担当） | 実質デッド | 仕様として明記 or 整理 |
-| `eb_condition` | `BOOL_FUNC_8` のうち `b,c,d` 入力未接続 | 過剰幅 | `BOOL_FUNC_4/5` で十分 |
-| `traction_any_active` | `BOOL_FUNC_8` のうち `a,b,c,d` 入力未接続 | 過剰幅 | 同上 |
-| `FUNC_NUM_3` 群 | `notch_eff`/`bc_target_smooth`/`ecb_sap_pressure`/`regen_bc_smooth`/`position_counter` は `z` 未使用 | 過剰幅 | 2 引数版で代替可 |
-| 命名反転 | `catenary_active_thresh`（実は無電圧域）, `notch_fb_ge1`（実は ≤1）, `direction_nonzero`（実は ==0） | 可読性 | リネーム検討 |
-| ~~命名誤り（修正済 2026-07-07）~~ | ~~`eb_signal`(ch18) は実際は B18＝ダイナミックブレーキ自動（1800系では回生フラグ）で非常制動ではなかった。`brake_apply_signal`(ch1) が実際の B1＝非常制動だった。~~ → `eb_signal`→`regen_flag`、`brake_apply_signal`→`eb_signal`、付随して `eb_inv`→`regen_flag_inv`、`low_bc_with_eb`→`low_bc_with_regen_flag`、`regen_pulse_no_eb`→`regen_pulse_regen_flag_off`、`no_power_no_lowspeed`→`no_notch_no_regen_brake_demand`、`ecb_release_pressure`/`ecb_apply_pressure`→`ecb_offset_eb_active`/`ecb_offset_eb_inactive` に改名済み | 修正済 | — |
-| ~~命名誤り（修正済 2026-07-08）~~ | ~~`regen_warning_cond`は「回生ブレーキの警告」ではなく、channel=6経由でiF_a（界磁電流）を読む`brake_current_fb`が閾値超過している状態を検知しているだけだった（§3.6「命名注意」参照）。~~ → `regen_warning_cond`→`field_current_excess_cond`、`regen_warning_blinker`→`field_current_excess_blinker`、`regen_warning_pulse`→`field_current_excess_pulse`に改名済み。`brake_current_fb`系・`brake_limit_*`系は同根の誤命名だが今回は意図的に対象外（範囲を最小化） | 修正済（部分的） | `brake_current_fb`系は今後の課題 |
+進段許可は電機子電流の閉ループ制御ではなく、カム軸を止めるための閾値判定である。
 
----
+| 状態 | 既定進段閾値 |
+|---|---:|
+| 直列 | 210 A |
+| 並列 | 190 A (`base - 20`) |
 
-## 6. ツール／表記上の不整合（実害なし〜要整備）
+電流が閾値未満の状態が0.1秒継続すると進段可能になる。
 
-1. **`direction_nonzero` のしきい値**: sw-net `(0,1)` ≠ 実機 `(0,0)`。storm-mcl のシリアライズ不具合（§4.2）。**最優先で要修正/注記**。
-2. **`script_ref` 不一致**: `LUA current_sim` の `script_ref="scripts/current_sim.lua"` に対し実ファイルは `scripts/n409.lua`。再インポート時にスクリプト参照が壊れる恐れ。名称統一が必要。
-3. **`speed` の composite 入力欠落（表記）**: sw-net 上 `speed (channel=9)` に composite 入力が無いが、実機では Physics Sensor → ch9 が接続済み前提。
-4. **`speed_display`（ch7 由来）**: `speed_raw` は current_src_mux **ch7（= Lua の bcT）** を読み、`x*3.6+1` で Momelink ch25「速度」へ送る。値の意味（速度 vs bcT 由来）にラベル不一致の疑い。機能影響は表示のみ。
+### 7.4 カム復帰
 
----
+直列・並列の両ラッチがOFFで、カムが0以外にある場合は、カム軸を回し続けて0へ戻す。
 
-## 7. 結論と要確認事項
+### 7.5 界磁電流による接続遷移
 
-### 7.1 結論
-- **核となる直列/並列/回生 状態機械は健全**。EB は状態機械を Idle へ清浄収束させ（H4）、SR ラッチ競合はリセット優先で確定（H6）、カムは自動ホーミングで再力行を高抵抗側から開始する（H2）。**スタック・発振・致命的な異常ステートは認められない。**
-- 最大の注意は **解析対象としての .sw-net の信頼性**: `direction_nonzero` のしきい値が storm-mcl により誤シリアライズされており（H1/§6-1）、字面解析は実機と乖離する。
-- 冗長/デッドは複数あるが（§5）、いずれも安全側で実害は限定的。
+ノッチOFF時に界磁電流が選択閾値を超えると、0.1秒ON／0.4秒OFFの周期パルスを生成する。このパルスは並列から直列への切替、直列の解除、またはDB自動OFF時の接続解除に使用される。
 
-### 7.2 要確認事項（Q）
-- **Q-H5**: 直並列転換点（カム==14, notch≥3）で電流がリミットに張り付いた場合の **phase1∧phase2 同時 On 準安定**は意図した転換シーケンスか。意図しないなら `phase2_reset` 第2項のカム/電流条件に転換完了フラグを追加するなどの整理を検討。
-- **Q-表記**: §6 の `direction_nonzero` しきい値・`script_ref`・`speed_display` ラベルの整備方針（storm-mcl 側修正か、sw-net 注記か）。
+選択閾値は通常300 Aで、直列状態かつ回生減速度指令が有効な場合は400 Aとなる。
 
-> 解析モデルは §0.2 のステップ（全ゲート 1 tick 遅延）前提。実機の評価順序が一部同 tick 伝搬する場合、過渡（H5/H7）の tick 数は短縮されるが、定常状態の結論は不変。
+## 8. Lua電動機モデル
+
+### 8.1 定数
+
+| 定数 | 値 | 用途 |
+|---|---:|---|
+| K | 12.16 | 電動機定数 |
+| Kmu | 0.00029 | 磁束係数 |
+| MOT_RES | 0.07 Ω | 電動機内部抵抗 |
+| Ks | 0.85 | 飽和式係数 |
+| PHIs | 150 | 磁束飽和式係数 |
+| MOT_CTRL | 4 | 制御対象電動機数に関係する係数 |
+| GEAR_RATIO | 5.31 | 歯車比 |
+| WHEEL_R | 0.43 m | 車輪半径 |
+| WEIGHT | 35000 kg | 車両質量 |
+
+### 8.2 数値入力
+
+| ch | 値 |
+|---:|---|
+| N1 | 車両速度 [m/s] |
+| N2 | 牽引供給電圧 [V] |
+| N3 | カム位置0～20 |
+| N4 | 方向符号 +1/0/-1 |
+| N5 | 有効力行ノッチ0～7 |
+| N6 | 電機子電流初期値・基準値。既定200 A |
+| N7 | 平滑化した回生減速度目標 [m/s²、負] |
+| N8 | 生の回生減速度目標 [m/s²、負] |
+
+### 8.3 Boolean入力
+
+| ch | 値 |
+|---:|---|
+| B1 | 直列接続 |
+| B2 | 並列接続 |
+| B3 | 界磁制御モード |
+| B4 | 力行ノッチ1以上 |
+| B5 | DB自動かつ回生制動要求あり。減速度追従制御を選択 |
+| B6 | sw-netから書き込まれるが、現Luaでは未使用 |
+
+### 8.4 電気モデル
+
+車両速度から電動機回転数を求める。
+
+```text
+rpm = vehicle_speed * 9.55 * GEAR_RATIO / WHEEL_R
+```
+
+界磁電流と磁束は次の飽和式で表現される。
+
+```text
+iF  = armature_current * pF + auxiliary_field_current
+phi = iF * Kmu * Ks * PHIs / (Ks * abs(iF) + PHIs)
+```
+
+電機子電流は次の方程式をニュートン法で5回反復して求める。
+
+```text
+K * phi * rpm - terminal_voltage
+  + (motor_resistance + external_resistance) * armature_current = 0
+```
+
+直列時は1電動機相当電圧を架線電圧の1/8、並列時は1/4として扱う。抵抗値も同じ係数で分割する。
+
+### 8.5 Lua出力
+
+| ch | 値 |
+|---:|---|
+| N1 | 電機子電流 [A] |
+| N2 | 逆起電力相当値 `K*phi*rpm` |
+| N3 | 車両加速度 [m/s²] |
+| N4 | 主回路電力 [W] |
+| N5 | カム位置エコー |
+| N6 | 補助界磁電流・界磁制御量 `iF_a` [A] |
+| N7 | 電気制動で不足する減速度。空気ブレーキ補完要求 |
+
+N3はBC目標ではなく車両加速度であり、N7は速度ではなく空気ブレーキ補完要求である。
+
+## 9. ブレーキインターフェース
+
+### 9.1 SAP方式
+
+- 牽引禁止判定には外部`BP [atm]`を使用。
+- 制動要求には外部`SAP [atm]`を使用。
+
+### 9.2 ECB方式
+
+非常制動指令から仮想BPを生成する。
+
+| 非常制動 | 仮想BP |
+|---|---:|
+| OFF | 5 atm |
+| ON | 0 atm |
+
+ECBのブレーキ要求圧は次式。
+
+```text
+ecb_brake_demand_pressure
+  = clamp(brake_command + (5 - virtual_BP) * 7, 0, 36) / 8 + 1
+```
+
+通常時は概ね`brake_command/8 + 1`、非常制動時は最大側へ強制される。
+
+### 9.3 牽引禁止用ブレーキ管判定
+
+SAP方式では実BP、ECB方式では仮想BPを4 atmと比較する。4 atm未満で牽引禁止条件が成立する。
+
+## 10. 回生制動と空気ブレーキ補完
+
+### 10.1 減速度目標
+
+ブレーキ要求圧を負の減速度指令へ変換する。
+
+```text
+regen_deceleration_target
+  = -floor((brake_demand_pressure - 1) * 2) / 7.2
+```
+
+平滑化は1 tickあたり、制動を強める方向へ最大0.1 m/s²、解除方向へ最大0.02 m/s²で追従する。
+
+### 10.2 DB自動
+
+Simple IF B18がONで、生の減速度目標が-0.05 m/s²未満のとき、自動回生制動要求を成立させる。この信号はLua B5へ入り、界磁制御を減速度追従モードへ切り替える。
+
+### 10.3 架線過電圧保護
+
+設計意図は、回生時に架線電圧が上昇した場合に回生を切り、再投入を抑制することである。実装上は架線電圧を直接比較せず、Luaの界磁電流が保護条件へ達したことを代理量として使用する。
+
+- 直列接続成立後、界磁電流が300 Aを超えた状態が0.5秒継続すると、回生減速度目標を0へ切り替える。
+- CAPACITORのdischarge time 10秒により、保護解除後も再投入を遅らせる。
+- 回生が使えない間の要求は空気ブレーキへ引き継ぐ。
+
+### 10.4 空気ブレーキ補完
+
+Lua N7は、要求減速度に対して電気制動が不足した量を正値で出力する。牽引禁止時にはLua出力を使わず、次の全量フォールバック値をN7へ書く。
+
+```text
+pneumatic_brake_fallback_demand
+  = max(-regen_deceleration_target, 0)
+```
+
+N7は最終的に次式でBC絶対圧目標へ変換される。
+
+```text
+BC target [atm abs] = pneumatic_demand * 3.6 + 1
+```
+
+## 11. 牽引禁止と故障ラッチ
+
+`traction_inhibit`は次のOR条件で成立する。
+
+- `Controller Stop`
+- 牽引故障ラッチ
+- 方向中立（前進・後進ともOFF、または両方ON）
+- 絶対速度がProperty `Over Speed Th.`を超過
+- ブレーキ管相当圧が4 atm未満
+
+成立時は有効力行ノッチを0にし、Lua結果コンポジットの代わりに空気ブレーキ全量フォールバックコンポジットを選ぶ。その結果、電流・加速度・電力・カムフィードバック・界磁電流は0となり、N7だけに空気ブレーキ要求が入る。
+
+電機子電流が±200000 Aの範囲外へ出た場合は、計算異常として牽引故障ラッチをセットする。リセット条件は、生の力行ノッチが0かつDB自動がOFFであること。
+
+`unused_startup_delay`はenable未接続のため現状未消費である。1800系マイコンにはLuaウォッチドッグは存在しない。XOR/NOTループによるLua生存監視は2000系列の参考実装と混同しないこと。
+
+## 12. パンタグラフ制御と車種切替
+
+個別パンタごとに、上昇／下降指令ラッチと使用許可ラッチを持つ。
+
+- `panta1_latch`、`panta2_latch`: 個別昇降指令状態。
+- `panta1_en_latch`、`panta2_en_latch`: パンタ使用許可状態。
+- `panta_all_down_signal`: 両使用許可ラッチをリセット。
+- `vehicle_type_1900`: ONで1900形、OFFで1800形。
+- `panta*_1800_active`: 使用許可ラッチと1800形判定のAND。
+
+1800形でパンタが有効なとき、Property `Panta Height (Type)`を高さとして出力する。それ以外は0.02を出力する。
+
+## 13. Momelink-A Advanced
+
+### 13.1 共通値
+
+実測BC絶対圧からBC作動比を生成する。
+
+```text
+bc_application_ratio = max(BC_abs - 1.45, 0) / 3.02
+```
+
+### 13.2 Advancedフレーム
+
+| Number ch | 値 |
+|---:|---|
+| 1 | 自車BC作動比 |
+| 2 | inner unit N26 |
+| 15 | Type ID 1911 |
+| 22 | 35。Luaの車両質量と一致するため車両質量[t]と推定 |
+| 23 | 自車牽引供給電圧 |
+| 24 | 自車電機子電流 |
+| 25 | 自車BC目標絶対圧 |
+| 26 | 自車平滑加速度 |
+
+### 13.3 1800形フレーム
+
+Advancedフレームを引き継ぎ、N1を自車BC作動比、N2を自車平滑加速度で上書きする。
+
+### 13.4 出力選択
+
+```text
+use_1900_advanced_frame
+  = vehicle_type_1900
+    AND (Momelink inner unit N15 == 1911)
+```
+
+- 条件成立: Advancedフレームを`Momelink-A`へ出力。
+- 条件不成立: 1800形フレームを出力。
+
+この切替は同一マイコン内の1800形・1900形対応であり、1900形を別マイコン方式とみなしてはならない。
+
+## 14. Rolling Stock Status
+
+1900形かつinner unit Type ID 1911の場合、N23～N25の情報源として`Momelink inner unit`を選ぶ。それ以外はローカルのAdvancedフレームを選ぶ。
+
+### 14.1 Numberチャンネル
+
+| ch | 値 |
+|---:|---|
+| N1 | 未設定 |
+| N2 | 実測BCゲージ圧 [kPa] |
+| N3 | 選択されたデータ源の電機子電流 |
+| N4 | 未設定 |
+| N5 | 選択されたデータ源の架線・供給電圧 |
+| N6 | パンタ1高さ |
+| N7 | パンタ2高さ |
+| N8 | MR絶対圧 [atm] |
+
+BCゲージ圧は次式。
+
+```text
+max((BC_abs - 1) * 101.315, 0)
+```
+
+### 14.2 Booleanチャンネル
+
+| ch | 値 |
+|---:|---|
+| B1 | 牽引故障ラッチ |
+| B2～B4 | 未設定 |
+| B5 | 1800形パンタ1個別ラッチ状態 |
+| B6 | 1800形パンタ1使用状態 |
+| B7 | 1800形パンタ2個別ラッチ状態 |
+| B8 | 1800形パンタ2使用状態 |
+
+`BC target [atm]`出力は、同じデータ源のN25を使用する。
+
+## 15. 現状未消費・保留事項
+
+| 項目 | 状態 |
+|---|---|
+| `power_notch_ge4` | 未消費。保持 |
+| `cam_nonzero_epsilon` | 未消費。保持 |
+| `brake_current_limit_scale` | ブレーキ時限流値のスケーリング用Propertyとして用意されているが、現状未消費 |
+| `unused_startup_delay` | enable未接続。保持 |
+| Lua Boolean B6 | 入力コンポジットには存在するが、現Luaでは未使用 |
+| Momelink N22 = 35 | 車両質量[t]と強く推定されるが、プロトコル正典による確認が望ましい |
+
+## 16. 保守上の原則
+
+- ノード名ではなく、結線、式、Lua入出力、外部プロトコルを優先して意味を判断する。
+- Phase 1/2のような抽象名を再導入せず、直列・並列・界磁制御を明記する。
+- `regen`という語は、自動回生制動要求、界磁制御モード、架線過電圧保護、空気ブレーキ補完を区別して使う。
+- 2000系列の仕様はインターフェースや設計慣習の参考に限定し、1800系固有ロジックへ直接転用しない。

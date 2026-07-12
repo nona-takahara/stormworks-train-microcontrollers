@@ -211,6 +211,20 @@ lua test/run_all.lua
 判断した。開発時に手元でi2f/f2iの往復精度と`onTick()`の多tick動作は
 個別に確認済み（詳細は `DESIGN_LOG.md` #11）。
 
+```sh
+lua test/verify_deploy_artifact.lua
+```
+
+上記12本はいずれも`src/chuso1800_core.lua`（minify前のソース）を直接
+`dofile`するため、**minify後の`deploy/chuso1800_deploy.lua`自体に
+入り込むバグは検出できない**。実際に、storm-lua-minify（および元ネタの
+luamin）が演算子優先順位を無視して括弧を落とすバグにより、minify後の
+`put_bit`/`put_bits`/`get_bits`が壊れる事象が発生した（詳細は
+`DESIGN_LOG.md` #18）。このスクリプトは`deploy/chuso1800_deploy.lua`
+そのものを`input`/`output`のモック経由で動かし、ビットヘルパーの往復と
+実際の状態遷移（notchを与えてphase1へ遷移し実電流が流れること）を
+検証する、minifyそのものに対する回帰テスト。
+
 ## デプロイ（実機組み込み用スクリプト）
 
 `../../lib/state_sync.lua` は、リポジトリ共通の汎用ステート同期ドライバ
@@ -275,9 +289,12 @@ composite `number` チャンネル自体が元々float32精度である以上、
    `dofile`のまま残した結果、8,466文字まで再増加していた ─
    `DESIGN_LOG.md` #14）が根本から解消した。
 
-## 今後の実配線について（本プロトタイプのスコープ外）
+## 今後の実配線について（実施済み）
 
-`main.sw-net` へ実際に組み込む場合、以下が必要になる（今回は着手していない）：
+以下の1〜5項は `main.sw-net` に実配線済み（`DESIGN_LOG.md` #17に、
+オリジナルの `CHUSO1800_Traction_Controller/main.sw-net` との差分
+─ 削除したノード・新規に追加したノード・維持したノード ─ を網羅した
+一覧がある。この節は実配線前の計画としてそのまま残してある）：
 
 1. `LUA current_sim` ノードの `script_ref` を、`deploy/main.lua`を
    `storm-lua-minify`でフラット化した最終スクリプトへ差し替える。

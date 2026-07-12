@@ -1,0 +1,225 @@
+module main
+  port in "Physics Sensor [+Z is front]" : composite
+  port in "Catenary Line Voltage [V]" : number
+  port in "SAP [atm]" : number
+  port out DANRYU : boolean
+  port out cam : boolean
+  port out W : number
+  port in "Controller Stop" : boolean
+  port in "BP [atm]" : number
+  port out "BC target [atm]" : number
+  port in "Simple IF" : composite
+  port in "Extended IF" : composite
+  port out "Momelink-A" : composite
+  port in "BC [atm abs]" : number
+  port in "Momelink inner unit" : composite
+  port in "MR [atm abs]" : number
+  port out "Rolling Stock Status" : composite
+
+  # --- Catenary voltage source selection and pantograph interlock ---
+  inst CONST nominal_catenary_voltage (value=1500) : -> value=nominal_catenary_voltage_value
+  inst PROPERTY_TOGGLE use_supplied_catenary_voltage (label="", on_label="On", off_label="Off", n="Use Supplied Catenary Voltage", v=true) : -> out=use_supplied_catenary_voltage_out
+  inst THRESHOLD catenary_input_zero (min=0, max=0) : value="Catenary Line Voltage [V]" -> out=catenary_input_zero_out
+  inst NOT catenary_input_nonzero : a=catenary_input_zero_out -> out=catenary_input_nonzero_out
+  inst AND use_catenary_input : a=use_supplied_catenary_voltage_out, b=catenary_input_nonzero_out -> out=use_catenary_input_out
+  inst NUM_SWITCHBOX selected_catenary_voltage : a="Catenary Line Voltage [V]", b=nominal_catenary_voltage_value, switch=use_catenary_input_out -> out=selected_catenary_voltage_out
+  inst OR panta_1800_active_any : a=panta1_1800_active_out, b=panta2_1800_active_out -> out=panta_1800_active_any_out
+  inst NUM_SWITCHBOX traction_supply_voltage : a=selected_catenary_voltage_out, switch=panta_1800_active_any_out -> out=traction_supply_voltage_out
+
+  # --- Speed input, BC target conversion, and camshaft stepping ---
+  inst COMPOSITE_READ_NUMBER vehicle_speed (channel=9) : -> out=vehicle_speed_out
+  inst COMPOSITE_READ_NUMBER pneumatic_brake_decel_demand (channel=7) : composite=traction_result_mux_out -> out=pneumatic_brake_decel_demand_out
+  inst FUNC_NUM_1 bc_target_abs_pressure (expression="x*3.6+1") : x=pneumatic_brake_decel_demand_out -> out=bc_target_abs_pressure_out
+  inst ABS vehicle_speed_abs : a=vehicle_speed_out -> out=vehicle_speed_abs_out
+  inst DELTA cam_position_delta : a=cam_position_counter_out -> out=cam_position_delta_out
+  inst THRESHOLD cam_position_unchanged (min=0, max=0) : value=cam_position_delta_out -> out=cam_position_unchanged_out
+  inst FUNC_NUM_3 cam_position_counter (expression="(x+y)%21") : x=cam_position_counter_out, y=cam_increment_out -> out=cam_position_counter_out
+  inst NUM_SWITCHBOX cam_increment : a=cam_increment_one_value, b=cam_increment_zero_value, switch=cam_step_pulse_out -> out=cam_increment_out
+  inst PULSE cam_step_pulse (mode="rise") : a=cam_drive_blinker_out -> out=cam_step_pulse_out
+  inst BLINKER cam_drive_blinker (on_time=0.1, off_time=0.1) : enable=cam_drive_request_out -> out=cam_drive_blinker_out
+  inst CONST cam_increment_one (value=1) : -> value=cam_increment_one_value
+  inst CONST cam_increment_zero (value=0) : -> value=cam_increment_zero_value
+  inst NOT cam_position_changed : a=cam_position_unchanged_out -> out="cam"
+
+  # --- Power notch command and camshaft position decoding ---
+  inst COMPOSITE_READ_NUMBER power_notch_command (channel=2) : composite="Simple IF" -> out=power_notch_command_out
+  inst THRESHOLD power_notch_zero (min=0, max=0) : value=power_notch_command_out -> out=power_notch_zero_out
+  inst FUNC_NUM_3 effective_power_notch (expression="clamp(x,0,7)*y") : x=power_notch_command_out, y=power_notch_gate_out -> out=effective_power_notch_out
+  inst NUM_SWITCHBOX power_notch_gate : b=power_notch_gate_enabled_value, switch=traction_inhibit_out -> out=power_notch_gate_out
+  inst CONST power_notch_gate_enabled (value=1) : -> value=power_notch_gate_enabled_value
+  inst THRESHOLD power_notch_ge1 (min=1, max=7) : value=effective_power_notch_out -> out=power_notch_ge1_out
+  inst THRESHOLD power_notch_ge2 (min=2, max=7) : value=effective_power_notch_out -> out=power_notch_ge2_out
+  inst THRESHOLD power_notch_ge3 (min=3, max=7) : value=effective_power_notch_out -> out=power_notch_ge3_out
+  inst THRESHOLD power_notch_ge4 (min=4, max=7) : value=effective_power_notch_out -> out=power_notch_ge4_out
+  inst COMPOSITE_READ_NUMBER cam_position_feedback (channel=5) : composite=traction_result_mux_out -> out=cam_position_feedback_out
+  inst THRESHOLD cam_at_zero (min=0, max=0) : value=cam_position_feedback_out -> out=cam_at_zero_out
+  inst THRESHOLD cam_in_series_range (min=0, max=13) : value=cam_position_feedback_out -> out=cam_in_series_range_out
+  inst THRESHOLD cam_in_parallel_range (min=14, max=20) : value=cam_position_feedback_out -> out=cam_in_parallel_range_out
+  inst THRESHOLD cam_at_transition_position (min=14, max=14) : value=cam_position_feedback_out -> out=cam_at_transition_position_out
+  inst NOT cam_not_at_transition_position : a=cam_at_transition_position_out -> out=cam_not_at_transition_position_out
+  inst EQUAL cam_zero_epsilon (epsilon=0.0001) : b=cam_position_feedback_out -> out=cam_zero_epsilon_out
+  inst NOT cam_nonzero_epsilon : a=cam_zero_epsilon_out -> out=cam_nonzero_epsilon_out
+  inst THRESHOLD field_control_cam_ready (min=0, max=0) : value=cam_position_feedback_out -> out=field_control_cam_ready_out
+
+  # --- Traction motor model, fallback, and traction inhibit ---
+  inst LUA traction_motor_model (script_ref="scripts/n409.lua") : composite=traction_model_input_out -> composite=traction_motor_model_composite
+  inst COMPOSITE_WRITE_NUMBER traction_model_input (count=8, offset=1) : in1=vehicle_speed_out, in2=traction_supply_voltage_out, in3=cam_position_counter_out, in4=direction_sign_out, in5=effective_power_notch_out, in6=armature_current_reference_value, in7=regen_deceleration_target_smoothed_out, in8=regen_deceleration_target_out, inc=traction_model_mode_flags_out -> out=traction_model_input_out
+  inst COMPOSITE_SWITCHBOX traction_result_mux : a=pneumatic_brake_fallback_result_out, b=traction_motor_model_composite, switch=traction_inhibit_out -> out=traction_result_mux_out
+  inst COMPOSITE_READ_NUMBER armature_current (channel=1) : composite=traction_result_mux_out -> out=armature_current_out
+  inst THRESHOLD armature_current_sane (min=-200000, max=200000) : value=armature_current_out -> out=armature_current_sane_out
+  inst GREATER_THAN armature_current_positive : a=armature_current_out -> out=armature_current_positive_out
+  inst NOT armature_current_fault : a=armature_current_sane_out -> out=armature_current_fault_out
+  inst CAPACITOR unused_startup_delay (charge_time=5, discharge_time=0) : -> out=unused_startup_delay_out
+  inst OR traction_fault_set : a=unused_startup_delay_out, b=armature_current_fault_out -> out=traction_fault_set_out
+  inst SR_LATCH traction_fault_latch : r=traction_fault_reset_out, s=traction_fault_set_out -> q=traction_fault_latch_q
+  inst AND traction_fault_reset : a=power_notch_zero_out, b=db_auto_command_not_out -> out=traction_fault_reset_out
+  inst NOT armature_current_not_positive : a=armature_current_positive_out -> out="DANRYU"
+  inst COMPOSITE_READ_BOOLEAN db_auto_command (channel=18) : composite="Simple IF" -> out=db_auto_command_out
+  inst NOT db_auto_command_not : a=db_auto_command_out -> out=db_auto_command_not_out
+  inst GREATER_THAN overspeed : a=vehicle_speed_abs_out, b=overspeed_threshold_out -> out=overspeed_out
+  inst PROPERTY_NUMBER overspeed_threshold (value=32, n="Over Speed Th. [m/s]") : -> out=overspeed_threshold_out
+  inst THRESHOLD direction_neutral (min=0, max=0) : value=direction_sign_out -> out=direction_neutral_out
+  inst BOOL_FUNC_8 traction_inhibit (expression="x|y|z|w|a|b|c|d") : x="Controller Stop", y=traction_fault_latch_q, z=direction_neutral_out, w=overspeed_out, a=brake_pipe_below_inhibit_threshold_out -> out=traction_inhibit_out
+
+  # --- Traction model outputs, limits, and mode flags ---
+  inst COMPOSITE_READ_NUMBER model_acceleration (channel=3) : composite=traction_result_mux_out -> out=model_acceleration_out
+  inst FUNC_NUM_3 model_acceleration_smoothed (expression="(x*0.2)+(y*0.8)") : x=model_acceleration_out, y=model_acceleration_smoothed_out -> out=model_acceleration_smoothed_out
+  inst COMPOSITE_READ_NUMBER traction_power (channel=4) : composite=traction_result_mux_out -> out="W"
+  inst PROPERTY_NUMBER cam_advance_current_limit_base (value=210, n="Power Limit Current [A]") : -> out=cam_advance_current_limit_base_out
+  inst PROPERTY_NUMBER brake_current_limit_scale (value=290, n="Brake Limit@320kPa [A]") : -> out=brake_current_limit_scale_out
+  inst COMPOSITE_WRITE_BOOLEAN traction_model_mode_flags (count=6, offset=1) : in1=series_connection_latch_q, in2=parallel_connection_latch_q, in3=field_control_latch_q, in4=power_notch_ge1_out, in5=automatic_regen_brake_requested_out, in6=field_current_transition_required_out -> out=traction_model_mode_flags_out
+
+  # --- Field-current thresholds, brake interface, and direction decoding ---
+  inst COMPOSITE_READ_NUMBER field_current (channel=6) : composite=traction_result_mux_out -> out=field_current_out
+  inst GREATER_THAN field_current_above_selected_limit : a=field_current_out, b=field_current_limit_select_out -> out=field_current_above_selected_limit_out
+  inst GREATER_THAN field_current_above_300 : a=field_current_out, b=field_current_limit_300_trip_value -> out=field_current_above_300_out
+  inst CONST field_current_limit_300_trip (value=300) : -> value=field_current_limit_300_trip_value
+  inst CONST field_current_limit_normal (value=300) : -> value=field_current_limit_normal_value
+  inst CONST field_current_limit_extended (value=400) : -> value=field_current_limit_extended_value
+  inst CONST brake_pipe_inhibit_threshold (value=4) : -> value=brake_pipe_inhibit_threshold_value
+  inst LESS_THAN brake_pipe_below_inhibit_threshold : a=brake_pipe_for_inhibit_out, b=brake_pipe_inhibit_threshold_value -> out=brake_pipe_below_inhibit_threshold_out
+  inst NUM_SWITCHBOX brake_pipe_for_inhibit : a="BP [atm]", b=ecb_virtual_brake_pipe_out, switch=brake_system_is_sap_out -> out=brake_pipe_for_inhibit_out
+  inst PROPERTY_TOGGLE brake_system_is_sap (label="", on_label="SAP", off_label="ECB", n="SAP or ECB") : -> out=brake_system_is_sap_out
+  inst NUM_SWITCHBOX ecb_virtual_brake_pipe : a=ecb_brake_pipe_emergency_value, b=ecb_brake_pipe_normal_value, switch=emergency_brake_command_out -> out=ecb_virtual_brake_pipe_out
+  inst COMPOSITE_READ_BOOLEAN emergency_brake_command (channel=1) : composite="Simple IF" -> out=emergency_brake_command_out
+  inst CONST ecb_brake_pipe_emergency (value=0) : -> value=ecb_brake_pipe_emergency_value
+  inst CONST ecb_brake_pipe_normal (value=5) : -> value=ecb_brake_pipe_normal_value
+  inst COMPOSITE_READ_NUMBER brake_command (channel=1) : composite="Simple IF" -> out=brake_command_out
+  inst COMPOSITE_READ_BOOLEAN forward_command (channel=16) : composite="Simple IF" -> out=forward_command_out
+  inst COMPOSITE_READ_BOOLEAN reverse_command (channel=17) : composite="Simple IF" -> out=reverse_command_out
+  inst SUBTRACT direction_sign : a=forward_direction_value_out, b=reverse_direction_value_out -> out=direction_sign_out
+  inst NUM_SWITCHBOX forward_direction_value : a=direction_one_value, b=direction_zero_value, switch=forward_command_out -> out=forward_direction_value_out
+  inst NUM_SWITCHBOX reverse_direction_value : a=direction_one_value, b=direction_zero_value, switch=reverse_command_out -> out=reverse_direction_value_out
+  inst CONST direction_one (value=1) : -> value=direction_one_value
+  inst CONST direction_zero (value=0) : -> value=direction_zero_value
+  inst NUM_SWITCHBOX brake_demand_pressure : a="SAP [atm]", b=ecb_brake_demand_pressure_out, switch=brake_system_is_sap_out -> out=brake_demand_pressure_out
+  inst FUNC_NUM_3 ecb_brake_demand_pressure (expression="clamp(x+(5-y)*7,0,36)/8+1") : x=brake_command_out, y=ecb_virtual_brake_pipe_out -> out=ecb_brake_demand_pressure_out
+
+  # --- Series-parallel transition and cam advance control ---
+  inst SR_LATCH series_connection_latch : r=series_connection_reset_out, s=series_connection_set_out -> q=series_connection_latch_q, not_q=series_connection_latch_not_q
+  inst BOOL_FUNC_4 series_cam_advance_request (expression="x&y&z&w") : x=power_notch_ge2_out, y=cam_in_series_range_out, z=series_connection_settled_out, w=advance_current_condition_settled_out -> out=series_cam_advance_request_out
+  inst CAPACITOR series_connection_settled (charge_time=0.1, discharge_time=0) : enable=series_connection_latch_q -> out=series_connection_settled_out
+  inst AND series_powering_active : a=series_connection_latch_q, b=power_notch_ge1_out -> out=series_powering_active_out
+  inst AND series_not_at_transition_position : a=series_connection_latch_q, b=cam_not_at_transition_position_out -> out=series_not_at_transition_position_out
+  inst AND series_field_control_cam_drive_request : a=series_not_at_transition_position_out, b=field_control_latch_q -> out=series_field_control_cam_drive_request_out
+  inst AND series_regen_demand_active : a=series_connection_latch_q, b=regen_deceleration_active_out -> out=series_regen_demand_active_out
+  inst NUM_SWITCHBOX field_current_limit_select : a=field_current_limit_extended_value, b=field_current_limit_normal_value, switch=series_regen_demand_active_out -> out=field_current_limit_select_out
+  inst AND series_field_current_above_300 : a=field_current_above_300_out, b=series_connection_settled_out -> out=series_field_current_above_300_out
+  inst BOOL_FUNC_4 series_connection_set (expression="(x&y)|(z&w)") : x=series_start_request_out, y=parallel_connection_latch_not_q, z=field_current_transition_pulse_out, w=parallel_connection_latch_q -> out=series_connection_set_out
+  inst BOOL_FUNC_4 series_connection_reset (expression="x|(y&z)|w") : x=series_parallel_reset_condition_out, y=field_current_transition_pulse_out, z=series_connection_settled_out, w=series_to_parallel_transition_out -> out=series_connection_reset_out
+
+  inst SR_LATCH parallel_connection_latch : r=parallel_connection_reset_out, s=series_to_parallel_transition_out -> q=parallel_connection_latch_q, not_q=parallel_connection_latch_not_q
+  inst BOOL_FUNC_4 parallel_cam_advance_request (expression="x&y&z&w") : x=power_notch_ge3_out, y=cam_in_parallel_range_out, z=parallel_connection_settled_out, w=advance_current_condition_settled_out -> out=parallel_cam_advance_request_out
+  inst CAPACITOR parallel_connection_settled (charge_time=0.1, discharge_time=0) : enable=parallel_connection_latch_q -> out=parallel_connection_settled_out
+  inst BOOL_FUNC_4 series_to_parallel_transition (expression="x&y&z") : x=power_notch_ge3_out, y=cam_at_transition_position_out, z=advance_current_condition_settled_out -> out=series_to_parallel_transition_out
+  inst BOOL_FUNC_4 parallel_connection_reset (expression="x|(y&!(z&w))") : x=series_parallel_reset_condition_out, y=series_connection_latch_q, z=power_notch_ge3_out, w=cam_at_transition_position_out -> out=parallel_connection_reset_out
+
+  # --- Cam advance current threshold and camshaft drive request ---
+  inst LESS_THAN armature_current_below_advance_limit : a=armature_current_out, b=cam_advance_current_limit_out -> out=armature_current_below_advance_limit_out
+  inst CAPACITOR advance_current_condition_settled (charge_time=0.1, discharge_time=0) : enable=armature_current_below_advance_limit_out -> out=advance_current_condition_settled_out
+  inst NUM_SWITCHBOX cam_advance_current_limit : a=parallel_advance_current_limit_out, b=cam_advance_current_limit_base_out, switch=parallel_connection_latch_q -> out=cam_advance_current_limit_out
+  inst FUNC_NUM_1 parallel_advance_current_limit (expression="x-20") : x=cam_advance_current_limit_base_out -> out=parallel_advance_current_limit_out
+  inst BOOL_FUNC_8 cam_drive_request (expression="x|y|z|w|a|b|c|d") : x=series_cam_advance_request_out, y=parallel_cam_advance_request_out, z=cam_return_request_out, w=series_field_control_cam_drive_request_out -> out=cam_drive_request_out
+
+  # --- Field-control mode, cam return, and connection reset conditions ---
+  inst SR_LATCH field_control_latch : r=field_control_exit_condition_out, s=field_control_enter_condition_out -> q=field_control_latch_q, not_q=field_control_latch_not_q
+  inst AND field_control_enter_condition : a=parallel_connection_latch_q, b=field_control_cam_ready_out -> out=field_control_enter_condition_out
+  inst OR field_control_exit_condition : a=series_powering_active_out, b=series_parallel_both_off_out -> out=field_control_exit_condition_out
+  inst NOT cam_not_at_zero : a=cam_at_zero_out -> out=cam_not_at_zero_out
+  inst AND series_parallel_both_off : a=series_connection_latch_not_q, b=parallel_connection_latch_not_q -> out=series_parallel_both_off_out
+  inst AND cam_return_request : a=cam_not_at_zero_out, b=series_parallel_both_off_out -> out=cam_return_request_out
+  inst AND series_start_request : a=power_notch_ge1_out, b=cam_at_zero_out -> out=series_start_request_out
+  inst NOT effective_power_notch_zero : a=power_notch_ge1_out -> out=effective_power_notch_zero_out
+  inst AND field_current_transition_required : a=field_current_above_selected_limit_out, b=effective_power_notch_zero_out -> out=field_current_transition_required_out
+  inst BLINKER field_current_transition_blinker (on_time=0.1, off_time=0.4) : enable=field_current_transition_required_out -> out=field_current_transition_blinker_out
+  inst PULSE field_current_transition_pulse (mode="rise") : a=field_current_transition_blinker_out -> out=field_current_transition_pulse_out
+  inst AND coasting_connection_release : a=zero_torque_demand_condition_out, b=field_control_latch_not_q -> out=coasting_connection_release_out
+  inst THRESHOLD armature_current_near_zero (min=-50, max=50) : value=armature_current_out -> out=armature_current_near_zero_out
+  inst NOR no_traction_or_regen_brake_demand : a=power_notch_ge1_out, b=automatic_regen_brake_requested_out -> out=no_traction_or_regen_brake_demand_out
+  inst AND zero_torque_demand_condition : a=armature_current_near_zero_out, b=no_traction_or_regen_brake_demand_out -> out=zero_torque_demand_condition_out
+  inst OR series_parallel_reset_condition : a=coasting_connection_release_out, b=field_transition_without_db_auto_out -> out=series_parallel_reset_condition_out
+  inst AND field_transition_without_db_auto : a=field_current_transition_pulse_out, b=db_auto_command_not_out -> out=field_transition_without_db_auto_out
+
+  # --- Regenerative braking command, overvoltage protection, and pneumatic fallback ---
+  inst FUNC_NUM_1 regen_deceleration_target (expression="-floor((x-1)*2)/7.2") : x=brake_demand_pressure_out -> out=regen_deceleration_target_out
+  inst FUNC_NUM_3 regen_deceleration_target_smoothed (expression="min(clamp(x,y-0.1,y+0.02),0)") : x=regen_target_source_out, y=regen_deceleration_target_smoothed_out -> out=regen_deceleration_target_smoothed_out
+  inst NUM_SWITCHBOX regen_target_source : a=zero_deceleration_target_value, b=regen_deceleration_target_out, switch=regen_target_inhibit_out -> out=regen_target_source_out
+  inst CONST zero_deceleration_target (value=0) : -> value=zero_deceleration_target_value
+  inst LESS_THAN regen_deceleration_active : a=regen_deceleration_target_smoothed_out, b=regen_active_threshold_value -> out=regen_deceleration_active_out
+  inst CONST regen_active_threshold (value=-0.1) : -> value=regen_active_threshold_value
+  inst OR regen_target_inhibit : a=regen_overvoltage_trip_hold_out, b=db_auto_command_not_out -> out=regen_target_inhibit_out
+  inst CAPACITOR regen_overvoltage_trip_hold (charge_time=0.5, discharge_time=10) : enable=series_field_current_above_300_out -> out=regen_overvoltage_trip_hold_out
+  inst LESS_THAN braking_deceleration_requested : a=regen_deceleration_target_out, b=braking_request_threshold_value -> out=braking_deceleration_requested_out
+  inst CONST braking_request_threshold (value=-0.05) : -> value=braking_request_threshold_value
+  inst AND automatic_regen_brake_requested : a=braking_deceleration_requested_out, b=db_auto_command_out -> out=automatic_regen_brake_requested_out
+  inst FUNC_NUM_1 pneumatic_brake_fallback_demand (expression="max(-x,0)") : x=regen_deceleration_target_out -> out=pneumatic_brake_fallback_demand_out
+  inst COMPOSITE_WRITE_NUMBER pneumatic_brake_fallback_result (count=1, offset=7) : in1=pneumatic_brake_fallback_demand_out -> out=pneumatic_brake_fallback_result_out
+  inst CONST armature_current_reference (value=200) : -> value=armature_current_reference_value
+
+  # --- Pantograph control ---
+  inst SR_LATCH panta1_latch : r=panta1_down_signal_out, s=panta1_up_signal_out -> q=panta1_latch_q, not_q=panta1_latch_not_q
+  inst SR_LATCH panta2_latch : r=panta2_down_signal_out, s=panta2_up_signal_out -> q=panta2_latch_q, not_q=panta2_latch_not_q
+  inst SR_LATCH panta1_en_latch : r=panta_all_down_signal_out, s=panta1_set_cond_out -> q=panta1_en_latch_q
+  inst SR_LATCH panta2_en_latch : r=panta_all_down_signal_out, s=panta2_set_cond_out -> q=panta2_en_latch_q
+  inst AND panta1_set_cond : a=panta1_latch_not_q, b=panta_enable_signal_out -> out=panta1_set_cond_out
+  inst AND panta2_set_cond : a=panta2_latch_not_q, b=panta_enable_signal_out -> out=panta2_set_cond_out
+  inst COMPOSITE_READ_BOOLEAN panta_enable_signal (channel=6) : composite="Extended IF" -> out=panta_enable_signal_out
+  inst COMPOSITE_READ_BOOLEAN panta_all_down_signal (channel=7) : composite="Extended IF" -> out=panta_all_down_signal_out
+  inst COMPOSITE_READ_BOOLEAN panta1_up_signal (channel=4) : composite="Extended IF" -> out=panta1_up_signal_out
+  inst COMPOSITE_READ_BOOLEAN panta1_down_signal (channel=5) : composite="Extended IF" -> out=panta1_down_signal_out
+  inst COMPOSITE_READ_BOOLEAN panta2_up_signal (channel=8) : composite="Extended IF" -> out=panta2_up_signal_out
+  inst COMPOSITE_READ_BOOLEAN panta2_down_signal (channel=9) : composite="Extended IF" -> out=panta2_down_signal_out
+  inst PROPERTY_DROPDOWN panta_height_type (name="Panta Height (Type)") : -> out=panta_height_type_out
+  inst NUM_SWITCHBOX panta1_height_sw : a=panta_height_type_out, b=panta_default_height_value, switch=panta1_1800_active_out -> out=panta1_height_sw_out
+  inst NUM_SWITCHBOX panta2_height_sw : a=panta_height_type_out, b=panta_default_height_value, switch=panta2_1800_active_out -> out=panta2_height_sw_out
+  inst CONST panta_default_height (value=0.02) : -> value=panta_default_height_value
+  inst PROPERTY_TOGGLE vehicle_type_1900 (label="", on_label="1900", off_label="1800", n="M Type") : -> out=vehicle_type_1900_out
+  inst NOT vehicle_type_1800 : a=vehicle_type_1900_out -> out=vehicle_type_1800_out
+  inst AND panta1_1800_active : a=panta1_en_latch_q, b=vehicle_type_1800_out -> out=panta1_1800_active_out
+  inst AND panta2_1800_active : a=panta2_en_latch_q, b=vehicle_type_1800_out -> out=panta2_1800_active_out
+
+  # --- Momelink-A base frame for 1800 type ---
+  inst COMPOSITE_WRITE_NUMBER momelink_1800_frame (count=2, offset=1) : in1=bc_application_ratio_out, in2=model_acceleration_smoothed_out, inc=momelink_advanced_frame_out -> out=momelink_1800_frame_out
+  inst FUNC_NUM_1 bc_application_ratio (expression="max(x-1.45,0)/3.02") : x="BC [atm abs]" -> out=bc_application_ratio_out
+
+  # --- Momelink-A Advanced frame and vehicle-type selection ---
+  inst COMPOSITE_READ_NUMBER inner_unit_type_id (channel=15) : composite="Momelink inner unit" -> out=inner_unit_type_id_out
+  inst THRESHOLD inner_unit_type_is_1911 (min=1911, max=1911) : value=inner_unit_type_id_out -> out=inner_unit_type_is_1911_out
+  inst CONST momelink_type_id_1911 (value=1911) : -> value=momelink_type_id_1911_value
+  inst CONST vehicle_mass_tonnes (value=35) : -> value=vehicle_mass_tonnes_value
+  inst COMPOSITE_READ_NUMBER inner_unit_acceleration (channel=26) : composite="Momelink inner unit" -> out=inner_unit_acceleration_out
+  inst COMPOSITE_WRITE_NUMBER momelink_advanced_frame (count=1, offset=1) : in1=bc_application_ratio_out, in2=inner_unit_acceleration_out, in15=momelink_type_id_1911_value, in22=vehicle_mass_tonnes_value, in23=traction_supply_voltage_out, in24=armature_current_out, in25=bc_target_abs_pressure_out, in26=model_acceleration_smoothed_out -> out=momelink_advanced_frame_out
+  inst AND use_1900_advanced_frame : a=inner_unit_type_is_1911_out, b=vehicle_type_1900_out -> out=use_1900_advanced_frame_out
+  inst COMPOSITE_SWITCHBOX momelink_output_frame_mux : a=momelink_advanced_frame_out, b=momelink_1800_frame_out, switch=use_1900_advanced_frame_out -> out="Momelink-A"
+
+  # --- Rolling Stock Status construction ---
+  inst COMPOSITE_WRITE_BOOLEAN rolling_stock_status_bool (count=8, offset=1) : in1=traction_fault_latch_q, in5=panta1_1800_latched_out, in6=panta1_1800_active_out, in7=panta2_1800_latched_out, in8=panta2_1800_active_out -> out=rolling_stock_status_bool_out
+  inst AND panta1_1800_latched : a=panta1_latch_q, b=vehicle_type_1800_out -> out=panta1_1800_latched_out
+  inst AND panta2_1800_latched : a=panta2_latch_q, b=vehicle_type_1800_out -> out=panta2_1800_latched_out
+  inst COMPOSITE_SWITCHBOX status_data_source : a="Momelink inner unit", b=momelink_advanced_frame_out, switch=use_1900_advanced_frame_out -> out=status_data_source_out
+  inst COMPOSITE_READ_NUMBER status_armature_current (channel=24) : composite=status_data_source_out -> out=status_armature_current_out
+  inst COMPOSITE_READ_NUMBER status_catenary_voltage (channel=23) : composite=status_data_source_out -> out=status_catenary_voltage_out
+  inst FUNC_NUM_1 bc_gauge_pressure_kpa (expression="max((x-1)*101.315,0)") : x="BC [atm abs]" -> out=bc_gauge_pressure_kpa_out
+  inst COMPOSITE_READ_NUMBER status_bc_target (channel=25) : composite=status_data_source_out -> out="BC target [atm]"
+  inst COMPOSITE_WRITE_NUMBER rolling_stock_status (count=8, offset=1) : in2=bc_gauge_pressure_kpa_out, in3=status_armature_current_out, in5=status_catenary_voltage_out, in6=panta1_height_sw_out, in7=panta2_height_sw_out, in8="MR [atm abs]", inc=rolling_stock_status_bool_out -> out="Rolling Stock Status"
+end

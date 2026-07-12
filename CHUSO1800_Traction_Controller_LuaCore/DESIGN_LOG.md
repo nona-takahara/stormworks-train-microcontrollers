@@ -494,3 +494,474 @@
 - **影響箇所**：`src/chuso1800_core.lua`（コメント全面的に日本語・簡潔化、
   `property`フォールバック削除）、`test/run_all.lua`（`property`スタブを
   `dofile("chuso1800_core.lua")`の前に追加）。
+
+## #17 `main.sw-net`の実配線（README.md「今後の実配線について」の実施）
+
+- **背景**：#1〜#16はすべて`src/chuso1800_core.lua`（Luaコア本体）の設計
+  だったが、`main.sw-net`自体は「コア部分（`core_write`/`core_logic`の
+  骨組み）のみのひな形」で止まっていた。今回、README.mdの「今後の実配線に
+  ついて」1〜5項に沿って実際に配線し、`CHUSO1800_Traction_Controller/
+  main.sw-net`（オリジナルのゲート網）と比較したときの**すべての差分**を
+  ここに記録する（PR #3レビューで「Luaコア以外の.sw-net差分の説明が
+  不足している」との指摘を受け、追記）。
+- **前提**：以下は`src/chuso1800_core.lua`自体の変更ではなく、それを
+  ゲート網へ配線する側（`main.sw-net`）だけの変更。ノードの取捨選択の
+  大枠（何をLua化し何をgate側に残すか）自体は#2/#4/#9で既に決定済みで、
+  今回はその決定を実際のノード・配線として書き下した作業。
+
+### (a) オリジナルから削除したノード（Luaコアに吸収済み）
+
+README.md「今後の実配線について」3項の通り、以下をオリジナルの
+`main.sw-net`から削除し、持ち込んでいない：
+
+- phase1/phase2/regenの3個のSRラッチとそのset/reset論理一式
+  （`traction_phase1_latch`/`traction_phase2_latch`/`regen_latch`と、
+  `traction_phase1_set_cond`/`traction_phase1_cap`/`phase1_notch_active`/
+  `phase1_not_high_notch`/`phase1_regen_active`/`phase1_low_bc`/
+  `brake_limit_sw`/`brake_current_high_phase1`/`traction_phase1_set`/
+  `traction_phase1_reset`/`traction_phase2_blinker_cond`/
+  `traction_phase2_cap`/`traction_phase2_set_cond`/`traction_phase2_reset`/
+  `regen_set_cond`/`regen_reset`/`regen_not_available`/`traction_all_off`/
+  `regen_off_all`/`power_with_regen`/`no_power_notch`/
+  `field_current_excess_cond`/`field_current_excess_blinker`/
+  `field_current_excess_pulse`/`coasting_cond`/`current_near_zero`/
+  `no_notch_no_regen_brake_demand`/`neutral_cond`/`phase_reset_cond`/
+  `regen_pulse_regen_flag_off`）
+- カム進段一式（`position_counter`/`position_delta`/`position_changing`/
+  `position_inc_sw`/`position_tick_pulse`/`traction_blinker`/
+  `pos_inc_step`/`pos_hold_zero`/`cam_not`） ─ `cam`出力はLuaの
+  status bit0（`cam_pulse`）から取り直す。
+- notch処理一式（`notch_active`/`notch_eff`/`notch_enable_sw`/
+  `notch_mult_one`/`notch_ge1..4`/`notch_fb`/`notch_fb_ge1`/
+  `notch_fb_range_low`/`notch_fb_range_high`/`notch_fb_eq14`/
+  `notch_fb_ne14`/`notch_fb_zero`/`notch_fb_nonzero`/`regen_available`）
+- `eb_condition`（`BOOL_FUNC_8`）と`overspeed`（`overspeed`自体は
+  gate側では未消費になったが、`overspeed_threshold`の`PROPERTY_NUMBER`
+  ノード自体は(c)の通り残す）
+- 旧電流源一式（`current_sim`（`LUA`, script_ref違いで実体は
+  `n409.lua`）/`sim_input`/`current_src_mux`/旧`motor_current`/
+  `motor_current_in_range`/`motor_current_positive`（旧版。新版は
+  同名で作り直し、下記(b)参照）/`motor_current_oor`/`startup_delay`/
+  `power_cut_set`/`power_cut_latch`/`power_cut_reset`）
+- 電流リミット・デバウンス一式（`current_below_limit`/
+  `current_below_limit_cap`/`current_limit_sw`/`current_limit_reduced`/
+  `traction_any_active`）
+- 界磁電流超過・ブレーキ電流一式（`brake_current_fb`/
+  `brake_current_high`/`brake_current_above_300`/`brake_limit_300_b`/
+  `brake_limit_300_const`/`brake_limit_400`/`brake_min_pressure`/
+  `brake_below_min`）
+- 回生BC一式（`regen_bc_target`/`regen_bc_smooth`/`regen_bc_sw`/
+  `regen_bc_zero`/`regen_bc_below_min`/`regen_bc_min`/`regen_bc_enable`/
+  `regen_delay_cap`/`bc_target_below_min`/`bc_target_min`/
+  `low_bc_with_regen_flag`（旧gate版。新版はLuaのstatus bit経由）/
+  `regen_current`/`regen_current_write`/`current_offset_200`）
+- 旧BC平滑化・旧speed/W取得（`bc_target_raw`/`bc_target_smooth`
+  （旧gate版FUNC_NUM_3自己ループ）/`speed_w_read`/`speed_raw`
+  （旧current_src_mux ch7読み）/`traction_status_bool`）
+
+### (b) 新規に追加したノード（Luaコアとの橋渡し専用。オリジナルに存在しない）
+
+- **1tick遅延タップ×8**（`speed_delay`/`catenary_voltage_sw_out_delay`他、
+  `FUNC_NUM_1(expression="x")`を1段だけ挟むだけの恒等ゲート）：
+  `lib/state_sync.lua`が要求する`i1`（ch9-16、「1tick遅れた現在入力」）を
+  作るためのもの。自己ループさせていない点が`position_counter`等の
+  既存の自己ループ状態ノードと違う ─ SPEC.md §0.2で全ゲート出力は
+  入力から1tick遅れると定義されているため、**自己ループなしの単純な
+  1段通過だけで正確に1tick遅延**になる（自己ループが必要なのは「前tickの
+  “自分自身の”出力」を参照する場合であり、`i1`は「前tickの“他ノードの”
+  出力」を写すだけなので通過段数1つで足りる）。この1段=1tickという前提の
+  信頼性は、README.md「tickモデル」に書かれている通りcomposite自己ループ
+  固有の不確実性（`lib/state_sync.lua`が二重バッファ＋再同期で吸収して
+  いる問題）とは別物 ─ 数値/composite単体の直列ゲート伝搬はSPEC.md §0.2の
+  前提でtickカウントが確定するため、`i1`側には再同期機構を持たせていない
+  （`state_sync.lua`自身も`i1`を無条件に信頼する実装になっている）。
+- **`regen_flag_num`/`controller_stop_num`**（`NUM_SWITCHBOX(a=1,b=0)`）：
+  `regen_flag`・`Controller Stop`はboolean信号だが、`COMPOSITE_WRITE_NUMBER`
+  はnumberチャンネルしか書けないため、Luaへ渡す前に0/1のnumberへ変換する。
+- **`bool_one`/`bool_zero`**（`CONST(1)`/`CONST(0)`）：オリジナルの
+  `direction_flag_one`/`direction_flag_zero`と同じ値を共通化した
+  リネーム。オリジナルは`forward_flag_sw`/`backward_flag_sw`の2箇所だけ
+  だったが、今回`regen_flag_num`/`controller_stop_num`でも同じ
+  1/0変換が必要になったため、CONSTノードを4箇所で使い回す形にまとめた
+  （値は変わらない、ノード数を増やさないための整理）。
+- **`core_write`（`COMPOSITE_WRITE_NUMBER`, count=16, offset=1,
+  inc=core_out）**：ch1-8=i0（当tickのstateless入力そのもの）、
+  ch9-16=i1（上記delayタップ）を明示的に書き込み、ch17-32は
+  `inc=core_out`（`core_logic`自身の前回出力）がそのまま素通りする
+  自己ループにしてある。count=16のため`in17`以降のピン自体を
+  宣言していない点が重要 ─ `COMPOSITE_WRITE_NUMBER`は「count/offsetの
+  範囲外のチャンネルはinc側をそのまま素通りさせる」仕様（宣言していない
+  チャンネルへは一切書き込まない）なので、ch17-32はcore_out自身の値が
+  無条件に折り返される。これが`lib/state_sync.lua`の要求する
+  `o2_fb`（ch17-24）・`s2_fb`（ch25-32）の自己ループそのものになる。
+- **Core outputs抽出一式**（`motor_current_read`/`w_read`/
+  `bc_target_smooth_read`/`bcT_read`/`status_bits_read`、いずれも
+  `COMPOSITE_READ_NUMBER(channel=1..5, composite=core_out)`）：
+  **【PR #3レビューでの訂正】** 当初ch17-21（`output.setNumber(i+16,
+  o0[i])`で当tickに計算した`o0`そのもの）を読む実装にしていたが、これは
+  誤り。`lib/state_sync.lua`のonTickは、`s2`（自身が2tick前に計算し
+  内部に保持しているstate）と`s2_fb`（実際に外部の自己ループ経由で
+  戻ってきた2tick前のstate）を毎tick突き合わせ、食い違っていれば
+  そこで初めて再計算して追いつく、という再同期をしている。つまり
+  ch17-24（`o0`）は**この再同期を経る前の、当tickの時点では検証されて
+  いない計算値**であり、外部のゲートが安心して消費できるのは、
+  再同期の対象そのものである`s2`/`o2_fb`の系列 ─ ch1-8（`o2_fb`が
+  そのまま中継された「2tick遅れた出力」）の方である。したがって
+  `motor_current`等はch1（motor_current）〜ch5（status bits）から読む
+  のが正当（`SIGNAL_MAP.md`の`stateless_out[1..8]`とチャンネル番号が
+  そのまま対応する）。ch17-24は自己ループ経由の再同期にのみ使う内部値
+  として扱い、main.sw-net側の他ゲートからは読まない。
+- **`status_cam_bit`/`status_power_cut_bit`**（`FUNC_NUM_1`で
+  `x%2`・`floor(x/128)%2`を計算し、`THRESHOLD(min=1,max=1)`でbooleanに
+  戻す）：`SIGNAL_MAP.md`の`STATUS_BITS_LAYOUT`（stateless_out[5]、
+  `put_bit`で組み立てたuint32）からbit0（`cam_pulse`）とbit7
+  （`power_cut`）だけを取り出す。この2bitだけを取り出しているのは、
+  `SIGNAL_MAP.md`の同表で「現状ゲート側で消費されているか」が
+  この2つだけ「される」（`cam`出力／Rolling Stock Statusの
+  `power_cut`ビット）で、残り6bit（phase1_latch等）は「されない ─
+  予備/デバッグ用」と明記されているため ─ 使われないbitの抽出ゲートを
+  追加しても死コードが増えるだけなので作っていない。
+  **【PR #3レビューでの訂正・`NUMBER_TO_COMPOSITE`/`COMPOSITE_TO_NUMBER`を
+  使わなかった理由の補足説明】** `COMPOSITE_TO_NUMBER`は「32個のcomposite
+  boolean channelをbit0(LSB)〜bit31(MSB)としてかき集めた32bit列を、
+  “その並びをIEEE754 floatのビットパターンとして解釈した値”として単一の
+  Number channelに出す」ゲートである（`NUMBER_TO_COMPOSITE`はその逆
+  ─ 入力`number`をIEEE754 floatのビットパターンとみなし、そのビット列を
+  32個のcomposite boolean channelへ展開する）。つまりどちらの向きでも、
+  「32bitの並び」と「1個のNumber値」の対応関係は**その32bitをIEEE754
+  floatのビットパターンとして読み書きする**という対応であり、「32bitを
+  2進数の整数として読み書きする」対応ではない。`status_bits`は
+  `src/chuso1800_core.lua`の`put_bit`/`put_bits`が2進数の整数として
+  組み立てた0-255の値（例：bit0とbit2が立っていれば整数値5）で、
+  Stormworksのcomposite numberチャンネルにも「値が5である1個のfloat」
+  としてそのまま乗って渡ってくる。ここで`NUMBER_TO_COMPOSITE`にこの
+  `5`を渡すと、得られる32bitは「整数5の2進数表現(...00101)」ではなく
+  「floatの5.0をIEEE754単精度でエンコードしたときのビットパターン
+  (0x40A00000)」になり、`put_bit`が意図したbit0/bit2とは無関係な
+  ビット列に壊れる。したがって`status_bits`から個々のbitを正しく
+  取り出すには、IEEE754変換を経由しない算術演算
+  （`floor(x/2^n)%2`で2進数としてのn番目のbitを直接計算する）を
+  使う必要があり、今回はそちらを採用した。
+  **【PR #3での確認事項】** `status_bits`（stateless_out[5]）は
+  `deploy/main.lua`の`calculateTick`ラッパーが`i2f`/`f2i`を通すのは
+  `state_in`/`state_out`のスロット3-7（`OLD_I`等の生double）だけであり、
+  `stateless_in`/`stateless_out`はいずれの方向にも一切通らない。つまり
+  `status_bits`はLua内で`put_bit`により組み立てられた整数値のまま
+  `core_tick`→`calculateTick`→`state_sync.lua`の`onTick`→composite
+  numberチャンネルへと、**始めから終わりまで一度もIEEE754ビットパターン
+  変換を経ずに一貫して「整数値としてのfloat」で運ばれる**。したがって
+  main.sw-net側でも`status_bits_read`（`COMPOSITE_READ_NUMBER`）で
+  その数値を直接読み出し、`floor(x/2^n)%2`で2進数のn番目のbitとして
+  そのまま解釈するのが正しい（`NUMBER_TO_COMPOSITE`等でIEEE754変換を
+  挟む必要も、挟んではいけない理由もここにある）。
+- **`motor_current_positive`/`danryu_not`（DANRYU再計算）**：ゲート構成
+  自体はオリジナルの`motor_current_positive`/`danryu_not`
+  （`GREATER_THAN`+`NOT`、`DANRYU = NOT(motor_current > 0)`）と同一。
+  入力元だけがオリジナルの`current_src_mux`から新しい
+  `motor_current_read`（Luaコアの`motor_current`出力）に変わっている。
+- **`speed_display`の入力元**：オリジナルの`speed_display`は
+  `speed_raw`（`current_src_mux` ch7）を`x*3.6+1`しているが、SPEC.md §6
+  の指摘通り旧`current_sim`のch7は実際には`speed`ではなく`bcT`
+  （n409.luaの出力）だった ─ つまりオリジナルの時点で名前と中身が
+  食い違っていた（既知の表記バグ、今回のマイグレーションが原因ではない）。
+  今回はこの**入力信号としての実体（bcT）をそのまま維持**し、Luaコアの
+  `bcT`出力（`SIGNAL_MAP.md`のstateless_out[4]、core_out ch20）を
+  `bcT_read`で読んで`speed_display`に繋いだ。実速度に「修正」しなかった
+  理由は、Momelink 1900フレーム（ch25）の実際の送信内容をオリジナルと
+  ビット互換に保つため（この移行のスコープは「Lua化」であって「既存の
+  誤表記の是正」ではないため、既存の表記バグはそのまま踏襲する方針 ─
+  #10のような明確な誤命名修正とは異なり、外部フレーム仕様に影響する値は
+  今回変更していない）。
+- **`W`/`bc_target_smooth`の読み出し元**：オリジナルは`current_src_mux`
+  のch4（`speed_w_read`）・自前のFUNC_NUM_3自己ループ
+  （`bc_target_smooth`）だったが、どちらもLuaコア内部
+  （`core_tick`/`smooth_bc`）に統合されたため、`core_out`のch18・ch19を
+  読むだけになった。計算式自体（`accel*0.2+bc_target_smooth*0.8`のEMA等）
+  は`src/chuso1800_core.lua`側で不変。
+
+### (c) オリジナルのまま維持したノード
+
+- パンタグラフ4ラッチ一式・Momelink整形一式・Rolling Stock Status整形
+  一式は、ノード構成・パラメータともオリジナルと完全に同一（README.md
+  「今後の実配線について」4項の通り、入力元だけを新モジュールの出力へ
+  張り替え）。
+- `overspeed_threshold`/`power_limit_current`の`PROPERTY_NUMBER`ノードは
+  ノード自体を残す（出力は現在gate側では未消費 ─
+  `src/chuso1800_core.lua`が同名プロパティを`property.getNumber`で
+  直接読むため。#3参照）。`brake_limit_current`
+  （「Brake Limit@320kPa [A]」）はSPEC.md §5で**オリジナルの時点で
+  既に未消費と指摘済みの死コード**であり、今回のマイグレーションの
+  スコープ外として無変更のまま残してある。
+- SAP/ECBブレーキ圧解決一式（`sap_ecb_toggle`/`ecb_pressure_sw`/
+  `ecb_sap_pressure`/`eb_signal`/`sap_raw`等）とdirection合成一式
+  （`forward_signal`/`backward_signal`/`forward_flag_sw`/
+  `backward_flag_sw`/`direction`）は、ノード構成・式ともオリジナルと
+  同一（#4で決定済みの通り、最終値だけをLuaコアへ渡す）。
+
+### (d) Catenary voltage control節について（今回のセッション以前からの差分）
+
+- `main.sw-net`の「Catenary voltage control」節は、本セッション開始前
+  から既にひな形として配置されていたもので、今回新規に書いたものではない。
+  ただしオリジナルとの差分として説明が必要なため記録する：
+  - `catenary_active_thresh`のしきい値が`(min=0, max=0)`になっている
+    （オリジナルは`(min=0, max=1)`）。これはSPEC.md §4.2/§6-1（H1）で
+    指摘されている「storm-mclのシリアライズ不具合で`.sw-net`の字面が
+    `(0,1)`になっているが実機の真値は`(0,0)`」を踏まえた**実機値での
+    修正版**であり、退行ではない。
+  - `catenary_active_thresh_out`→`catenary_dead`、
+    `catenary_inactive_out`→`catenary_active_out`、
+    `catenary_voltage_sub_en`→`catenary_voltage_en`にリネームされている
+    （論理は同一、「無電圧域を検出するのに`_active`と名付いている」
+    という元の命名の分かりにくさ（SPEC.md §5「命名反転」表参照）を
+    是正する趣旨のリネームと見られる）。
+- **影響箇所**：`CHUSO1800_Traction_Controller_LuaCore/main.sw-net`
+  全体（新規実配線）、`project.json`（"Phyics Sensor [+Z is front]"の
+  タイポ修正、既存の`nodes`側リネームに`links`側が追従していなかった
+  ことによる配線切れの修正）、`main.sw-mcl`（`storm-mcl layout-dsl`で
+  新規生成）。
+
+## #18 storm-lua-minify（および元ネタのluamin）の演算子優先順位バグにより
+`put_bit`/`put_bits`/`get_bits`がminify後に壊れていたのを修正
+
+- **経緯**：PR #3の実機テストで、`notch_pos=4`等の力行指令を与えても
+  一切加速しない現象が報告された。`main.sw-net`の配線（#17）を何度も
+  疑って切り分けを重ねたが（stateless入力の内容、composite自己ループの
+  `s2`/`s2_fb`一致、`calculateTick`のi2f/f2i境界）、いずれも正常だった。
+- **切り分け**：`src/chuso1800_core.lua`の`core_tick`を素の`lua`で
+  実機報告どおりの入力・状態で直接呼ぶと、1tick目でphase1へ正しく
+  遷移し実電流が流れることを確認した。ところが**同じ入力を
+  `deploy/chuso1800_deploy.lua`（minify後の実機投入版）へ与えると、
+  `position_counter=1・phase1/2/regenラッチ全部false・OLD_IF_A=20`
+  というコースティング（惰行）の固定点に固まったまま遷移しなかった**。
+  ソースと成果物とで挙動が違う＝**minify自体が壊している**という
+  ことになる。
+- **原因の特定**：`deploy/chuso1800_deploy.lua`内の`put_bit`の実体を見ると
+  ```lua
+  function put_bit(I,G)return I and 1 or 0<<G end
+  ```
+  になっていた。元のソースは `(b and 1 or 0) << shift`
+  （必要な括弧つき）だが、Luaの`<<`は`and`/`or`より演算子優先順位が
+  **高い**ため、括弧が落ちると`I and 1 or (0<<G)`＝`I and 1 or 0`と
+  解釈され、**`shift`が完全に無視されて常に0か1を返す**バグになる。
+  同根の問題で`put_bits`のマスク計算`(1 << width) - 1`も、`-`が`<<`より
+  優先順位が高いため括弧が落ちると`1 << (width - 1)`になり、
+  `get_bits`の同じ形のマスク計算も同様に壊れていた（`get_bits`自身の
+  外側`(acc >> shift) & (...)`は、たまたま`>>`が`&`より優先順位が高い
+  というLuaの既定順序と一致するため、括弧が落ちても実害がなかった
+  ─ 壊れるのは「既定の優先順位を明示的に上書きするために括弧が必要な
+  箇所」だけ、というのがこのバグの本質）。
+- **npm本体（luamin）でも同一のバグを確認**：storm-lua-minifyは
+  ユーザー自身が開発している別パッケージだが、そのコードの元ネタである
+  npm公開済みの`luamin`単体（`(b and 1 or 0) << shift`等、同じ式を
+  minifyしただけ）でも**バイト単位で同一の壊れた出力**になることを
+  実際にインストールして確認した。ユーザーからのちに
+  https://github.com/mathiasbynens/luamin/issues/76
+  （`(a & b) >> c`が`a & b >> c`に壊れるという、同根の既知issue）の
+  存在を教えてもらい、根本原因（再出力時に演算子優先順位表を踏まえずに
+  括弧を無条件に削る）が上流luamin由来の既知の問題であることを確認した。
+  このためユーザーが提案した「代替でluaminを直接使うbuild.js」という
+  回避策は**同じバグを踏むため有効ではない**と判断し、採用していない。
+- **対応**：`src/chuso1800_core.lua`の`get_bits`/`get_bit`/`put_bits`/
+  `put_bit`を、二項演算子1個につき1行の`local`代入へ分解する書き方に
+  全面的に書き直した（例：`local shifted=acc>>shift; local mask=...;
+  return shifted&mask`）。これは可読性のためではなく、**「削られると
+  困る括弧」を含む複合式を最初から作らない**という、このminifierバグ
+  そのものへの回避策。今後この4関数（および同種のビット演算コード）を
+  1行の複合式へ戻さないこと。
+- **見つかった経緯の反省点とテストの追加**：`test/run_all.lua`の12
+  シナリオはいずれも`src/chuso1800_core.lua`（minify前）を直接
+  `dofile`するため、minifyそのものが原因のバグは原理的に検出できな
+  かった。これは実際に本バグが12/12 passのまま実機まで届いてしまった
+  直接の原因。再発防止として`test/verify_deploy_artifact.lua`を新設し、
+  `deploy/chuso1800_deploy.lua`自体を`input`/`output`モック経由で
+  動かして（1）`put_bit`/`put_bits`の往復、（2）実機報告と同じ入力を
+  与えてphase1へ遷移し実電流が流れること、の両方を検証する。
+- **影響箇所**：`src/chuso1800_core.lua`（`get_bits`/`get_bit`/
+  `put_bits`/`put_bit`の書き直し）、`deploy/chuso1800_deploy.lua`
+  （`node build.js`で再生成、7,628文字＝8192文字制限内）、新規
+  `test/verify_deploy_artifact.lua`、README.md「テスト」節。
+
+## #19 新SPEC.md（ChatGPTとの再検証版）との突き合わせで発見した
+`chuso1800_core.lua`側の2件のバグを修正
+
+- **背景**：ユーザーがChatGPTと共に`CHUSO1800_Traction_Controller/main.sw-net`を
+  ゼロから再検証し、`CHUSO1800_Traction_Controller_main_renamed.sw-net`・
+  新`SPEC.md`・`LEGACY_SPEC_CORRECTIONS.md`としてPRへ追加した。これにより、
+  storm-mclのシリアライズ不具合で`THRESHOLD(min=0,max=1)`と誤出力されていた
+  6ノードのうち、`direction_nonzero`（#17で既に対応済み）以外の5ノードの
+  実値が初めて確定した。`chuso1800_core.lua`はこれらのうち2箇所を、
+  誤った側（旧SPEC.mdの(0,1)解釈）を前提に実装していたことが判明したため
+  修正した（`main.sw-net`側の配線ではなくLuaコア自体のバグ）。
+- **バグ1：`cam`出力（カムパルス）の発火条件**。旧SPEC.mdは「カム1巡完了時
+  だけ発火」としていたが、正しくは`cam_position_unchanged`
+  （`THRESHOLD(0,0)`、実値`(0,0)`）を`NOT`しただけの「カム位置のDELTAが
+  0でないtickすべてで発火」（通常の+1進段でも、20→0の折返しでも発火）。
+  `advance_cam`の`cam_pulse`計算を`not (delta >= 0 and delta <= 1)`
+  （折返し時のみtrue）から`delta ~= 0`（位置が変化した全tickでtrue）へ
+  修正した。
+- **バグ2：`notch_fb_ge1`（カム位置≤1判定）は実際は`cam_at_zero`
+  （カム位置**厳密に0**）だった**。オリジナルsw-netには`notch_fb_ge1`
+  （進段開始条件用）と`regen_available`（界磁制御ラッチ投入条件用）という
+  同一式`THRESHOLD(0,1)(notch_fb)`の重複ノードが2つあり（旧SPEC.md
+  §5「冗長・デッドロジック」で指摘済み）、今回のLua移植では1つの
+  `notch_fb_ge1`変数へ統合していた。ところが実機の真値はどちらも
+  `THRESHOLD(0,0)`（カム位置が厳密に0の場合のみ）であり、`(0,1)`
+  レンジのまま統合してしまっていた。`notch_and_cam_feedback`の該当行を
+  `notch_fb >= 0 and notch_fb <= 1`から`notch_fb == 0`へ修正した。
+  この値は`power_with_regen`（直列ラッチ投入条件の一部）と
+  `regen_latch`（界磁制御ラッチ）の投入条件・`regen_off_all`
+  （カムホーミング条件）の3箇所すべてに使われている。
+- **【重要な訂正】「フル力行中に`regen_latch`が誤って立つ」という
+  以前の指摘の撤回**：本セッション中、フル力行を続けたまま加速する
+  シミュレーションで、カムのリング（`(x+y)%21`、上限で飽和しない）が
+  一巡してカム位置0へ戻るたびに`regen_latch`がtrueになる現象を発見し、
+  「まだ全開力行中なのに回生へ誤って遷移するバグではないか」と報告して
+  いた。しかし新SPEC.md §7.1・LEGACY_SPEC_CORRECTIONS.md #2により、
+  `regen_latch`（`field_control_latch`と改称すべき）は**回生専用の
+  ラッチではなく、並列抵抗制御完了後の界磁制御（弱め界磁）モードを表し、
+  力行・回生の両方で使われる**ことが判明した。つまり観測した現象は
+  「並列で加速中にカムが一巡して0へ戻ったら界磁制御（弱め界磁）モードへ
+  入る」という、SPEC.md §7.2 手順5に明記された**意図通りの力行シーケンスの
+  一部**であり、バグではない。「40km/h付近で加速度が鈍る」という当初の
+  観測自体は、弱め界磁突入に伴う自然な特性である可能性が高く、誤診断
+  だった点を訂正する。ただし変数名`regen_latch`・`regen_off_all`等が
+  この実態と乖離した名前のままである点は、今後の可読性向上の余地として
+  残っている（本コミットでは修正していない）。
+- **テスト**：`test/scenarios/spec_v2_corrections.lua`を新設。
+  （1）カムが通常の+1進段をした際に`cam_pulse`がtrueになること、
+  （2）カムが動かないtickでは`cam_pulse`がfalseのままであること、
+  （3）カム位置1では界磁制御ラッチが投入されないこと、
+  （4）カム位置0（厳密）では界磁制御ラッチが投入されること、
+  の4点を検証する。既存13→14本、`test/verify_deploy_artifact.lua`も
+  合わせて全て通過を確認した。
+- **影響箇所**：`src/chuso1800_core.lua`（`notch_and_cam_feedback`・
+  `advance_cam`）、`deploy/chuso1800_deploy.lua`（再生成）、新規
+  `test/scenarios/spec_v2_corrections.lua`、`test/run_all.lua`
+  （シナリオ登録）。
+
+## #20 `main.sw-net`のゲート側ノード名を、新SPEC.md（再検証版）の命名に合わせて全面リネーム
+
+- **背景**：#19で新`SPEC.md`・`LEGACY_SPEC_CORRECTIONS.md`・
+  `CHUSO1800_Traction_Controller_main_renamed.sw-net`を取り込んだ後、
+  「.sw-netも適宜修正してほしい（本PRのメインタスクはsw-netの作成）」との
+  指示を受けた。`main.sw-net`のゲート側（SAP/ECB・direction合成・
+  カテナリ電圧・パンタグラフ・Momelink整形・RSS整形、およびLuaコアとの
+  橋渡し用に今回新設したノード群）は、いずれもオリジナルの誤解を招く
+  旧名（`sap_ecb_toggle`／`catenary_active_thresh`／`speed_display`／
+  `bc_pressure_norm`／`momelink_1900_out`等）のまま実装していた。
+  新SPEC.mdの「保守上の原則」（§16）が明記する「Phase 1/2のような抽象名を
+  再導入せず直列・並列・界磁制御を明記する」等の方針を`main.sw-net`にも
+  反映するため、対応する各ノードを`CHUSO1800_Traction_Controller_main_
+  renamed.sw-net`と同じ名前へリネームした。
+- **リネームしたもの**（対応するオリジナルsw-netのゲートが存在する範囲）：
+  `sap_ecb_toggle→brake_system_is_sap`、`eb_signal→emergency_brake_command`、
+  `ecb_pressure_sw→ecb_virtual_brake_pipe`、
+  `brake_pressure_sw→brake_pipe_for_inhibit`、`sap_raw→brake_command`、
+  `ecb_sap_pressure→ecb_brake_demand_pressure`、
+  `sap_pressure_sw→brake_demand_pressure`、
+  `forward_signal/backward_signal→forward_command/reverse_command`、
+  `forward_flag_sw/backward_flag_sw→forward_direction_value/
+  reverse_direction_value`、`direction→direction_sign`、
+  `notch_pos→power_notch_command`、`regen_flag→db_auto_command`、
+  `speed→vehicle_speed`、`catenary_rated_voltage→
+  nominal_catenary_voltage`、`catenary_voltage_toggle→
+  use_supplied_catenary_voltage`、`catenary_active_thresh→
+  catenary_input_zero`、`catenary_inactive→catenary_input_nonzero`、
+  `catenary_voltage_en→use_catenary_input`、`panta_up→
+  panta_1800_active_any`、`catenary_voltage_mux→
+  selected_catenary_voltage`、`catenary_voltage_sw→
+  traction_supply_voltage`、`mtype_toggle→vehicle_type_1900`、
+  `is_1800_type→vehicle_type_1800`、`bc_pressure_norm→
+  bc_application_ratio`、`momelink_1800_out→momelink_1800_frame`、
+  `momelink_1900_out→momelink_advanced_frame`、`unit_type_code→
+  inner_unit_type_id`、`type_is_1911→inner_unit_type_is_1911`、
+  `type_id_1911→momelink_type_id_1911`、`const_35→vehicle_mass_tonnes`、
+  `momelink_ch26→inner_unit_acceleration`、`momelink_1900_select→
+  use_1900_advanced_frame`、`momelink_version_sw→
+  momelink_output_frame_mux`、`rolling_status_bool_write→
+  rolling_stock_status_bool`、`momelink_src_mux→status_data_source`、
+  `momelink_ch24/23→status_armature_current/status_catenary_voltage`、
+  `bc_pressure_kpa→bc_gauge_pressure_kpa`、`bc_target_read→
+  status_bc_target`、`rolling_status_write→rolling_stock_status`。
+- **Luaコアとの橋渡し用（今回新設分、新SPEC.mdのLua入出力表§8.2/8.5に
+  合わせて命名）**：`motor_current_read→armature_current_read`、
+  `w_read→traction_power_read`、`bc_target_smooth_read→
+  model_acceleration_smoothed_read`（stateless_out[3]、SPEC.md §8.5 N3
+  「車両加速度」）、`bcT_read→pneumatic_brake_decel_demand_read`
+  （stateless_out[4]、同N7「空気ブレーキ補完要求」）、
+  `status_bits_read→traction_model_status_read`、
+  `status_cam_bit/status_cam_pulse→cam_position_changed_bit/
+  cam_position_changed_flag`、`status_power_cut_bit/status_power_cut→
+  traction_fault_bit/traction_fault_flag`、`speed_display→
+  bc_target_abs_pressure`（新SPEC.md §10.4の式`pneumatic_demand*3.6+1`と
+  同一）。
+- **変更していないもの**：`PROPERTY_*`ノードの`n=`属性（ゲーム内
+  プロパティパネルの表示名・実車のセーブデータに紐づく実体で、ノード名の
+  リネームとは別次元の破壊的変更になるため）。`n="Catenary Line Voltage"`／
+  `n="M type"`はリネーム版参照sw-netでは`n="Use Supplied Catenary
+  Voltage"`／`n="M Type"`に変わっているが、これは追随していない
+  （ユーザー確認待ち）。ポート名（`"BC target [atm]"`等、実車の外部
+  結線に紐づく）も無変更。
+- **確認**：リネームは配線トポロジ・パラメータを一切変えない純粋な
+  識別子変更。`typecheck-dsl`・`dsl2xml`（警告なし）・
+  `lua test/run_all.lua`（13/13）・`test/verify_deploy_artifact.lua`
+  で無影響を確認した。`main.sw-mcl`は`storm-mcl layout-dsl --force`で
+  再生成した。
+- **影響箇所**：`CHUSO1800_Traction_Controller_LuaCore/main.sw-net`
+  全体、`main.sw-mcl`（再生成）、`SIGNAL_MAP.md`「ゲートに残すもの」節・
+  ステートレス出力スロット表（新ノード名に追従）。
+
+## #21 マージ前レビューとして`claude-fable-5`モデルへ独立コードレビューを依頼、
+`regen_delay`のヒステリシス欠落バグを修正
+
+- **背景**：#17-#20の一連の修正・リネームを終え、ユーザーから
+  「Fable 5によるレビューを受けて、問題なければ実機で不具合が残っていても
+  一旦マージする」方針の指示を受けた。レビューは`Agent`ツールに
+  `model: "fable"`を指定して起動し、`main.sw-net`・
+  `src/chuso1800_core.lua`・`lib/state_sync.lua`・新SPEC.md・
+  `CHUSO1800_Traction_Controller_main_renamed.sw-net`を独立に
+  突き合わせさせた。
+- **レビュー結果概要**（優先度順）：
+  - **F1（要修正・本エントリで対応）**：`regen_delay`（回生遅延の
+    `CAPACITOR(0.5, 10)`相当）を「充電完了」判定として`regen_delay_level
+    >= 600`という**レベルの単純比較**で実装していたが、実機の
+    Stormworks CAPACITORはヒステリシス動作（満充電で一度ONになったら、
+    放電が完了する＝レベル0に戻るまでONを保持し続ける）をする。旧実装では
+    放電開始後1tick目（600→599）で即座に「未充電」判定へ落ち、
+    本来10秒（600tick）保持されるべき回生抑制が実質1tickしか効かなかった。
+  - F2：#17時点のコメントに、その後#18で撤回した「全ゲートは1tick遅延する」
+    という前提を引きずった記述が残っていた（軽微・情報用途のみ、実害なし）。
+  - F3：`notch_pos`の`math.floor`丸めについての些末な指摘（実害なし、
+    現状のまま維持で問題ない）。
+  - F4：`PROPERTY`ノードの`n=`属性を新SPEC.mdの表示名に追従させるかは
+    #20で既に「ユーザー確認待ち」として明記済みの未決事項であり、
+    新規の指摘ではない。
+- **F1の修正**：レベル（`regen_delay_level`、0-600の整数）に加えて、
+  ヒステリシス出力そのものを表す新しい状態bit `regen_delay_active`を
+  STATE_TIMERS_LAYOUT（`state_in[2]`／`state_out[2]`）のbit19に追加した。
+  `regen_delay_step(old_level, old_active, enable)`が
+  レベルの増減と同時に`new_active`を計算する：`enable`中は
+  `old_active`が真であれば真のまま維持（レベル`> 0`である限り）、
+  `enable`が切れて放電に転じてもレベルが0に達するまでは真を維持し続け、
+  レベルが600に達した瞬間に初めて真になる（`old_active`が偽の場合）。
+  旧`regen_delay_charged(level) = level >= 600`関数は削除した。
+  `encode_state`/`decode_state`（`regen_delay_active`をslot2のbit19として
+  読み書き）・`smooth_bc`（`regen_bc_enable`の判定を`regen_delay_active`
+  ベースへ変更）・`core_tick`の呼び出し箇所を対応する形へ更新した。
+- **テスト**：`test/scenarios/regen_delay_cap_timing.lua`の
+  「充電完了しきい値」節を、旧仕様（`level>=600`）を前提にした誤った
+  アサーションから、新しいヒステリシス仕様を検証する5ケース
+  （レベル600・active=trueで有効、レベル599でもactive=trueなら
+  ヒステリシスにより有効を維持──本バグの直接の回帰ガード──、
+  レベル599でactive=false（一度も満充電に達していない）なら無効、
+  レベル1から放電してレベル0に達した瞬間にのみactiveがfalseへ切り替わる）
+  へ書き換えた。`test/harness.lua`の`encode_state`/`decode_state`
+  ラッパーにも`regen_delay_active`フィールドを追加した。
+  `lua test/run_all.lua`（13/13）・`test/verify_deploy_artifact.lua`
+  で無回帰を確認した。
+- **影響箇所**：`src/chuso1800_core.lua`（`regen_delay_step`・
+  `encode_state`・`decode_state`・`smooth_bc`・`core_tick`）、
+  `deploy/chuso1800_deploy.lua`（再生成、7669文字）、
+  `test/harness.lua`・`test/scenarios/regen_delay_cap_timing.lua`、
+  `SIGNAL_MAP.md`（STATE_TIMERS_LAYOUT表を19bit→20bit使用へ更新、
+  `regen_delay_active`の説明を追記）。

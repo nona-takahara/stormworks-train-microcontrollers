@@ -112,7 +112,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 `field_current_excess_*` は旧名 `regen_warning_*`（`main.sw-net`・`SPEC.md`と
 合わせて改名。経緯は `DESIGN_LOG.md` #10）。
 
-### `state_in[2]`／`state_out[2]` — STATE_TIMERS_LAYOUT（32bit中19bit使用）
+### `state_in[2]`／`state_out[2]` — STATE_TIMERS_LAYOUT（32bit中20bit使用）
 
 | 順序 | フィールド | bit数 | 範囲 |
 |---|---|---|---|
@@ -120,18 +120,33 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 | 2 | `phase1_cap_counter` | 3 | 0-6 |
 | 3 | `phase2_cap_counter` | 3 | 0-6 |
 | 4 | `current_below_limit_cap_counter` | 3 | 0-6 |
+| 5 | `regen_delay_active`（bit19） | 1 | 0/1（ヒステリシス出力ラッチ。詳細下記） |
 
-13bit予備（19-31）。
+12bit予備（20-31）。
 
 **`regen_delay_level` のスケール**：`regen_delay_cap`
 （0.5秒充電/10秒放電）を0-600のスケール済み整数として表現する。
 600（=10秒相当のtick数）が「満充電」。放電は -1/tick で正確に600 tick
 （10秒）かけて0へ、充電は同じ0-600の幅を30 tick（0.5秒）で埋めるため
 600/30=+20/tick。両方とも整数の割り算で厳密に割り切れるため浮動小数点誤差が
-一切生じず、「充電完了」判定は単純な `>= 600`。定数の導出は
-`src/chuso1800_core.lua` の `REGEN_DELAY_*` 定数群・`regen_delay_step`/
-`regen_delay_charged` のコメントを参照。生の秒数doubleとして持つ案を却下した
-経緯は `DESIGN_LOG.md` #6。
+一切生じず、レベル自体の充放電計算に浮動小数点誤差は生じない。定数の導出は
+`src/chuso1800_core.lua` の `REGEN_DELAY_*` 定数群・`regen_delay_step`の
+コメントを参照。生の秒数doubleとして持つ案を却下した経緯は
+`DESIGN_LOG.md` #6。
+
+**`regen_delay_active`（ヒステリシス）**：実機の`CAPACITOR(charge, discharge)`は
+レベルの単純比較（`level >= 600`）では正しく再現できない ─ 実際の
+Stormworks CAPACITORは満充電で一度ONになったら、放電ランプの間ずっとONを
+保持し、完全放電（0）に達して初めてOFFに戻るヒステリシス動作をする
+（`NITS_Simple_Bridge/SPEC.md`の`CAPACITOR(0, 0.1)`をパルスストレッチャーとして
+使う用法、新SPEC.md §3.8参照）。`regen_delay_level`だけでは
+「599」が「充電中でまだ未ON」なのか「満充電から放電中でまだON」なのか
+区別できないため、専用の状態bit `regen_delay_active` を追加した：
+ONになるのは`level`が600に達した瞬間のみ、OFFに戻るのは`level`が0に
+達した瞬間のみで、その間は`enable`入力に関わらず維持される。
+Fable 5によるレビューで指摘された実バグ（旧実装は`level >= 600`を毎tick
+再評価しており、放電1tick目で誤ってOFF扱いになっていた）の修正で、
+`DESIGN_LOG.md` #21参照。
 
 ### `state_in[3..7]`／`state_out[3..7]` — 生double（準ステート、「分類(b)」参照）
 
@@ -183,7 +198,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 | 1 | `motor_current` | DANRYUゲート、Momelink-1900のch24 |
 | 2 | `W` | 出力ポート `W` へ直結 |
 | 3 | `bc_target_smooth` | `BC target [atm]` 出力系列へ |
-| 4 | `bcT` | 既存の（ラベルは紛らわしいが変更していない）`speed_display`／Momelink ch25 経路へ |
+| 4 | `bcT`（実体は空気ブレーキ補完減速度要求。新SPEC.md §8.5 N7、DESIGN_LOG.md #20参照） | `bc_target_abs_pressure`（`x*3.6+1`でBC絶対圧目標へ変換、旧名`speed_display`）／Momelink ch25 経路へ |
 | 5 | STATUS_BITS_LAYOUT のパック済みビットフィールド（32bit中8bit、下記参照） | RSS／Momelink側のゲート |
 | 6-8 | 予備（0） | |
 
@@ -284,30 +299,38 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 
 ## ゲートに残すもの（今回は未Lua化）
 
-- **SAP/ECBブレーキ圧解決一式**（`sap_ecb_toggle`／`ecb_pressure_sw`／
-  `brake_pressure_sw`／`ecb_sap_pressure`／`sap_pressure_sw`とその周辺、
-  SPEC §3.8）。このモジュールは最終値の`brake_pressure_sw`／
-  `sap_pressure_sw`のみをステートレス入力スロット3・4として受け取る
+> ノード名は`CHUSO1800_Traction_Controller_main_renamed.sw-net`／新`SPEC.md`
+> （ユーザーがChatGPTと再検証した版）の命名に合わせて`main.sw-net`側を
+> リネーム済み（DESIGN_LOG.md #20）。以下も新名称で記載する。
+
+- **SAP/ECBブレーキ管圧解決一式**（`brake_system_is_sap`／
+  `ecb_virtual_brake_pipe`／`brake_pipe_for_inhibit`／
+  `ecb_brake_demand_pressure`／`brake_demand_pressure`とその周辺、
+  SPEC §9）。このモジュールは最終値の`brake_pipe_for_inhibit`／
+  `brake_demand_pressure`のみをステートレス入力スロット3・4として受け取る
   （上記「ステートレス入力スロットのレイアウト」参照、経緯は
   `DESIGN_LOG.md` #4）。
-- **direction合成**（`forward_flag_sw`／`backward_flag_sw`／`direction`
-  SUBTRACTノード）。このモジュールは最終値の`direction`（-1/0/+1）のみを
-  ステートレス入力スロット5として受け取る（同 #4）。
+- **direction合成**（`forward_direction_value`／`reverse_direction_value`／
+  `direction_sign` SUBTRACTノード）。このモジュールは最終値の
+  `direction_sign`（-1/0/+1）のみをステートレス入力スロット5として
+  受け取る（同 #4）。
 - **パンタグラフ4ラッチ一式**（`panta1_latch`／`panta2_latch`／
   `panta1_en_latch`／`panta2_en_latch`とその周辺 ─ `panta1_set_cond`／
-  `panta2_set_cond`／`is_1800_type`／`panta1_1800_active`等、SPEC §3.9）。
-  このモジュールはExtended IFのパンタ関連signal・`property.getBool("M
-  type")`のいずれも参照しない（経緯は `DESIGN_LOG.md` #2）。
-- **架線電圧セレクタ一式**（`catenary_active_thresh` … `catenary_voltage_sw`）
+  `panta2_set_cond`／`vehicle_type_1800`／`panta1_1800_active`等、
+  SPEC §12）。このモジュールはExtended IFのパンタ関連signal・
+  `property.getBool("M type")`のいずれも参照しない（経緯は
+  `DESIGN_LOG.md` #2）。
+- **架線電圧セレクタ一式**（`catenary_input_zero` … `traction_supply_voltage`）
   ─ パンタグラフラッチがゲート側にあるため、`panta1_1800_active`／
   `panta2_1800_active`はゲート側で計算されたものをそのまま読む
   （このモジュールの出力には依存しない）。
-- Momelink-A整形（`momelink_1800_out`／`momelink_1900_out`／
-  `momelink_version_sw`／`momelink_src_mux`／`momelink_1900_select`）。
-- Rolling Stock Status整形（`rolling_status_bool_write`／
-  `rolling_status_write`／`bc_pressure_kpa`等 ─ パンタ関連ビットもゲート側
-  計算のものをそのまま使う）。
-- `bc_target_read`（編成内Momelinkパススルー ─ 今回の移行とは無関係）。
+- Momelink-A整形（`momelink_1800_frame`／`momelink_advanced_frame`／
+  `momelink_output_frame_mux`／`status_data_source`／
+  `use_1900_advanced_frame`）。
+- Rolling Stock Status整形（`rolling_stock_status_bool`／
+  `rolling_stock_status`／`bc_gauge_pressure_kpa`等 ─ パンタ関連ビットも
+  ゲート側計算のものをそのまま使う）。
+- `status_bc_target`（編成内Momelinkパススルー ─ 今回の移行とは無関係）。
 
 いずれも純粋なステートレスのデータ整形・muxか、独自に完結するラッチで
 あり、本モジュールとの結合度は低い。
