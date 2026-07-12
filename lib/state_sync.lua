@@ -1,5 +1,6 @@
 -- 同期ステートシステム
 -- calculateTickは、現在の入力と、前回のstate出力を受けとり、stateとならない出力とstateとなる出力の2つを返す
+-- 一般入出力はfloat前提、state入出力はinteger前提
 -- 外部で1tickだけ遅れる形でフィードバック入力されるよう組まれている。同期によって強制的に値が更新されると内部値を破棄して再計算する
 -- 入力 N1-8: 現在の入力, N9-16: 1tick遅れた"現在入力", N17-24: 2tick遅れた出力fb, N25-32: stateのフィードバック
 -- 出力 N1-8: 2tick遅れた出力, N9-16: 2tick遅れたstate出力, N17-24: このtickの出力, N25-32: このtickのstate出力
@@ -47,9 +48,9 @@ function onTick()
 
   for i = 1, 8 do
     output.setNumber(i, o2_fb[i]) -- 2tick前
-    output.setNumber(i + 8, s2_fb[i]) -- 2tick前
+    output.setNumber(i + 8, i2f(s2_fb[i])) -- 2tick前
     output.setNumber(i + 16, o0[i]) -- fb用
-    output.setNumber(i + 24, s0[i]) -- fb用
+    output.setNumber(i + 24, i2f(s0[i])) -- fb用
   end
 
   -- ステートを次tick用に順繰り
