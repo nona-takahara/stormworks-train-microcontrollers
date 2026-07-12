@@ -9,6 +9,14 @@ package.path = this_dir .. "?.lua;" ..
     this_dir .. "../src/?.lua;" ..
     package.path
 
+-- chuso1800_core.lua is not a module (see its own header comment and
+-- DESIGN_LOG.md #15): it defines plain top-level functions with no
+-- `local`, so a single dofile() here makes them real globals for the rest
+-- of this process -- identical to how deploy/main.lua's storm-lua-minify
+-- build pulls it in via dofile("chuso1800_core"). Scenario files call
+-- these functions directly (no `core.` prefix, no per-file require).
+dofile(this_dir .. "../src/chuso1800_core.lua")
+
 local harness = require("harness")
 
 local scenario_names = {

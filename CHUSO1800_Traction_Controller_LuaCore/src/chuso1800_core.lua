@@ -43,15 +43,37 @@
 -- CHUSO1800_Traction_Controller/scripts/n409.lua -- that file is NOT modified;
 -- test/scenarios/physics_regression_vs_n409.lua checks numeric parity.
 --
--- This file makes no `require`/`dofile` calls of its own: it is `require`d
--- by deploy/main.lua (see DESIGN_LOG.md #12/#13) for actual Stormworks
--- deployment, and `require`d directly by the plain-`lua` test suite. The
--- bit-field helpers below (to_u32/get_bits/put_bits) are a plain
+-- This file makes no `require`/`dofile` calls of its own, and is NOT a
+-- module: it defines plain top-level functions (no `local M = {}` table,
+-- no `return M`) directly in the loading chunk's scope. deploy/main.lua
+-- pulls it in with `dofile("chuso1800_core")`, which storm-lua-minify
+-- splices in as raw statements (see DESIGN_LOG.md #15 for why this
+-- replaced the earlier `require("chuso1800_core")` module-table design:
+-- storm-lua-minify's `-m` require dispatcher duplicated whatever else was
+-- loaded via `dofile`, and dropping `require`/`-m` entirely removes that
+-- bug at the root instead of working around it). The plain-`lua` test
+-- suite loads this the same way, via `dofile` in test/run_all.lua, once
+-- per process -- real Lua's `dofile` shares the caller's global
+-- environment, so every function below that omits `local` (i.e. every
+-- function this file's own header comment calls out as test-facing, plus
+-- the tick sub-steps used only internally but harmless either way) lands
+-- as a real global, visible identically to both the Stormworks deploy
+-- build and the test scenarios. This is the same mechanism already used
+-- for `onTick`/`i2f`/`f2i` in lib/state_sync.lua and `calculateTick` in
+-- deploy/main.lua -- see that file's header comment.
+--
+-- The bit-field helpers below (to_u32/get_bits/put_bits) are a plain
 -- string.pack("I4",...)/string.unpack("I4",...) implementation inlined
 -- here so this file has no dependency on anything else to be tested
 -- standalone.
-
-local M = {}
+--
+-- NOTE: storm-lua-minify (as of 0.1.3) never shortens global identifiers,
+-- only locals (see dist/ast2lua.js's formatExpression: `expression.isLocal
+-- ? generateIdentifier(...) : expression.name`), so every function name
+-- below currently costs its full, unshortened length at every call site.
+-- The author (storm-lua-minify's maintainer) has confirmed global-name
+-- shortening is a planned upstream feature; this file is written already
+-- assuming that lands, rather than hand-shortening names preemptively.
 
 --------------------------------------------------------------------------
 -- Constants (copied from n409.lua verbatim).
@@ -158,33 +180,33 @@ end
 -- so they aren't reusable here directly, but this file must stay
 -- self-contained regardless: it's `require`d standalone by the test suite
 -- with no state_sync.lua in scope.)
-local function to_u32(value)
+function to_u32(value)
     return string.unpack("I4", string.pack("I4", math.floor(value or 0) & 0xFFFFFFFF))
 end
 
-local function get_bits(acc, shift, width)
+function get_bits(acc, shift, width)
     return (acc >> shift) & ((1 << width) - 1)
 end
 
 -- Single-bit field, returned as a boolean directly (most fields in
 -- state_in[1]/[2] and stateless_out[5] are 1-bit latches/flags) -- shorter
 -- at each call site than get_bits(acc, shift, 1) ~= 0.
-local function get_bit(acc, shift)
+function get_bit(acc, shift)
     return (acc >> shift) & 1 ~= 0
 end
 
-local function put_bits(value, shift, width)
+function put_bits(value, shift, width)
     return (math.floor(value or 0) & ((1 << width) - 1)) << shift
 end
 
 -- Counterpart to get_bit: packs a boolean directly, shorter at each call
 -- site than put_bits(b and 1 or 0, shift, 1).
-local function put_bit(b, shift)
+function put_bit(b, shift)
     return (b and 1 or 0) << shift
 end
 
 -- Reset-priority SR latch (SPEC.md §0.1).
-local function sr_latch(old_q, set, reset)
+function sr_latch(old_q, set, reset)
     if reset then return false end
     if set then return true end
     return old_q
@@ -291,7 +313,7 @@ end
 -- regen_bc_smooth_seed (OLD, ch7), regen_bc_target (fresh, ch8), OLD_I,
 -- OLD_IF_A, OLD_PHI (OLD physics quasi-state). Returns: motor_current,
 -- back_emf, accel, W, iF_a, bcT, OLD_I, OLD_IF_A, OLD_PHI (new quasi-state).
-function M.physics_tick(speed, vl, position_counter, direction, notch_eff, phase1, phase2, regen,
+function physics_tick(speed, vl, position_counter, direction, notch_eff, phase1, phase2, regen,
     notch_ge1, low_bc_with_regen_flag, regen_bc_smooth_seed, regen_bc_target, OLD_I, OLD_IF_A, OLD_PHI)
     local rpm = speed * 9.55 * GEAR_RATIO / WHEEL_R
     local notch = position_counter + 1 -- n409.lua's "notch" var is actually cam-position+1
@@ -345,7 +367,7 @@ end
 -- minified-size reason as the tick sub-steps above; DESIGN_LOG.md #13).
 --------------------------------------------------------------------------
 
-function M.zero_state()
+function zero_state()
     return { 0, 0, 0, 0, 0, 0, 0, 0 }
 end
 
@@ -357,7 +379,7 @@ end
 -- regen_delay_level, phase1_cap_counter, phase2_cap_counter,
 -- current_below_limit_cap_counter, OLD_I, OLD_IF_A, OLD_PHI,
 -- regen_bc_smooth, bc_target_smooth.
-function M.decode_state(state_in)
+function decode_state(state_in)
     local latches = to_u32(state_in[1])
     local timers = to_u32(state_in[2])
     return get_bits(latches, 0, 5), get_bit(latches, 5), get_bit(latches, 6), get_bit(latches, 7),
@@ -366,8 +388,8 @@ function M.decode_state(state_in)
         state_in[3], state_in[4], state_in[5], state_in[6], state_in[7]
 end
 
--- Params in the same order as M.decode_state's returns.
-function M.encode_state(position_counter, phase1_latch, phase2_latch, regen_latch,
+-- Params in the same order as decode_state's returns.
+function encode_state(position_counter, phase1_latch, phase2_latch, regen_latch,
     traction_advance_counter, field_current_excess_counter,
     regen_delay_level, phase1_cap_counter, phase2_cap_counter, current_below_limit_cap_counter,
     OLD_I, OLD_IF_A, OLD_PHI, regen_bc_smooth, bc_target_smooth)
@@ -391,7 +413,7 @@ end
 
 -- Params: speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw,
 -- direction, notch_pos, controller_stop, regen_flag.
-function M.encode_stateless_in(speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw,
+function encode_stateless_in(speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw,
     direction, notch_pos, controller_stop, regen_flag)
     return {
         speed or 0, catenary_voltage_sw or 0, brake_pressure_sw or 0, sap_pressure_sw or 0,
@@ -404,7 +426,7 @@ end
 -- Returns: motor_current, W, bc_target_smooth, bcT, cam_pulse,
 -- phase1_latch, phase2_latch, regen_latch, notch_ge1,
 -- low_bc_with_regen_flag, field_current_excess_cond, power_cut.
-function M.decode_stateless_out(stateless_out)
+function decode_stateless_out(stateless_out)
     local status = to_u32(stateless_out[5])
     return stateless_out[1], stateless_out[2], stateless_out[3], stateless_out[4],
         get_bit(status, 0), get_bit(status, 1), get_bit(status, 2), get_bit(status, 3),
@@ -417,9 +439,10 @@ end
 -- storm-lua-minify can't rename table keys the way it renames identifiers,
 -- so named intermediate tables cost real bytes against Stormworks' 8192-
 -- character LUA node limit. This trades readability at these call
--- boundaries for that. M.decode_state/M.encode_state/M.decode_stateless_out
--- keep their named-table shape unchanged -- they're the public contract
--- every test scenario calls directly by field name.
+-- boundaries for that. decode_state/encode_state/decode_stateless_out are
+-- positional too, for the same reason -- test/harness.lua's named-table
+-- wrappers translate at the test boundary only, never part of the deploy
+-- build.
 --------------------------------------------------------------------------
 
 local function decode_inputs(stateless_in)
@@ -580,11 +603,19 @@ end
 -- Main tick function
 --------------------------------------------------------------------------
 
-function M.calculateTick(stateless_in, state_in)
+-- Renamed away from "calculateTick" (unlike every other function here,
+-- which keeps its name from the days it lived under an M module table):
+-- deploy/main.lua's own top-level `calculateTick` is the actual
+-- Stormworks-facing global lib/state_sync.lua calls every tick (that name
+-- is fixed by state_sync.lua's own contract, not ours to change), and it
+-- calls this function internally after the i2f/f2i float32 boundary
+-- conversion -- same name for both would silently clobber one with the
+-- other once both are real top-level globals in the merged deploy script.
+function core_tick(stateless_in, state_in)
     local st_position_counter, st_phase1_latch, st_phase2_latch, st_regen_latch,
         st_traction_advance_counter, st_field_current_excess_counter,
         st_regen_delay_level, st_phase1_cap_counter, st_phase2_cap_counter, st_current_below_limit_cap_counter,
-        st_OLD_I, st_OLD_IF_A, st_OLD_PHI, st_regen_bc_smooth, st_bc_target_smooth = M.decode_state(state_in)
+        st_OLD_I, st_OLD_IF_A, st_OLD_PHI, st_regen_bc_smooth, st_bc_target_smooth = decode_state(state_in)
     local speed, catenary_voltage_sw, brake_pressure_sw, sap_pressure_sw, direction,
         notch_pos, controller_stop, regen_flag = decode_inputs(stateless_in)
 
@@ -601,7 +632,7 @@ function M.calculateTick(stateless_in, state_in)
     -- physics_tick directly), accel, W, iF_a, bcT, OLD_I, OLD_IF_A, OLD_PHI.
     local physics_motor_current, _back_emf, accel, physics_W, physics_iF_a, physics_bcT,
         phys_OLD_I, phys_OLD_IF_A, phys_OLD_PHI =
-        M.physics_tick(speed, catenary_voltage_sw, st_position_counter, direction, notch_eff,
+        physics_tick(speed, catenary_voltage_sw, st_position_counter, direction, notch_eff,
             st_phase1_latch, st_phase2_latch, st_regen_latch, notch_ge1, low_bc_with_regen_flag,
             st_regen_bc_smooth, regen_bc_target, st_OLD_I, st_OLD_IF_A, st_OLD_PHI)
     local motor_current, elec_W, elec_accel, iF_a, bcT = eb_substitute(
@@ -651,7 +682,7 @@ function M.calculateTick(stateless_in, state_in)
         0, 0, 0,
     }
 
-    local state_out = M.encode_state(
+    local state_out = encode_state(
         position_counter, phase1_latch, phase2_latch, regen_latch,
         traction_advance_counter_next, field_current_excess_counter_next,
         regen_delay_level, phase1_cap_counter_next, phase2_cap_counter_next, current_below_limit_cap_counter_next,
@@ -659,14 +690,3 @@ function M.calculateTick(stateless_in, state_in)
 
     return stateless_out, state_out
 end
-
--- Exposed for tests only (bitpack_selftest.lua, sr_latch_reset_priority_sanity.lua);
--- not used by calculateTick's own callers.
-M.to_u32 = to_u32
-M.get_bits = get_bits
-M.get_bit = get_bit
-M.put_bits = put_bits
-M.put_bit = put_bit
-M.sr_latch = sr_latch
-
-return M

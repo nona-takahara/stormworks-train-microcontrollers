@@ -17,17 +17,16 @@
 -- overshoot), and documents why H7's specific overshoot artifact does not
 -- reproduce here rather than silently omitting the corner.
 
-local core = require("chuso1800_core")
 
 return function(h)
-    local state = h.encode_state(core, {
+    local state = h.encode_state({
         position_counter = 2,
         phase1_latch = false,
         phase2_latch = false,
         regen_latch = false,
     })
 
-    local idle_inputs = h.encode_stateless_in(core, {
+    local idle_inputs = h.encode_stateless_in({
         speed = 0,
         catenary_voltage_sw = 1500,
         notch_pos = 0,
@@ -37,9 +36,9 @@ return function(h)
 
     local reached_zero_tick = nil
     for tick = 1, 400 do
-        local stateless_out, new_state = core.calculateTick(idle_inputs, state)
+        local stateless_out, new_state = core_tick(idle_inputs, state)
         state = new_state
-        local st = h.decode_state(core, state)
+        local st = h.decode_state(state)
         h.assert_false(st.phase1_latch, "stays idle (phase1) tick " .. tick)
         h.assert_false(st.phase2_latch, "stays idle (phase2) tick " .. tick)
         h.assert_false(st.regen_latch, "stays idle (regen) tick " .. tick)
@@ -54,9 +53,9 @@ return function(h)
     -- confirm cam never leaves {0, 1} once homed (it must not free-run
     -- around the ring again, since regen_off_all is false once cam<=1).
     for tick = 1, 50 do
-        local stateless_out, new_state = core.calculateTick(idle_inputs, state)
+        local stateless_out, new_state = core_tick(idle_inputs, state)
         state = new_state
-        local st = h.decode_state(core, state)
+        local st = h.decode_state(state)
         h.assert_true(st.position_counter == 0 or st.position_counter == 1,
             "cam stays homed (no overshoot) tick " .. tick .. ", got " .. tostring(st.position_counter))
     end

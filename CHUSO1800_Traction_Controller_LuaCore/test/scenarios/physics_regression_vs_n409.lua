@@ -3,7 +3,6 @@
 -- floating point epsilon), across several fixed input patterns and ~200
 -- ticks each (long enough for OLD_I/OLD_IF_A/OLD_PHI to settle).
 
-local core = require("chuso1800_core")
 
 local function locate_n409()
     local this_file = debug.getinfo(1, "S").source:sub(2)
@@ -82,7 +81,7 @@ return function(h)
 
             onTick()
 
-            local phys = h.physics_tick(core, {
+            local phys = h.physics_tick({
                 speed = sc.speed, vl = sc.vl, position_counter = sc.cam,
                 direction = sc.direction, notch_eff = sc.notch_eff,
                 phase1 = sc.phase1, phase2 = sc.phase2, regen = sc.regen,

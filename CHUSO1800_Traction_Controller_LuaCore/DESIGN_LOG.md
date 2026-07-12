@@ -366,3 +366,101 @@
   テストシナリオファイル（呼び出し箇所の書き換え）、`SIGNAL_MAP.md`
   （`*_LAYOUT`が説明用ラベルであり実在のLua識別子ではない旨を明記）、
   README.md「コードの構成」節・「デプロイ」節。
+
+## #14 `lib/state_sync.lua`の読み込みを`require`から`dofile`へ戻す（8192文字を一時的に再超過）
+
+- **背景**：#12で`state_sync.lua`を`require`経由に統一し、`chuso1800_core`と
+  合わせて重複を解消していた（14,126→12,037文字の削減の一部）。
+- **変更のきっかけ**：ユーザー「onTickはグローバルである必要がありますので、
+  syncライブラリはdofileで読み込む必要がありませんか？」という指摘。
+  これに対し実機生成物（`deploy/chuso1800_deploy.lua`をロードして
+  `type(onTick)`/`type(_G.onTick)`を確認）で検証した結果、`require`経由
+  （`-m`モードのIIFEディスパッチャに包まれる形）でも`onTick`は正しく
+  トップレベルのグローバル関数になることを確認した（Luaのグローバル
+  環境は関数スコープに関係なく共有されるため、`local`なしの
+  `function onTick()`はどれだけ関数にネストされていても`_G`に着地する）。
+  この説明を伝えたところ、ユーザーからは「いえ、dofileにしてください。
+  強制的に展開させた方が納得感がありますので」との返答。技術的な正しさ
+  ではなく、生成物の構造がより直接的で読み解きやすい（＝保守時の
+  信頼性が高い）という判断。
+- **現在の設計**：`deploy/main.lua`で`state_sync.lua`の読み込みを
+  `require("state_sync")`から`dofile("state_sync")`へ戻した。
+- **判明したコスト**：#12で説明した重複バグ（storm-lua-minifyの`-m`
+  モードのrequireディスパッチャは、実際にrequireで参照されたかdofileで
+  参照されたかに関わらず、パースした全モジュールを含めてしまう）が
+  再発する。`chuso1800_core.lua`は（#12の別の理由により）引き続き
+  `require`が必要なため、`-m`モード自体は有効なままであり、
+  `state_sync.lua`の内容がディスパッチャ内（未使用のまま）と`dofile`
+  展開箇所の両方に重複して出力される（`function onTick`が生成物中に
+  2回現れることを確認）。この結果`deploy/chuso1800_deploy.lua`は
+  7,873→**8,466文字**（8192文字制限を274文字超過）に増加した。
+- **判断**：ユーザーへ実測値（8,466文字、274文字超過）を提示し対応方針を
+  確認したところ、「このまま8466バイトで進めてください。
+  storm-lua-minify側で調整します」との回答。8192文字制限は
+  storm-lua-minify側のバグ（重複）に起因する一時的な超過であり、
+  ユーザーが自身のパッケージ側で対処する前提のため、本リポジトリ側では
+  この状態を暫定として受け入れ、追加の縮小作業は行っていない。
+- **影響箇所**：`deploy/main.lua`（`dofile`への差し戻し・コメント更新）、
+  README.md「デプロイ」節（現状のバイト数超過を明記）。
+
+## #15 `chuso1800_core.lua`のモジュールテーブルを廃止し、完全なグローバルべた書き構成へ
+
+- **背景**：#12〜#14まで、`src/chuso1800_core.lua`は`local M = {}`
+  モジュールテーブルを持ち、`deploy/main.lua`から`require("chuso1800_core")`
+  で読み込む設計だった。この`require`の存在が、storm-lua-minifyの`-m`
+  （module-like-lua）モードを必要とし、そのモードが持つ「パースした全
+  モジュールをrequire()ディスパッチャに含める」という挙動が、
+  `state_sync.lua`側を`dofile`で読む設計（#14）と組み合わさると
+  `state_sync.lua`の中身が二重に出力されるバグを引き起こしていた
+  （7,873→8,466文字、8192文字制限を274文字超過）。
+- **変更のきっかけ**：ユーザー「モジュール化を一切せず、グローバルべた書きを
+  標準化できないか」「理想的には、一切モジュール化せず、グローバル関数
+  べた書き合成の方がいいのですが……テストツールも、全部がべた書きなら
+  対応できそうですし」との提案。storm-lua-minifyは現時点(0.1.3)では
+  グローバル識別子を短縮できない（ローカルのみ短縮対象。
+  `dist/ast2lua.js`の`formatExpression`で確認）ため懸念を伝えたところ、
+  「storm-lua-minifyはグローバルは"現時点では"短縮できないが、将来的に
+  対応する計画なので、有効と考えてください」との回答。この前提のもとで
+  全面的にグローバルべた書きへ切り替えることにした。
+- **現在の設計**：`src/chuso1800_core.lua`から`local M = {}`／`return M`を
+  廃止し、外部（`deploy/main.lua`・テストスイート）から呼ばれる関数
+  （`to_u32`/`get_bits`/`get_bit`/`put_bits`/`put_bit`/`sr_latch`/
+  `zero_state`/`decode_state`/`encode_state`/`encode_stateless_in`/
+  `decode_stateless_out`/`physics_tick`、および本モジュール自身の
+  tickオーケストレータ）はすべて`local`なしの素のグローバル関数として
+  定義する。同一ファイル内でしか使わない定数・ヘルパー（物理定数、
+  `clamp`、`debounce_step`、`calc_phi`系、9個のtickサブステップ関数等）は
+  従来通り`local`のまま（storm-lua-minifyのローカル変数短縮の恩恵を
+  引き続き受けられる）。`deploy/main.lua`は`require`を一切使わず、
+  `dofile("state_sync")`／`dofile("chuso1800_core")`の2行のみで両方を
+  読み込む（`-m`モード自体を使わなくなった）。
+  `deploy/build.js`もstorm-lua-minify呼び出しから`-m`フラグを削除した。
+- **名前衝突の回避**：`chuso1800_core.lua`自身のtickオーケストレータは、
+  元々`M.calculateTick`という名前だったが、`deploy/main.lua`側の
+  state_sync契約用グローバル`calculateTick`（`lib/state_sync.lua`が
+  毎tick呼ぶ、名前はこちらの都合で変更できない）と同名になると
+  グローバル空間で衝突（片方がもう片方を静かに上書きする）するため、
+  `core_tick`へ改名した。`deploy/main.lua`の`calculateTick`は
+  内部で`core_tick(...)`を呼ぶ薄いラッパー（i2f/f2i境界変換）のまま。
+- **テストスイートへの影響**：`test/run_all.lua`が`chuso1800_core.lua`を
+  `dofile`で一度だけ読み込み、以降の全シナリオはグローバル関数を直接
+  呼ぶ（本物のLua`dofile`はローカルは呼び出し元へ漏らさないが、
+  グローバル代入は呼び出し元と共有の`_G`へそのまま反映されるため、
+  この設計は実機のstorm-lua-minifyスプライスと同じ挙動になる ─
+  `onTick`が`_G`に載る仕組み（#(state_sync導入時に検証済み)）と同型）。
+  全12シナリオファイルから`local core = require("chuso1800_core")`を削除し、
+  `core.foo(...)`呼び出しを素の`foo(...)`へ、`core.calculateTick(...)`は
+  `core_tick(...)`へ置換した。`test/harness.lua`の名前付きテーブル
+  ラッパー（`encode_state`等）も`core`引数を削除し、直接グローバルを呼ぶ形に
+  変更した。
+- **結果**：`deploy/chuso1800_deploy.lua`は**7,656文字**まで縮小
+  （8192文字制限を536文字下回る）。`-m`モードのrequire()ディスパッチャ
+  コード自体が丸ごと消えたことに加え、#14の重複バグも根本原因（`-m`
+  モード自体）ごと解消された。テストスイート12/12は引き続き全てpass。
+- **影響箇所**：`src/chuso1800_core.lua`（モジュールテーブル廃止・
+  `core_tick`への改名）、`deploy/main.lua`（`require`全廃・`dofile`
+  2本化・`core_tick`呼び出し）、`deploy/build.js`（`-m`フラグ削除）、
+  `test/run_all.lua`（`chuso1800_core.lua`を`dofile`で一度だけ読み込み）、
+  `test/harness.lua`（ラッパーから`core`引数を削除）、全12テスト
+  シナリオファイル（`core.`呼び出し除去・`require`行削除）、README.md
+  「コードの構成」節・「デプロイ」節、`SIGNAL_MAP.md`。

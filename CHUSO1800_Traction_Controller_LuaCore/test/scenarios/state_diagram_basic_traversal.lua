@@ -12,11 +12,10 @@
 -- 0 <= 1 while phase2 is still latched -- regen_set_cond fires at exactly
 -- that wrap tick.
 
-local core = require("chuso1800_core")
 
 return function(h)
-    local state = core.zero_state()
-    local st = h.decode_state(core, state)
+    local state = zero_state()
+    local st = h.decode_state(state)
     h.assert_false(st.phase1_latch, "starts in Idle: phase1 off")
     h.assert_false(st.phase2_latch, "starts in Idle: phase2 off")
     h.assert_false(st.regen_latch, "starts in Idle: regen off")
@@ -34,16 +33,16 @@ return function(h)
         -- current as the real controller would experience), letting the
         -- state machine actually clear the zero-resistance transition point.
         local speed = 1 + tick * 0.03
-        local stateless_in = h.encode_stateless_in(core, {
+        local stateless_in = h.encode_stateless_in({
             speed = speed,
             catenary_voltage_sw = 1500,
             notch_pos = 3,
             direction = 1,
             brake_pressure_sw = 5,
         })
-        local stateless_out, new_state = core.calculateTick(stateless_in, state)
+        local stateless_out, new_state = core_tick(stateless_in, state)
         state = new_state
-        st = h.decode_state(core, state)
+        st = h.decode_state(state)
 
         if st.phase1_latch and not seen_phase1 then
             seen_phase1 = true

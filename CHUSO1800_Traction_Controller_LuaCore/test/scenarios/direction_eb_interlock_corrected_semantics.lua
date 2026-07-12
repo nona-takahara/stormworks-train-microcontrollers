@@ -11,17 +11,16 @@
 -- safe non-EB-triggering value (>=4) so only the direction interlock is
 -- exercised.
 
-local core = require("chuso1800_core")
 
 local function notch_ge1_after_one_tick(h, direction)
-    local state = core.zero_state()
-    local stateless_in = h.encode_stateless_in(core, {
+    local state = zero_state()
+    local stateless_in = h.encode_stateless_in({
         notch_pos = 1,
         direction = direction,
         brake_pressure_sw = 5,
     })
-    local stateless_out = core.calculateTick(stateless_in, state)
-    return h.decode_stateless_out(core, stateless_out).notch_ge1
+    local stateless_out = core_tick(stateless_in, state)
+    return h.decode_stateless_out(stateless_out).notch_ge1
 end
 
 return function(h)

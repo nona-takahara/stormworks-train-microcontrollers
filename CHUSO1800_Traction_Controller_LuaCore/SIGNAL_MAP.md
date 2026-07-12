@@ -80,8 +80,8 @@ tick N+1の `state_in` として戻ってくる。各スロットは次のどち
 
 STATE_LATCHES_LAYOUT／STATE_TIMERS_LAYOUT／STATUS_BITS_LAYOUTという名称は
 以下、各ビット群を指す**説明用のラベル**であり、`src/chuso1800_core.lua`
-内に同名のLua識別子（テーブル）としては存在しない（`M.decode_state`/
-`M.encode_state`/`M.decode_stateless_out`内でビット位置を直接指定して
+内に同名のLua識別子（テーブル）としては存在しない（`decode_state`/
+`encode_state`/`decode_stateless_out`内でビット位置を直接指定して
 組み立て・分解している。経緯は `DESIGN_LOG.md` #13）。
 
 ### `state_in[1]`／`state_out[1]` — STATE_LATCHES_LAYOUT（32bit中17bit使用）

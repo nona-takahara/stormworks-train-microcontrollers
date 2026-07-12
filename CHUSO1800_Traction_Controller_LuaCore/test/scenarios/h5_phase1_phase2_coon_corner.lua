@@ -8,10 +8,9 @@
 -- "要確認" corner (not a proven-intentional design) -- this test verifies
 -- the mechanical sustaining behavior as ported, not that it is desirable.
 
-local core = require("chuso1800_core")
 
 return function(h)
-    local state = h.encode_state(core, {
+    local state = h.encode_state({
         position_counter = 14,
         phase1_latch = true,
         phase2_latch = true,
@@ -25,7 +24,7 @@ return function(h)
 
     -- Low speed at cam==14 (srsmtr=8, SR[15]=0 -- zero resistance) drives
     -- motor current well above the 190A phase2-reduced limit.
-    local high_current_inputs = h.encode_stateless_in(core, {
+    local high_current_inputs = h.encode_stateless_in({
         speed = 1,
         catenary_voltage_sw = 1500,
         notch_pos = 3,
@@ -34,9 +33,9 @@ return function(h)
     })
 
     for tick = 1, 10 do
-        local stateless_out, new_state = core.calculateTick(high_current_inputs, state)
+        local stateless_out, new_state = core_tick(high_current_inputs, state)
         state = new_state
-        local st = h.decode_state(core, state)
+        local st = h.decode_state(state)
         h.assert_true(st.phase1_latch, "phase1 held co-on tick " .. tick)
         h.assert_true(st.phase2_latch, "phase2 held co-on tick " .. tick)
         h.assert_eq(st.position_counter, 14, "cam pinned at 14 tick " .. tick)
@@ -45,7 +44,7 @@ return function(h)
 
     -- Release: raise speed so back-EMF drops current below the limit, then
     -- give the debounce capacitor its 6-tick charge window.
-    local low_current_inputs = h.encode_stateless_in(core, {
+    local low_current_inputs = h.encode_stateless_in({
         speed = 20,
         catenary_voltage_sw = 1500,
         notch_pos = 3,
@@ -55,9 +54,9 @@ return function(h)
 
     local resolved = false
     for tick = 1, 20 do
-        local stateless_out, new_state = core.calculateTick(low_current_inputs, state)
+        local stateless_out, new_state = core_tick(low_current_inputs, state)
         state = new_state
-        local st = h.decode_state(core, state)
+        local st = h.decode_state(state)
         if not st.phase1_latch then
             resolved = true
             h.assert_true(st.phase2_latch, "phase2 remains latched after resolution")

@@ -57,15 +57,14 @@ copyFileSync(stateSyncSrc, stateSyncStaged);
 copyFileSync(coreSrc, coreStaged);
 
 try {
-    // -m (module-like-lua): dofile("state_sync") stays inlined in place
-    // (state_sync.lua has no return value, so this is fine either way),
-    // but require("chuso1800_core") becomes a real runtime call into an
-    // IIFE-wrapped copy of the module -- necessary because chuso1800_core.lua
-    // ends in `return M`, and storm-lua-minify's *unwrapped* dofile-inlining
-    // corrupts any expression-position target with more than a single
-    // trailing statement (confirmed by direct testing; this is the "many
-    // bugs" tradeoff -- require's -m path happens to sidestep it).
-    execFileSync(process.execPath, [minifyCli, "-m", entry], { stdio: "inherit" });
+    // No -m (module-like-lua) flag: neither state_sync.lua nor
+    // chuso1800_core.lua is require()'d -- both are plain dofile()'d,
+    // non-module files (see main.lua's header comment and DESIGN_LOG.md
+    // #15). storm-lua-minify's `-m` mode only matters for require(); with
+    // nothing require()'d, plain mode and `-m` mode produce the same
+    // output for this build, so plain mode is used to avoid emitting an
+    // unused require() dispatcher.
+    execFileSync(process.execPath, [minifyCli, entry], { stdio: "inherit" });
 } finally {
     cleanupStaged();
 }
