@@ -107,7 +107,7 @@ local function b4(ah,aW,ak,aZ)local b5=math.abs(ah)>m
 local b6=aW<o
 return aZ or ak==0 or b5 or b6 end
 local function b7(aY,aj,b8)local al=aY*(b8 and 0 or 1)local b9=b8 and 0 or aj
-return al,al>=1 and al<=7,al>=2 and al<=7,al>=3 and al<=7,b9>=0 and b9<=1,b9>=0 and b9<=13,b9>=14 and b9<=20,b9==14,b9~=14 end
+return al,al>=1 and al<=7,al>=2 and al<=7,al>=3 and al<=7,b9==0,b9>=0 and b9<=13,b9>=14 and b9<=20,b9==14,b9~=14 end
 local function ba(aX,a_)local as=-math.floor((aX-1)*2)/7.2
 return as,as<s and a_,math.max(-as,0)end
 local function bb(bc,bd,be,a7,aE,b8,bf)if b8 then return 0,0,0,0,bf end
@@ -136,7 +136,7 @@ local bQ=not bu and bP
 return sr_latch(aI,bK,bO),sr_latch(aJ,bM,bN),sr_latch(aK,aJ and bu,bC or bP),bJ or bL or bQ or bD end
 local function bR(aj,aL,bS)local bp,bq=W(aL,bS,u)local bT=(aj+(bq and 1 or 0))%21
 local bU=bT-aj
-return bT,not(bU>=0 and bU<=1),bp end
+return bT,bU~=0,bp end
 local function bV(aS,aR,aN,be,as,a_,bW)local bX=a0(aN)or not a_
 local bY=bX and 0 or as
 return be*0.2+aS*0.8,math.min(B(bY,aR-0.1,aR+0.02),0),Z(aN,bW)end

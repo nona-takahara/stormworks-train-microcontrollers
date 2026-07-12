@@ -421,7 +421,7 @@ local function notch_and_cam_feedback(notch_pos, position_counter, eb_condition)
         notch_eff >= 1 and notch_eff <= 7,
         notch_eff >= 2 and notch_eff <= 7,
         notch_eff >= 3 and notch_eff <= 7,
-        notch_fb >= 0 and notch_fb <= 1,
+        notch_fb == 0,
         notch_fb >= 0 and notch_fb <= 13,
         notch_fb >= 14 and notch_fb <= 20,
         notch_fb == 14,
@@ -526,7 +526,7 @@ local function advance_cam(position_counter, traction_advance_counter, traction_
         traction_advance_counter, traction_any_active, CAM_ADVANCE_PERIOD_TICKS)
     local new_position = (position_counter + (pulse and 1 or 0)) % 21
     local delta = new_position - position_counter
-    return new_position, not (delta >= 0 and delta <= 1), counter_next -- cam_pulseは20->0のリング折返し時のみtrue
+    return new_position, delta ~= 0, counter_next -- cam_pulseはカム位置が変化した(通常の+1進段も20->0の折返しも)tickでtrue
 end
 
 -- SPEC §3.8 BC／regen-BC平滑化。戻り値: bc_target_smooth,
