@@ -183,7 +183,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 | 1 | `motor_current` | DANRYUゲート、Momelink-1900のch24 |
 | 2 | `W` | 出力ポート `W` へ直結 |
 | 3 | `bc_target_smooth` | `BC target [atm]` 出力系列へ |
-| 4 | `bcT` | 既存の（ラベルは紛らわしいが変更していない）`speed_display`／Momelink ch25 経路へ |
+| 4 | `bcT`（実体は空気ブレーキ補完減速度要求。新SPEC.md §8.5 N7、DESIGN_LOG.md #20参照） | `bc_target_abs_pressure`（`x*3.6+1`でBC絶対圧目標へ変換、旧名`speed_display`）／Momelink ch25 経路へ |
 | 5 | STATUS_BITS_LAYOUT のパック済みビットフィールド（32bit中8bit、下記参照） | RSS／Momelink側のゲート |
 | 6-8 | 予備（0） | |
 
@@ -284,30 +284,38 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 
 ## ゲートに残すもの（今回は未Lua化）
 
-- **SAP/ECBブレーキ圧解決一式**（`sap_ecb_toggle`／`ecb_pressure_sw`／
-  `brake_pressure_sw`／`ecb_sap_pressure`／`sap_pressure_sw`とその周辺、
-  SPEC §3.8）。このモジュールは最終値の`brake_pressure_sw`／
-  `sap_pressure_sw`のみをステートレス入力スロット3・4として受け取る
+> ノード名は`CHUSO1800_Traction_Controller_main_renamed.sw-net`／新`SPEC.md`
+> （ユーザーがChatGPTと再検証した版）の命名に合わせて`main.sw-net`側を
+> リネーム済み（DESIGN_LOG.md #20）。以下も新名称で記載する。
+
+- **SAP/ECBブレーキ管圧解決一式**（`brake_system_is_sap`／
+  `ecb_virtual_brake_pipe`／`brake_pipe_for_inhibit`／
+  `ecb_brake_demand_pressure`／`brake_demand_pressure`とその周辺、
+  SPEC §9）。このモジュールは最終値の`brake_pipe_for_inhibit`／
+  `brake_demand_pressure`のみをステートレス入力スロット3・4として受け取る
   （上記「ステートレス入力スロットのレイアウト」参照、経緯は
   `DESIGN_LOG.md` #4）。
-- **direction合成**（`forward_flag_sw`／`backward_flag_sw`／`direction`
-  SUBTRACTノード）。このモジュールは最終値の`direction`（-1/0/+1）のみを
-  ステートレス入力スロット5として受け取る（同 #4）。
+- **direction合成**（`forward_direction_value`／`reverse_direction_value`／
+  `direction_sign` SUBTRACTノード）。このモジュールは最終値の
+  `direction_sign`（-1/0/+1）のみをステートレス入力スロット5として
+  受け取る（同 #4）。
 - **パンタグラフ4ラッチ一式**（`panta1_latch`／`panta2_latch`／
   `panta1_en_latch`／`panta2_en_latch`とその周辺 ─ `panta1_set_cond`／
-  `panta2_set_cond`／`is_1800_type`／`panta1_1800_active`等、SPEC §3.9）。
-  このモジュールはExtended IFのパンタ関連signal・`property.getBool("M
-  type")`のいずれも参照しない（経緯は `DESIGN_LOG.md` #2）。
-- **架線電圧セレクタ一式**（`catenary_active_thresh` … `catenary_voltage_sw`）
+  `panta2_set_cond`／`vehicle_type_1800`／`panta1_1800_active`等、
+  SPEC §12）。このモジュールはExtended IFのパンタ関連signal・
+  `property.getBool("M type")`のいずれも参照しない（経緯は
+  `DESIGN_LOG.md` #2）。
+- **架線電圧セレクタ一式**（`catenary_input_zero` … `traction_supply_voltage`）
   ─ パンタグラフラッチがゲート側にあるため、`panta1_1800_active`／
   `panta2_1800_active`はゲート側で計算されたものをそのまま読む
   （このモジュールの出力には依存しない）。
-- Momelink-A整形（`momelink_1800_out`／`momelink_1900_out`／
-  `momelink_version_sw`／`momelink_src_mux`／`momelink_1900_select`）。
-- Rolling Stock Status整形（`rolling_status_bool_write`／
-  `rolling_status_write`／`bc_pressure_kpa`等 ─ パンタ関連ビットもゲート側
-  計算のものをそのまま使う）。
-- `bc_target_read`（編成内Momelinkパススルー ─ 今回の移行とは無関係）。
+- Momelink-A整形（`momelink_1800_frame`／`momelink_advanced_frame`／
+  `momelink_output_frame_mux`／`status_data_source`／
+  `use_1900_advanced_frame`）。
+- Rolling Stock Status整形（`rolling_stock_status_bool`／
+  `rolling_stock_status`／`bc_gauge_pressure_kpa`等 ─ パンタ関連ビットも
+  ゲート側計算のものをそのまま使う）。
+- `status_bc_target`（編成内Momelinkパススルー ─ 今回の移行とは無関係）。
 
 いずれも純粋なステートレスのデータ整形・muxか、独自に完結するラッチで
 あり、本モジュールとの結合度は低い。

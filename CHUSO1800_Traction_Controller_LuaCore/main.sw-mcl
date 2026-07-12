@@ -150,31 +150,31 @@
   ],
   "instances": [
     {
-      "id": "backward_flag_sw",
-      "type": "NUM_SWITCHBOX",
+      "id": "armature_current_not_positive",
+      "type": "NOT",
+      "position": {
+        "x": 4,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "armature_current_positive",
+      "type": "GREATER_THAN",
+      "position": {
+        "x": 2.75,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "armature_current_read",
+      "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 1.5,
-        "y": -20.25
+        "y": -2.5
       }
     },
     {
-      "id": "backward_signal",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": 0.25,
-        "y": -22.25
-      }
-    },
-    {
-      "id": "bc_pressure_kpa",
-      "type": "FUNC_NUM_1",
-      "position": {
-        "x": 6.5,
-        "y": 8.25
-      }
-    },
-    {
-      "id": "bc_pressure_norm",
+      "id": "bc_application_ratio",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 2.75,
@@ -182,47 +182,31 @@
       }
     },
     {
-      "id": "bc_target_read",
-      "type": "COMPOSITE_READ_NUMBER",
+      "id": "bc_gauge_pressure_kpa",
+      "type": "FUNC_NUM_1",
       "position": {
         "x": 6.5,
-        "y": 12
+        "y": 8.25
       }
     },
     {
-      "id": "bc_target_smooth_read",
-      "type": "COMPOSITE_READ_NUMBER",
+      "id": "bc_target_abs_pressure",
+      "type": "FUNC_NUM_1",
       "position": {
         "x": 2.75,
-        "y": 1.75
-      }
-    },
-    {
-      "id": "bcT_read",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": 1.5,
         "y": 2.5
       }
     },
     {
-      "id": "bool_one",
-      "type": "CONST",
+      "id": "brake_command",
+      "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 0.25,
-        "y": -20
+        "y": -24.25
       }
     },
     {
-      "id": "bool_zero",
-      "type": "CONST",
-      "position": {
-        "x": 0.25,
-        "y": -14.75
-      }
-    },
-    {
-      "id": "brake_limit_current",
+      "id": "brake_current_limit_scale",
       "type": "PROPERTY_NUMBER",
       "position": {
         "x": -6.5,
@@ -230,7 +214,23 @@
       }
     },
     {
-      "id": "brake_pressure_sw",
+      "id": "brake_demand_pressure",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 2.75,
+        "y": -24.75
+      }
+    },
+    {
+      "id": "brake_demand_pressure_delay",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 4,
+        "y": -23.75
+      }
+    },
+    {
+      "id": "brake_pipe_for_inhibit",
       "type": "NUM_SWITCHBOX",
       "position": {
         "x": 2.75,
@@ -238,7 +238,7 @@
       }
     },
     {
-      "id": "brake_pressure_sw_delay",
+      "id": "brake_pipe_for_inhibit_delay",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 4,
@@ -246,15 +246,39 @@
       }
     },
     {
-      "id": "catenary_active_thresh",
-      "type": "THRESHOLD",
+      "id": "brake_system_is_sap",
+      "type": "PROPERTY_TOGGLE",
       "position": {
-        "x": -2.25,
-        "y": -6.25
+        "x": 1.5,
+        "y": -27.25
       }
     },
     {
-      "id": "catenary_inactive",
+      "id": "cam_advance_current_limit_base",
+      "type": "PROPERTY_NUMBER",
+      "position": {
+        "x": -7.75,
+        "y": -32
+      }
+    },
+    {
+      "id": "cam_position_changed_bit",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 2.75,
+        "y": 3
+      }
+    },
+    {
+      "id": "cam_position_changed_flag",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 4,
+        "y": 3
+      }
+    },
+    {
+      "id": "catenary_input_nonzero",
       "type": "NOT",
       "position": {
         "x": -1,
@@ -262,59 +286,11 @@
       }
     },
     {
-      "id": "catenary_rated_voltage",
-      "type": "CONST",
+      "id": "catenary_input_zero",
+      "type": "THRESHOLD",
       "position": {
-        "x": 0.25,
-        "y": -5.5
-      }
-    },
-    {
-      "id": "catenary_voltage_en",
-      "type": "AND",
-      "position": {
-        "x": 0.25,
+        "x": -2.25,
         "y": -6.25
-      }
-    },
-    {
-      "id": "catenary_voltage_mux",
-      "type": "NUM_SWITCHBOX",
-      "position": {
-        "x": 1.5,
-        "y": -6.25
-      }
-    },
-    {
-      "id": "catenary_voltage_sw",
-      "type": "NUM_SWITCHBOX",
-      "position": {
-        "x": 2.75,
-        "y": 3.5
-      }
-    },
-    {
-      "id": "catenary_voltage_sw_delay",
-      "type": "FUNC_NUM_1",
-      "position": {
-        "x": 4,
-        "y": 4.25
-      }
-    },
-    {
-      "id": "catenary_voltage_toggle",
-      "type": "PROPERTY_TOGGLE",
-      "position": {
-        "x": -1,
-        "y": -5.75
-      }
-    },
-    {
-      "id": "const_35",
-      "type": "CONST",
-      "position": {
-        "x": 2.75,
-        "y": 5.25
       }
     },
     {
@@ -350,15 +326,39 @@
       }
     },
     {
-      "id": "danryu_not",
-      "type": "NOT",
+      "id": "db_auto_command",
+      "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 4,
-        "y": -2.5
+        "x": 0.25,
+        "y": -18.5
       }
     },
     {
-      "id": "direction",
+      "id": "db_auto_command_num",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 1.5,
+        "y": -18.5
+      }
+    },
+    {
+      "id": "db_auto_command_num_delay",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 4,
+        "y": -16.5
+      }
+    },
+    {
+      "id": "direction_one",
+      "type": "CONST",
+      "position": {
+        "x": 0.25,
+        "y": -20
+      }
+    },
+    {
+      "id": "direction_sign",
       "type": "SUBTRACT",
       "position": {
         "x": 2.75,
@@ -366,7 +366,7 @@
       }
     },
     {
-      "id": "direction_delay",
+      "id": "direction_sign_delay",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 4,
@@ -374,39 +374,15 @@
       }
     },
     {
-      "id": "eb_signal",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -1,
-        "y": -26.25
-      }
-    },
-    {
-      "id": "ecb_offset_eb_active",
+      "id": "direction_zero",
       "type": "CONST",
-      "position": {
-        "x": -1,
-        "y": -27.25
-      }
-    },
-    {
-      "id": "ecb_offset_eb_inactive",
-      "type": "CONST",
-      "position": {
-        "x": -1,
-        "y": -26.75
-      }
-    },
-    {
-      "id": "ecb_pressure_sw",
-      "type": "NUM_SWITCHBOX",
       "position": {
         "x": 0.25,
-        "y": -27
+        "y": -14.75
       }
     },
     {
-      "id": "ecb_sap_pressure",
+      "id": "ecb_brake_demand_pressure",
       "type": "FUNC_NUM_3",
       "position": {
         "x": 1.5,
@@ -414,15 +390,39 @@
       }
     },
     {
-      "id": "forward_flag_sw",
-      "type": "NUM_SWITCHBOX",
+      "id": "ecb_brake_pipe_emergency",
+      "type": "CONST",
       "position": {
-        "x": 1.5,
-        "y": -19.5
+        "x": -1,
+        "y": -27.25
       }
     },
     {
-      "id": "forward_signal",
+      "id": "ecb_brake_pipe_normal",
+      "type": "CONST",
+      "position": {
+        "x": -1,
+        "y": -26.75
+      }
+    },
+    {
+      "id": "ecb_virtual_brake_pipe",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0.25,
+        "y": -27
+      }
+    },
+    {
+      "id": "emergency_brake_command",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": -26.25
+      }
+    },
+    {
+      "id": "forward_command",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 0.25,
@@ -430,55 +430,15 @@
       }
     },
     {
-      "id": "is_1800_type",
-      "type": "NOT",
+      "id": "forward_direction_value",
+      "type": "NUM_SWITCHBOX",
       "position": {
-        "x": -1,
-        "y": 20.25
+        "x": 1.5,
+        "y": -19.5
       }
     },
     {
-      "id": "momelink_1800_out",
-      "type": "COMPOSITE_WRITE_NUMBER",
-      "position": {
-        "x": 5.25,
-        "y": 4.75
-      }
-    },
-    {
-      "id": "momelink_1900_out",
-      "type": "COMPOSITE_WRITE_NUMBER",
-      "position": {
-        "x": 4,
-        "y": 4.75
-      }
-    },
-    {
-      "id": "momelink_1900_select",
-      "type": "AND",
-      "position": {
-        "x": 4,
-        "y": 12.25
-      }
-    },
-    {
-      "id": "momelink_ch23",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": 6.5,
-        "y": 13
-      }
-    },
-    {
-      "id": "momelink_ch24",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": 6.5,
-        "y": 12.5
-      }
-    },
-    {
-      "id": "momelink_ch26",
+      "id": "inner_unit_acceleration",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 2.75,
@@ -486,15 +446,47 @@
       }
     },
     {
-      "id": "momelink_src_mux",
-      "type": "COMPOSITE_SWITCHBOX",
+      "id": "inner_unit_type_id",
+      "type": "COMPOSITE_READ_NUMBER",
       "position": {
-        "x": 5.25,
-        "y": 12
+        "x": 1.5,
+        "y": 12.25
       }
     },
     {
-      "id": "momelink_version_sw",
+      "id": "inner_unit_type_is_1911",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 2.75,
+        "y": 12.25
+      }
+    },
+    {
+      "id": "model_acceleration_smoothed_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 2.75,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "momelink_1800_frame",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 5.25,
+        "y": 4.75
+      }
+    },
+    {
+      "id": "momelink_advanced_frame",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 4,
+        "y": 4.75
+      }
+    },
+    {
+      "id": "momelink_output_frame_mux",
       "type": "COMPOSITE_SWITCHBOX",
       "position": {
         "x": 6.5,
@@ -502,43 +494,19 @@
       }
     },
     {
-      "id": "motor_current_positive",
-      "type": "GREATER_THAN",
+      "id": "momelink_type_id_1911",
+      "type": "CONST",
       "position": {
         "x": 2.75,
-        "y": -2.5
+        "y": 6.75
       }
     },
     {
-      "id": "motor_current_read",
-      "type": "COMPOSITE_READ_NUMBER",
+      "id": "nominal_catenary_voltage",
+      "type": "CONST",
       "position": {
-        "x": 1.5,
-        "y": -2.5
-      }
-    },
-    {
-      "id": "mtype_toggle",
-      "type": "PROPERTY_TOGGLE",
-      "position": {
-        "x": -2.25,
-        "y": 16.5
-      }
-    },
-    {
-      "id": "notch_pos",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": 2.75,
-        "y": -12
-      }
-    },
-    {
-      "id": "notch_pos_delay",
-      "type": "FUNC_NUM_1",
-      "position": {
-        "x": 4,
-        "y": -11.25
+        "x": 0.25,
+        "y": -5.5
       }
     },
     {
@@ -547,6 +515,14 @@
       "position": {
         "x": -9,
         "y": -32
+      }
+    },
+    {
+      "id": "panta_1800_active_any",
+      "type": "OR",
+      "position": {
+        "x": 1.5,
+        "y": 20.75
       }
     },
     {
@@ -579,14 +555,6 @@
       "position": {
         "x": 0.25,
         "y": 26.75
-      }
-    },
-    {
-      "id": "panta_up",
-      "type": "OR",
-      "position": {
-        "x": 1.5,
-        "y": 20.75
       }
     },
     {
@@ -718,47 +686,47 @@
       }
     },
     {
-      "id": "power_limit_current",
-      "type": "PROPERTY_NUMBER",
-      "position": {
-        "x": -7.75,
-        "y": -32
-      }
-    },
-    {
-      "id": "regen_flag",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": 0.25,
-        "y": -18.5
-      }
-    },
-    {
-      "id": "regen_flag_num",
-      "type": "NUM_SWITCHBOX",
+      "id": "pneumatic_brake_decel_demand_read",
+      "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 1.5,
-        "y": -18.5
+        "y": 2.5
       }
     },
     {
-      "id": "regen_flag_num_delay",
+      "id": "power_notch_command",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 2.75,
+        "y": -12
+      }
+    },
+    {
+      "id": "power_notch_command_delay",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 4,
-        "y": -16.5
+        "y": -11.25
       }
     },
     {
-      "id": "rolling_status_bool_write",
-      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "id": "reverse_command",
+      "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 5.25,
-        "y": 21.5
+        "x": 0.25,
+        "y": -22.25
       }
     },
     {
-      "id": "rolling_status_write",
+      "id": "reverse_direction_value",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 1.5,
+        "y": -20.25
+      }
+    },
+    {
+      "id": "rolling_stock_status",
       "type": "COMPOSITE_WRITE_NUMBER",
       "position": {
         "x": 7.75,
@@ -766,95 +734,55 @@
       }
     },
     {
-      "id": "sap_ecb_toggle",
-      "type": "PROPERTY_TOGGLE",
+      "id": "rolling_stock_status_bool",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
-        "x": 1.5,
-        "y": -27.25
+        "x": 5.25,
+        "y": 21.5
       }
     },
     {
-      "id": "sap_pressure_sw",
+      "id": "selected_catenary_voltage",
       "type": "NUM_SWITCHBOX",
       "position": {
-        "x": 2.75,
-        "y": -24.75
-      }
-    },
-    {
-      "id": "sap_pressure_sw_delay",
-      "type": "FUNC_NUM_1",
-      "position": {
-        "x": 4,
-        "y": -23.75
-      }
-    },
-    {
-      "id": "sap_raw",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": 0.25,
-        "y": -24.25
-      }
-    },
-    {
-      "id": "speed",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": 2.75,
-        "y": -32
-      }
-    },
-    {
-      "id": "speed_delay",
-      "type": "FUNC_NUM_1",
-      "position": {
-        "x": 4,
-        "y": -31.25
-      }
-    },
-    {
-      "id": "speed_display",
-      "type": "FUNC_NUM_1",
-      "position": {
-        "x": 2.75,
-        "y": 2.5
-      }
-    },
-    {
-      "id": "status_bits_read",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
         "x": 1.5,
-        "y": 3
+        "y": -6.25
       }
     },
     {
-      "id": "status_cam_bit",
-      "type": "FUNC_NUM_1",
+      "id": "status_armature_current",
+      "type": "COMPOSITE_READ_NUMBER",
       "position": {
-        "x": 2.75,
-        "y": 3
+        "x": 6.5,
+        "y": 12.5
       }
     },
     {
-      "id": "status_cam_pulse",
-      "type": "THRESHOLD",
+      "id": "status_bc_target",
+      "type": "COMPOSITE_READ_NUMBER",
       "position": {
-        "x": 4,
-        "y": 3
+        "x": 6.5,
+        "y": 12
       }
     },
     {
-      "id": "status_power_cut",
-      "type": "THRESHOLD",
+      "id": "status_catenary_voltage",
+      "type": "COMPOSITE_READ_NUMBER",
       "position": {
-        "x": 4,
-        "y": 6.25
+        "x": 6.5,
+        "y": 13
       }
     },
     {
-      "id": "status_power_cut_bit",
+      "id": "status_data_source",
+      "type": "COMPOSITE_SWITCHBOX",
+      "position": {
+        "x": 5.25,
+        "y": 12
+      }
+    },
+    {
+      "id": "traction_fault_bit",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 2.75,
@@ -862,35 +790,107 @@
       }
     },
     {
-      "id": "type_id_1911",
-      "type": "CONST",
-      "position": {
-        "x": 2.75,
-        "y": 6.75
-      }
-    },
-    {
-      "id": "type_is_1911",
+      "id": "traction_fault_flag",
       "type": "THRESHOLD",
       "position": {
-        "x": 2.75,
-        "y": 12.25
+        "x": 4,
+        "y": 6.25
       }
     },
     {
-      "id": "unit_type_code",
+      "id": "traction_model_status_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 1.5,
-        "y": 12.25
+        "y": 3
       }
     },
     {
-      "id": "w_read",
+      "id": "traction_power_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 1.5,
         "y": -0.25
+      }
+    },
+    {
+      "id": "traction_supply_voltage",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 2.75,
+        "y": 3.5
+      }
+    },
+    {
+      "id": "traction_supply_voltage_delay",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 4,
+        "y": 4.25
+      }
+    },
+    {
+      "id": "use_1900_advanced_frame",
+      "type": "AND",
+      "position": {
+        "x": 4,
+        "y": 12.25
+      }
+    },
+    {
+      "id": "use_catenary_input",
+      "type": "AND",
+      "position": {
+        "x": 0.25,
+        "y": -6.25
+      }
+    },
+    {
+      "id": "use_supplied_catenary_voltage",
+      "type": "PROPERTY_TOGGLE",
+      "position": {
+        "x": -1,
+        "y": -5.75
+      }
+    },
+    {
+      "id": "vehicle_mass_tonnes",
+      "type": "CONST",
+      "position": {
+        "x": 2.75,
+        "y": 5.25
+      }
+    },
+    {
+      "id": "vehicle_speed",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 2.75,
+        "y": -32
+      }
+    },
+    {
+      "id": "vehicle_speed_delay",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 4,
+        "y": -31.25
+      }
+    },
+    {
+      "id": "vehicle_type_1800",
+      "type": "NOT",
+      "position": {
+        "x": -1,
+        "y": 20.25
+      }
+    },
+    {
+      "id": "vehicle_type_1900",
+      "type": "PROPERTY_TOGGLE",
+      "position": {
+        "x": -2.25,
+        "y": 16.5
       }
     }
   ],
