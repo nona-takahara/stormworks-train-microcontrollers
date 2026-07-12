@@ -275,9 +275,12 @@ composite `number` チャンネル自体が元々float32精度である以上、
    `dofile`のまま残した結果、8,466文字まで再増加していた ─
    `DESIGN_LOG.md` #14）が根本から解消した。
 
-## 今後の実配線について（本プロトタイプのスコープ外）
+## 今後の実配線について（実施済み）
 
-`main.sw-net` へ実際に組み込む場合、以下が必要になる（今回は着手していない）：
+以下の1〜5項は `main.sw-net` に実配線済み（`DESIGN_LOG.md` #17に、
+オリジナルの `CHUSO1800_Traction_Controller/main.sw-net` との差分
+─ 削除したノード・新規に追加したノード・維持したノード ─ を網羅した
+一覧がある。この節は実配線前の計画としてそのまま残してある）：
 
 1. `LUA current_sim` ノードの `script_ref` を、`deploy/main.lua`を
    `storm-lua-minify`でフラット化した最終スクリプトへ差し替える。
