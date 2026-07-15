@@ -49,10 +49,23 @@
 ## 契約（インターフェース）
 
 ```lua
-local core = require("chuso1800_core")
-local stateless_out, state_out = core.calculateTick(stateless_in, state_in)
+-- テスト/解析環境では、Stormworksのpropertyグローバルを用意してから
+-- src/chuso1800_core.luaをdofileし、グローバル関数core_tickを呼び出す。
+property = property or {
+  getNumber = function(name)
+    return ({
+      ["Over Speed Th. [m/s]"] = 32,
+      ["Power Limit Current [A]"] = 210,
+    })[name]
+  end,
+}
+dofile("src/chuso1800_core.lua")
+local stateless_out, state_out = core_tick(stateless_in, state_in)
 ```
 
+- `src/chuso1800_core.lua` はStormworksへ貼り付けるコードサイズと実行環境を
+  優先して、`require`で値を返すLuaモジュールではなくグローバル関数群として
+  読み込む。テストもデプロイビルドもこの前提で `dofile` する。
 - `stateless_in`・`stateless_out`：Lua数値の配列 `[1..8]`。現在tickの
   センサ値相当の入力／現在tickの出力。
 - `state_in`・`state_out`：Lua数値の配列 `[1..8]`。`state_out` はそのまま
