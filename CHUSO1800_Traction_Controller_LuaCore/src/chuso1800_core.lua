@@ -467,20 +467,39 @@ local function debounce_block(phase1_latch, phase2_latch, current_below_limit_ca
         debounce_charged(phase2_cap_counter), debounce_step(phase2_cap_counter, phase2_latch)
 end
 
+-- motor_currentがほぼ0とみなせるか（SPEC §4.6 neutral_cond由来のしきい値、
+-- phase_state_machineと共有。DESIGN_LOG.md #23）。
+local function current_near_zero(motor_current)
+    return motor_current >= -50 and motor_current <= 50
+end
+
 -- SPEC §3.6 界磁電流超過検知チェーン。main.sw-netでは"regen_warning"と
 -- 誤命名されていたが回生ブレーキ警告ではない ─ iF_aはここでは界磁電流
 -- （n409.luaの"brake_current_fb"/channel=6と同じ値）。「notchは0に落ちたが
 -- iF_aがまだ300/400A閾値を超えている」を検知し、coasting_condの自然な
 -- 電流減衰を待たずphase1/phase2を早期に畳む（改名の経緯は
--- `DESIGN_LOG.md` #10）。戻り値: brake_current_high_phase1,
+-- `DESIGN_LOG.md` #10）。
+--
+-- 「固着カムからの脱出」検知もこの同じcond/pulseチェーンに合流させてある
+-- （DESIGN_LOG.md #23）：カム0で並列(phase2)＋界磁制御(regen_latch)だけが
+-- 立ったまま直列(phase1)が一度も立たない状態は、coasting_condが要求する
+-- `not regen_latch`が恒久的に満たせないため、界磁電流が閾値を超えない限り
+-- 自然には解けない。しかしnotch/回生要求ともに無く電流もほぼ0まで
+-- 収束しているなら「単に停止している」だけであり、この場合も同じ
+-- field_current_excess_pulse経由でphase1_set／phase_reset_condへ合流させ、
+-- 通常のtop-of-ladder脱出経路を再利用する。戻り値: brake_current_high_phase1,
 -- field_current_excess_cond, field_current_excess_counter_next,
 -- field_current_excess_pulse。
-local function field_current_excess_block(phase1_latch, regen_bc_smooth, field_current_excess_counter,
-    iF_a, notch_ge1, phase1_cap_charged)
+local function field_current_excess_block(phase1_latch, phase2_latch, regen_latch, regen_bc_smooth,
+    field_current_excess_counter, iF_a, notch_ge1, notch_fb_ge1, motor_current, low_bc_with_regen_flag,
+    phase1_cap_charged)
     local phase1_low_bc = phase1_latch and regen_bc_smooth < REGEN_BC_MIN
     local brake_limit_sw = phase1_low_bc and BRAKE_LIMIT_400 or BRAKE_LIMIT_300
     local brake_current_above_300 = iF_a > BRAKE_LIMIT_300
-    local field_current_excess_cond = (iF_a > brake_limit_sw) and (not notch_ge1)
+    local field_current_excess = iF_a > brake_limit_sw
+    local stuck_at_top_idle = regen_latch and phase2_latch and (not phase1_latch) and notch_fb_ge1
+        and current_near_zero(motor_current) and (not low_bc_with_regen_flag)
+    local field_current_excess_cond = (field_current_excess or stuck_at_top_idle) and (not notch_ge1)
     local counter_next, pulse = periodic_pulse_step(
         field_current_excess_counter, field_current_excess_cond, FIELD_CURRENT_EXCESS_PERIOD_TICKS)
     return brake_current_above_300 and phase1_cap_charged, field_current_excess_cond, counter_next, pulse
@@ -496,8 +515,7 @@ local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
     local phase1_regen_active = phase1_latch and notch_fb_ne14 and regen_latch
     local power_with_regen = notch_ge1 and notch_fb_ge1
 
-    local current_near_zero = motor_current >= -50 and motor_current <= 50
-    local neutral_cond = current_near_zero and not (notch_ge1 or low_bc_with_regen_flag)
+    local neutral_cond = current_near_zero(motor_current) and not (notch_ge1 or low_bc_with_regen_flag)
     local coasting_cond = neutral_cond and (not regen_latch)
     local phase_reset_cond = coasting_cond or (field_current_excess_pulse and (not regen_flag))
 
@@ -589,8 +607,9 @@ function core_tick(stateless_in, state_in)
 
     local brake_current_high_phase1, field_current_excess_cond,
         field_current_excess_counter_next, field_current_excess_pulse =
-        field_current_excess_block(st_phase1_latch, st_regen_bc_smooth, st_field_current_excess_counter,
-            iF_a, notch_ge1, phase1_cap_charged)
+        field_current_excess_block(st_phase1_latch, st_phase2_latch, st_regen_latch, st_regen_bc_smooth,
+            st_field_current_excess_counter, iF_a, notch_ge1, notch_fb_ge1, motor_current,
+            low_bc_with_regen_flag, phase1_cap_charged)
 
     local phase1_latch, phase2_latch, regen_latch, traction_any_active = phase_state_machine(
         st_phase1_latch, st_phase2_latch, st_regen_latch,

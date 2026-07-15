@@ -48,6 +48,7 @@ local scenario_names = {
     "power_cut_dead_logic_constant",
     "spec_v2_corrections",
     "field_current_excess_pulse_reset_masking",
+    "stuck_at_top_of_ladder_recovery",
 }
 
 local total, failed = 0, 0
