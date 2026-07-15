@@ -47,6 +47,7 @@ local scenario_names = {
     "direction_eb_interlock_corrected_semantics",
     "power_cut_dead_logic_constant",
     "spec_v2_corrections",
+    "field_current_excess_pulse_reset_masking",
 }
 
 local total, failed = 0, 0

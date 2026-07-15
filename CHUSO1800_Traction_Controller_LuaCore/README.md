@@ -196,7 +196,7 @@ Stormworks実機は不要、素のLuaだけで動く：
 lua test/run_all.lua
 ```
 
-12本のシナリオ（`test/scenarios/*.lua`）。カバー範囲：
+15本のシナリオ（`test/scenarios/*.lua`）。カバー範囲：
 
 - **未変更の** `../CHUSO1800_Traction_Controller/scripts/n409.lua` に対する
   数値回帰（小さな `input`/`output` シム経由で `loadfile` するため、同ファイル
