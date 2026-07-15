@@ -62,87 +62,87 @@ local function Z(_,a0,U)local a1=U and math.min(_+z,y)or math.max(_-A,0)local a2
 return a1,a2 end
 local function a3(a4)return a4*b*d*e/(d*math.abs(a4)+e)end
 local function a5(a4)return b*d*e*e/((d*math.abs(a4)+e)*(d*math.abs(a4)+e))end
-local function a6(a7,a8,a9)return a8*a7+a9 end
-local function aa(a7)return a7 end
-local function ab(a8,ac,a,ad,a7,a9)return a*a3(a6(a7,a8,a9))*a-ac+(c+ad)*a8 end
-local function ae(a8,ac,a,ad,a7,a9)return a*a5(a6(a7,a8,a9))*aa(a7)*a+c+ad end
-local function af(ac,a,ad,a7,a9,ag)local j=ag
-for ah=1,5 do local ai=ae(j,ac,a,ad,a7,a9)if math.abs(ai)>=0.000001 then j=j-ab(j,ac,a,ad,a7,a9)/ai else if ai>0 then j=j-ab(j,ac,a,ad,a7,a9)elseif ai<0 then j=j+ab(j,ac,a,ad,a7,a9)end end end
-return j,a3(a6(a7,j,a9))end
-function physics_tick(aj,ak,al,am,an,ao,ap,aq,ar,as,at,au,av,aw,ax)local ay=aj*9.55*g/h
-local az=al+1
-local aA=100000
-local aB=4
-local a9=150
-local aC=l
-if not ao and not ap then ak=0 end
-if ao then aB=8 end
-if ap and az==1 then aB=4 end
-if aq then if as then local aD=am*f*9.55*a*ax*av*g*0.99/h/i
-a9=aw+(aD-at)*20
-a9=a9*math.min(1,470/(a*math.abs(ay))/a3(a9+av*0.15))else if ar and an<=3 then aC=aw end
-if not ar then aC=0 end
-if aC==0 then aC=math.max(math.min(0,av+20),av-20)end
-a9=aw+(av-aC)*0.1 end else aC=aw
-if an==0 then aC=0 end
-a9=aw+(av-aC)*0.1
-if an~=0 and a9>180 then a9=180 end end
-if aB==8 then aA=j[az]end
-if aB==4 then aA=k[az]end
-if a9<20 then a9=20 elseif a9>500 then a9=500 end
-local j,aE=af(ak/aB,ay,aA/aB,am*0.2,a9*am,l)if ak==0 then j=0
-aE=0 end
-local aF=9.55*a*aE*j
-local aG=math.min(am*f*aF*g/h/i,0)-au
-if aG<0.01 and j<0 then aG=0 end
-return j,a*aE*ay,f*aF*g*0.99/h/i,ak*j*f/aB*2,a9,aG,j,a9,aE end
+function physics_tick(a6,a7,a8,a9,aa,ab,ac,ad,ae,af,ag,ah,ai,aj,ak)local al=a6*9.55*g/h
+local am=a8+1
+local an=100000
+local ao=4
+local ap=150
+local aq=l
+if not ab and not ac then a7=0 end
+if ab then ao=8 end
+if ac and am==1 then ao=4 end
+if ad then if af then local ar=a9*f*9.55*a*ak*ai*g*0.99/h/i
+ap=aj+(ar-ag)*20
+ap=ap*math.min(1,470/(a*math.abs(al))/a3(ap+ai*0.15))else if ae and aa<=3 then aq=aj end
+if not ae then aq=0 end
+if aq==0 then aq=math.max(math.min(0,ai+20),ai-20)end
+ap=aj+(ai-aq)*0.1 end else aq=aj
+if aa==0 then aq=0 end
+ap=aj+(ai-aq)*0.1
+if aa~=0 and ap>180 then ap=180 end end
+if ao==8 then an=j[am]end
+if ao==4 then an=k[am]end
+if ap<20 then ap=20 elseif ap>500 then ap=500 end
+local as,at,au,av,aw=a7/ao,al,an/ao,a9*0.2,ap*a9
+local j=l
+local ax=0
+for ay=1,5 do local a4=j*av+aw
+ax=a3(a4)local az=a5(a4)local aA=a*az*av*at+c+au
+local aB=a*ax*at-as+(c+au)*j
+if math.abs(aA)>=0.000001 then j=j-aB/aA else if aA>0 then j=j-aB elseif aA<0 then j=j+aB end end end
+ax=a3(j*av+aw)if a7==0 then j=0
+ax=0 end
+local aC=9.55*a*ax*j
+local aD=math.min(a9*f*aC*g/h/i,0)-ah
+if aD<0.01 and j<0 then aD=0 end
+return j,a*ax*al,f*aC*g*0.99/h/i,a7*j*f/ao*2,ap,aD,j,ap,ax end
 function zero_state()return{0,0,0,0,0,0,0,0}end
-function decode_state(aH)local aI=to_u32(aH[1])local aJ=to_u32(aH[2])return get_bits(aI,0,5),get_bit(aI,5),get_bit(aI,6),get_bit(aI,7),get_bits(aI,8,4),get_bits(aI,12,5),get_bits(aJ,0,10),get_bit(aJ,19),get_bits(aJ,10,3),get_bits(aJ,13,3),get_bits(aJ,16,3),aH[3],aH[4],aH[5],aH[6],aH[7]end
-function encode_state(al,aK,aL,aM,aN,aO,aP,aQ,aR,aS,aT,av,aw,ax,aU,aV)local aW=put_bits(al,0,5)|put_bit(aK,5)|put_bit(aL,6)|put_bit(aM,7)|put_bits(aN,8,4)|put_bits(aO,12,5)local aX=put_bits(aP,0,10)|put_bits(aR,10,3)|put_bits(aS,13,3)|put_bits(aT,16,3)|put_bit(aQ,19)return{aW,aX,av or 0,aw or 0,ax or 0,aU or 0,aV or 0,0}end
-function encode_stateless_in(aj,aY,aZ,a_,am,b0,b1,b2)return{aj or 0,aY or 0,aZ or 0,a_ or 0,am or 0,b0 or 0,b1 and 1 or 0,b2 and 1 or 0}end
-function decode_stateless_out(b3)local b4=to_u32(b3[5])return b3[1],b3[2],b3[3],b3[4],get_bit(b4,0),get_bit(b4,1),get_bit(b4,2),get_bit(b4,3),get_bit(b4,4),get_bit(b4,5),get_bit(b4,6),get_bit(b4,7)end
-local function b5(b6)return b6[1],b6[2],b6[3],b6[4],b6[5],B(math.floor(b6[6]or 0),0,7),(b6[7]or 0)~=0,(b6[8]or 0)~=0 end
-local function b7(aj,aZ,am,b1)local b8=math.abs(aj)>m
-local b9=aZ<o
-return b1 or am==0 or b8 or b9 end
-local function ba(b0,al,bb)local an=b0*(bb and 0 or 1)local bc=bb and 0 or al
-return an,an>=1 and an<=7,an>=2 and an<=7,an>=3 and an<=7,bc==0,bc>=0 and bc<=13,bc>=14 and bc<=20,bc==14,bc~=14 end
-local function bd(a_,b2)local au=-math.floor((a_-1)*2)/7.2
-return au,au<s and b2,math.max(-au,0)end
-local function be(bf,bg,bh,a9,aG,bb,bi)if bb then return 0,0,0,0,bi end
-return bf,bg,bh,a9,aG end
-local function bj(aK,aL,aT,aR,aS,bf)local bk=aL and n-20 or n
-local bl=bf<bk
-return V(aT),S(aT,bl),V(aR),S(aR,aK),V(aS),S(aS,aL)end
-local function bm(bf)return bf>=-50 and bf<=50 end
-local function bn(aK,aL,aM,aU,aO,a9,ar,bo,bf,as,bp)local bq=aK and aU<r
-local br=bq and q or p
-local bs=a9>p
-local bt=a9>br
-local bu=aM and aL and not aK and bo and bm(bf)and not as
-local bv=(bt or bu)and not ar
-local bw,bx=W(aO,bv,v)return bs and bp,bv,bw,bx end
-local function by(aK,aL,aM,ar,bz,bA,bo,bB,bC,bD,bE,bf,as,bF,b2,bp,bG,bH)local bI=aK and ar
-local bJ=aK and bE and aM
-local bK=ar and bo
-local bL=bm(bf)and not(ar or as)local bM=bL and not aM
-local bN=bM or bF and not b2
-local bO=bz and bB and bp and bH
-local bP=bK and not aL or bF and aL
-local bQ=bA and bC and bG and bH
-local bR=bA and bD and bH
-local bS=bN or aK and not(bA and bD)local bT=bN or bF and bp or bR
-local bU=not aK and not aL
-local bV=not bo and bU
-return sr_latch(aK,bP,bT),sr_latch(aL,bR,bS),sr_latch(aM,aL and bo,bI or bU),bO or bQ or bV or bJ end
-local function bW(al,aN,bX)local bw,bx=W(aN,bX,u)local bY=(al+(bx and 1 or 0))%21
-local bZ=bY-al
-return bY,bZ~=0,bw end
-local function b_(aV,aU,aP,aQ,bh,au,b2,c0)local c1=aQ or not b2
-local c2=c1 and 0 or au
-local c3,c4=Z(aP,aQ,c0)return bh*0.2+aV*0.8,math.min(B(c2,aU-0.1,aU+0.02),0),c3,c4 end
-function core_tick(b6,aH)local c5,c6,c7,c8,c9,ca,cb,cc,cd,ce,cf,cg,ch,ci,cj,ck=decode_state(aH)local aj,aY,aZ,a_,am,b0,b1,b2=b5(b6)local bb=b7(aj,aZ,am,b1)local an,ar,bz,bA,bo,bB,bC,bD,bE=ba(b0,c5,bb)local au,as,bi=bd(a_,b2)local cl,cm,bh,cn,co,cp,cq,cr,cs=physics_tick(aj,aY,c5,am,an,c6,c7,c8,ar,as,cj,au,cg,ch,ci)local bf,ct,cu,a9,aG=be(cl,cn,bh,co,cp,bb,bi)local bH,cv,bp,cw,bG,cx=bj(c6,c7,cf,cd,ce,bf)local c0,bv,cy,bF=bn(c6,c7,c8,cj,ca,a9,ar,bo,bf,as,bp)local aK,aL,aM,bX=by(c6,c7,c8,ar,bz,bA,bo,bB,bC,bD,bE,bf,as,bF,b2,bp,bG,bH)local al,cz,cA=bW(c5,c9,bX)local aV,aU,aP,aQ=b_(ck,cj,cb,cc,cu,au,b2,c0)local cB=put_bit(cz,0)|put_bit(aK,1)|put_bit(aL,2)|put_bit(aM,3)|put_bit(ar,4)|put_bit(as,5)|put_bit(bv,6)local b3={bf,ct,aV,aG,cB,0,0,0}local cC=encode_state(al,aK,aL,aM,cA,cy,aP,aQ,cw,cx,cv,cq,cr,cs,aU,aV)return b3,cC end
-function calculateTick(b6,aH)local a={aH[1],aH[2],i2f(aH[3]),i2f(aH[4]),i2f(aH[5]),i2f(aH[6]),i2f(aH[7]),aH[8]}local b3,cC=core_tick(b6,a)local b={cC[1],cC[2],f2i(cC[3]),f2i(cC[4]),f2i(cC[5]),f2i(cC[6]),f2i(cC[7]),cC[8]}return b3,b end
+function decode_state(aE)local aF=to_u32(aE[1])local aG=to_u32(aE[2])return get_bits(aF,0,5),get_bit(aF,5),get_bit(aF,6),get_bit(aF,7),get_bits(aF,8,4),get_bits(aF,12,5),get_bits(aG,0,10),get_bit(aG,19),get_bits(aG,10,3),get_bits(aG,13,3),get_bits(aG,16,3),aE[3],aE[4],aE[5],aE[6],aE[7]end
+function encode_state(a8,aH,aI,aJ,aK,aL,aM,aN,aO,aP,aQ,ai,aj,ak,aR,aS)local aT=put_bits(a8,0,5)|put_bit(aH,5)|put_bit(aI,6)|put_bit(aJ,7)|put_bits(aK,8,4)|put_bits(aL,12,5)local aU=put_bits(aM,0,10)|put_bits(aO,10,3)|put_bits(aP,13,3)|put_bits(aQ,16,3)|put_bit(aN,19)return{aT,aU,ai or 0,aj or 0,ak or 0,aR or 0,aS or 0,0}end
+function encode_stateless_in(a6,aV,aW,aX,a9,aY,aZ,a_)return{a6 or 0,aV or 0,aW or 0,aX or 0,a9 or 0,aY or 0,aZ and 1 or 0,a_ and 1 or 0}end
+function decode_stateless_out(b0)local b1=to_u32(b0[5])return b0[1],b0[2],b0[3],b0[4],get_bit(b1,0),get_bit(b1,1),get_bit(b1,2),get_bit(b1,3),get_bit(b1,4),get_bit(b1,5),get_bit(b1,6),get_bit(b1,7)end
+local function b2(b3)return b3[1],b3[2],b3[3],b3[4],b3[5],B(math.floor(b3[6]or 0),0,7),(b3[7]or 0)~=0,(b3[8]or 0)~=0 end
+local function b4(a6,aW,a9,aZ)local b5=math.abs(a6)>m
+local b6=aW<o
+return aZ or a9==0 or b5 or b6 end
+local function b7(aY,a8,b8)local aa=aY*(b8 and 0 or 1)local b9=b8 and 0 or a8
+return aa,aa>=1 and aa<=7,aa>=2 and aa<=7,aa>=3 and aa<=7,b9==0,b9>=0 and b9<=13,b9>=14 and b9<=20,b9==14,b9~=14 end
+local function ba(aX,a_)local ah=-math.floor((aX-1)*2)/7.2
+return ah,ah<s and a_,math.max(-ah,0)end
+local function bb(bc,bd,be,ap,aD,b8,bf)if b8 then return 0,0,0,0,bf end
+return bc,bd,be,ap,aD end
+local function bg(aH,aI,aQ,aO,aP,bc)local bh=aI and n-20 or n
+local bi=bc<bh
+return V(aQ),S(aQ,bi),V(aO),S(aO,aH),V(aP),S(aP,aI)end
+local function bj(bc)return bc>=-50 and bc<=50 end
+local function bk(aH,aI,aJ,aR,aL,ap,ae,bl,bc,af,bm)local bn=aH and aR<r
+local bo=bn and q or p
+local bp=ap>p
+local bq=ap>bo
+local br=aJ and aI and not aH and bl and bj(bc)and not af
+local bs=(bq or br)and not ae
+local bt,bu=W(aL,bs,v)return bp and bm,bs,bt,bu end
+local function bv(aH,aI,aJ,ae,bw,bx,bl,by,bz,bA,bB,bc,af,bC,a_,bm,bD,bE)local bF=aH and ae
+local bG=aH and bB and aJ
+local bH=ae and bl
+local bI=bj(bc)and not(ae or af)local bJ=bI and not aJ
+local bK=bJ or bC and not a_
+local bL=bw and by and bm and bE
+local bM=bH and not aI or bC and aI
+local bN=bx and bz and bD and bE
+local bO=bx and bA and bE
+local bP=bK or aH and not(bx and bA)local bQ=bK or bC and bm or bO
+local bR=not aH and not aI
+local bS=not bl and bR
+return sr_latch(aH,bM,bQ),sr_latch(aI,bO,bP),sr_latch(aJ,aI and bl,bF or bR),bL or bN or bS or bG end
+local function bT(a8,aK,bU)local bt,bu=W(aK,bU,u)local bV=(a8+(bu and 1 or 0))%21
+local bW=bV-a8
+return bV,bW~=0,bt end
+local function bX(aS,aR,aM,aN,be,ah,a_,bY)local bZ=aN or not a_
+local b_=bZ and 0 or ah
+local c0,c1=Z(aM,aN,bY)return be*0.2+aS*0.8,math.min(B(b_,aR-0.1,aR+0.02),0),c0,c1 end
+function core_tick(b3,aE)local c2,c3,c4,c5,c6,c7,c8,c9,ca,cb,cc,cd,ce,cf,cg,ch=decode_state(aE)local a6,aV,aW,aX,a9,aY,aZ,a_=b2(b3)local b8=b4(a6,aW,a9,aZ)local aa,ae,bw,bx,bl,by,bz,bA,bB=b7(aY,c2,b8)local ah,af,bf=ba(aX,a_)local ci,cj,be,ck,cl,cm,cn,co,cp=physics_tick(a6,aV,c2,a9,aa,c3,c4,c5,ae,af,cg,ah,cd,ce,cf)local bc,cq,cr,ap,aD=bb(ci,ck,be,cl,cm,b8,bf)local bE,cs,bm,ct,bD,cu=bg(c3,c4,cc,ca,cb,bc)local bY,bs,cv,bC=bk(c3,c4,c5,cg,c7,ap,ae,bl,bc,af,bm)local aH,aI,aJ,bU=bv(c3,c4,c5,ae,bw,bx,bl,by,bz,bA,bB,bc,af,bC,a_,bm,bD,bE)local a8,cw,cx=bT(c2,c6,bU)local aS,aR,aM,aN=bX(ch,cg,c8,c9,cr,ah,a_,bY)local cy=put_bit(cw,0)|put_bit(aH,1)|put_bit(aI,2)|put_bit(aJ,3)|put_bit(ae,4)|put_bit(af,5)|put_bit(bs,6)local b0={bc,cq,aS,aD,cy,0,0,0}local cz=encode_state(a8,aH,aI,aJ,cx,cv,aM,aN,ct,cu,cs,cn,co,cp,aR,aS)return b0,cz end
+function calculateTick(b3,aE)local a={aE[1],aE[2],i2f(aE[3]),i2f(aE[4]),i2f(aE[5]),i2f(aE[6]),i2f(aE[7]),aE[8]}local b0,cz=core_tick(b3,a)local b={cz[1],cz[2],f2i(cz[3]),f2i(cz[4]),f2i(cz[5]),f2i(cz[6]),f2i(cz[7]),cz[8]}return b0,b end
 --[[
 //# sourceMappingURL=main.lua.map
 ]]

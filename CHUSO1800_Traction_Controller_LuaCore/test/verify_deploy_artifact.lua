@@ -77,3 +77,55 @@ if not saw_real_current then
 end
 
 print("PASS  verify_deploy_artifact (put_bit/put_bits survive minification, phase1 engages)")
+
+--------------------------------------------------------------------------
+-- Regression guard for DESIGN_LOG.md #24: storm-lua-minify's renaming pass
+-- can assign the SAME short name to two different locals in the same
+-- function scope (observed producing a literal duplicate-parameter Lua
+-- function definition) when that scope both takes several of its own
+-- parameters AND closes over a short-named outer constant (here, `K`).
+-- This silently turned `K * phi * n` into a garbage value inside the
+-- armature-current Newton solve, which is numerically fine at t=0 (rpm~0)
+-- but diverges further from the source's correct trajectory every tick as
+-- speed rises -- eventually stalling cam progression indefinitely instead
+-- of climbing through Series into Parallel. `test/run_all.lua`'s scenarios
+-- can't catch this (they dofile pristine src/chuso1800_core.lua), and the
+-- narrow 30-tick/near-zero-speed check above didn't either (the corruption
+-- is too small to matter until speed has rise for several real seconds).
+-- This check integrates the deploy artifact's OWN accel output back into
+-- its OWN speed input tick-by-tick (approximating real Stormworks physics
+-- feedback) and asserts Parallel (phase2) engages within a realistic time
+-- budget under full notch -- it did not, before the #24 fix, because
+-- current never dropped back under the advance threshold once the Newton
+-- solve started diverging.
+--------------------------------------------------------------------------
+
+for i = 1, 32 do in_channels[i] = 0; out_channels[i] = 0 end
+
+local speed = 0
+local TICK_DT = 1 / 60
+local reached_parallel_tick = nil
+for tick = 1, 60 * 20 do -- 20 simulated seconds
+    local cur = { speed, 1500, 5, 5, 1, 4, 0, 0 }
+    for i = 1, 8 do
+        in_channels[i] = cur[i]
+        in_channels[i + 8] = cur[i]
+    end
+    for i = 17, 32 do in_channels[i] = out_channels[i] end
+    onTick()
+
+    local status = out_channels[21] and to_u32(out_channels[21]) or 0
+    if (status & 4) ~= 0 and not reached_parallel_tick then reached_parallel_tick = tick end
+
+    local accel = out_channels[19] or 0
+    speed = speed + accel * TICK_DT
+end
+
+if not reached_parallel_tick then
+    error("deploy artifact never reached Parallel (phase2_latch) under a realistic 20s full-notch " ..
+        "speed-feedback run -- storm-lua-minify K/n parameter-collision regression (DESIGN_LOG.md #24) is back")
+end
+
+print(string.format(
+    "PASS  verify_deploy_artifact (armature-current Newton solve survives minification, Parallel reached at tick %d)",
+    reached_parallel_tick))
