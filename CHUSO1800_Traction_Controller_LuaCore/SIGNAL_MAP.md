@@ -197,7 +197,7 @@ Fable 5によるレビューで指摘された実バグ（旧実装は`level >= 
 |---|---|---|
 | 1 | `motor_current` | DANRYUゲート、Momelink-1900のch24 |
 | 2 | `W` | 出力ポート `W` へ直結 |
-| 3 | `bc_target_smooth` | `BC target [atm]` 出力系列へ |
+| 3 | `bc_target_smooth`（実体は自車平滑加速度。新SPEC.md §8.5 N3・§13.2 N26、`model_acceleration_smoothed_read`という橋渡し用ノード名に対応。DESIGN_LOG.md #20/#25参照） | Momelink-A ch2（1800形フレームでの上書き値）／ch26（Advancedフレーム）へ |
 | 4 | `bcT`（実体は空気ブレーキ補完減速度要求。新SPEC.md §8.5 N7、DESIGN_LOG.md #20参照） | `bc_target_abs_pressure`（`x*3.6+1`でBC絶対圧目標へ変換、旧名`speed_display`）／Momelink ch25 経路へ |
 | 5 | STATUS_BITS_LAYOUT のパック済みビットフィールド（32bit中8bit、下記参照） | RSS／Momelink側のゲート |
 | 6-8 | 予備（0） | |

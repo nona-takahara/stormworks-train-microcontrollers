@@ -229,39 +229,6 @@ local function deriv_phi(iF)
     return Kmu * Ks * PHIs * PHIs / ((Ks * math.abs(iF) + PHIs) * (Ks * math.abs(iF) + PHIs))
 end
 
-local function calc_iF(pF, ia, iF_a)
-    return ia * pF + iF_a
-end
-
-local function deriv_iF(pF)
-    return pF
-end
-
-local function calc_ia(ia, Vt, n, RpN, pF, iF_a)
-    return K * calc_phi(calc_iF(pF, ia, iF_a)) * n - Vt + (MOT_RES + RpN) * ia
-end
-
-local function deriv_ia(ia, Vt, n, RpN, pF, iF_a)
-    return K * deriv_phi(calc_iF(pF, ia, iF_a)) * deriv_iF(pF) * n + MOT_RES + RpN
-end
-
-local function calc_current_phi(Vt, n, RpN, pF, iF_a, seed)
-    local i = seed
-    for _ = 1, 5 do
-        local ndf = deriv_ia(i, Vt, n, RpN, pF, iF_a)
-        if math.abs(ndf) >= 0.000001 then
-            i = i - calc_ia(i, Vt, n, RpN, pF, iF_a) / ndf
-        else
-            if ndf > 0 then
-                i = i - calc_ia(i, Vt, n, RpN, pF, iF_a)
-            elseif ndf < 0 then
-                i = i + calc_ia(i, Vt, n, RpN, pF, iF_a)
-            end
-        end
-    end
-    return i, calc_phi(calc_iF(pF, i, iF_a))
-end
-
 -- physics_tick：n409.luaのonTick本体を1対1で移植したもの。引数は元の
 -- sim_input composite channel/traction_status_boolの並びに対応：
 -- speed, vl(=catenary_voltage_sw), position_counter(OLDカム), direction,
@@ -306,7 +273,37 @@ function physics_tick(speed, vl, position_counter, direction, notch_eff, phase1,
 
     if iF_a < 20 then iF_a = 20 elseif iF_a > 500 then iF_a = 500 end
 
-    local i, phi = calc_current_phi(vl / srsmtr, rpm, res / srsmtr, direction * 0.2, iF_a * direction, NEWTON_SEED)
+    -- 電機子電流のNewton法（元はcalc_current_phiという独立local関数
+    -- だった）をphysics_tick本体へ直接インライン化してある
+    -- （DESIGN_LOG.md #24参照）。storm-lua-minifyのリネームパスに、
+    -- 複数の新規ローカルを宣言する独立local関数の中で、外側スコープの
+    -- 定数`K`と同じ短縮名を別の引数へ二重に割り当ててしまうバグがあり
+    -- （生成されたLuaが同名引数を複数持つ不正な関数になっていた）、
+    -- 結果`K * phi * n`が別の変数の値に化けて高速域で電機子電流の解が
+    -- 破綻し、カムが並列以降へ一切進段しなくなっていた（#18とは異なる
+    -- 種類のminifierバグ）。`physics_tick`自身は独立local関数ではなく
+    -- グローバル関数本体であり、実際にstorm-lua-minifyでこのバグが
+    -- 再現しないことを確認済み（同ファイル内の他の`K`使用箇所と同様）。
+    local newton_vt, newton_n, newton_rpn, newton_pf, newton_ifa = vl / srsmtr, rpm, res / srsmtr, direction * 0.2, iF_a * direction
+    local i = NEWTON_SEED
+    local phi = 0
+    for _ = 1, 5 do
+        local iF = i * newton_pf + newton_ifa
+        phi = calc_phi(iF)
+        local dphi = deriv_phi(iF)
+        local ndf = K * dphi * newton_pf * newton_n + MOT_RES + newton_rpn
+        local fx = K * phi * newton_n - newton_vt + (MOT_RES + newton_rpn) * i
+        if math.abs(ndf) >= 0.000001 then
+            i = i - fx / ndf
+        else
+            if ndf > 0 then
+                i = i - fx
+            elseif ndf < 0 then
+                i = i + fx
+            end
+        end
+    end
+    phi = calc_phi(i * newton_pf + newton_ifa)
     if vl == 0 then i = 0; phi = 0 end
 
     local trqN = 9.55 * K * phi * i
@@ -467,20 +464,39 @@ local function debounce_block(phase1_latch, phase2_latch, current_below_limit_ca
         debounce_charged(phase2_cap_counter), debounce_step(phase2_cap_counter, phase2_latch)
 end
 
+-- motor_currentがほぼ0とみなせるか（SPEC §4.6 neutral_cond由来のしきい値、
+-- phase_state_machineと共有。DESIGN_LOG.md #23）。
+local function current_near_zero(motor_current)
+    return motor_current >= -50 and motor_current <= 50
+end
+
 -- SPEC §3.6 界磁電流超過検知チェーン。main.sw-netでは"regen_warning"と
 -- 誤命名されていたが回生ブレーキ警告ではない ─ iF_aはここでは界磁電流
 -- （n409.luaの"brake_current_fb"/channel=6と同じ値）。「notchは0に落ちたが
 -- iF_aがまだ300/400A閾値を超えている」を検知し、coasting_condの自然な
 -- 電流減衰を待たずphase1/phase2を早期に畳む（改名の経緯は
--- `DESIGN_LOG.md` #10）。戻り値: brake_current_high_phase1,
+-- `DESIGN_LOG.md` #10）。
+--
+-- 「固着カムからの脱出」検知もこの同じcond/pulseチェーンに合流させてある
+-- （DESIGN_LOG.md #23）：カム0で並列(phase2)＋界磁制御(regen_latch)だけが
+-- 立ったまま直列(phase1)が一度も立たない状態は、coasting_condが要求する
+-- `not regen_latch`が恒久的に満たせないため、界磁電流が閾値を超えない限り
+-- 自然には解けない。しかしnotch/回生要求ともに無く電流もほぼ0まで
+-- 収束しているなら「単に停止している」だけであり、この場合も同じ
+-- field_current_excess_pulse経由でphase1_set／phase_reset_condへ合流させ、
+-- 通常のtop-of-ladder脱出経路を再利用する。戻り値: brake_current_high_phase1,
 -- field_current_excess_cond, field_current_excess_counter_next,
 -- field_current_excess_pulse。
-local function field_current_excess_block(phase1_latch, regen_bc_smooth, field_current_excess_counter,
-    iF_a, notch_ge1, phase1_cap_charged)
+local function field_current_excess_block(phase1_latch, phase2_latch, regen_latch, regen_bc_smooth,
+    field_current_excess_counter, iF_a, notch_ge1, notch_fb_ge1, motor_current, low_bc_with_regen_flag,
+    phase1_cap_charged)
     local phase1_low_bc = phase1_latch and regen_bc_smooth < REGEN_BC_MIN
     local brake_limit_sw = phase1_low_bc and BRAKE_LIMIT_400 or BRAKE_LIMIT_300
     local brake_current_above_300 = iF_a > BRAKE_LIMIT_300
-    local field_current_excess_cond = (iF_a > brake_limit_sw) and (not notch_ge1)
+    local field_current_excess = iF_a > brake_limit_sw
+    local stuck_at_top_idle = regen_latch and phase2_latch and (not phase1_latch) and notch_fb_ge1
+        and current_near_zero(motor_current) and (not low_bc_with_regen_flag)
+    local field_current_excess_cond = (field_current_excess or stuck_at_top_idle) and (not notch_ge1)
     local counter_next, pulse = periodic_pulse_step(
         field_current_excess_counter, field_current_excess_cond, FIELD_CURRENT_EXCESS_PERIOD_TICKS)
     return brake_current_above_300 and phase1_cap_charged, field_current_excess_cond, counter_next, pulse
@@ -496,8 +512,7 @@ local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
     local phase1_regen_active = phase1_latch and notch_fb_ne14 and regen_latch
     local power_with_regen = notch_ge1 and notch_fb_ge1
 
-    local current_near_zero = motor_current >= -50 and motor_current <= 50
-    local neutral_cond = current_near_zero and not (notch_ge1 or low_bc_with_regen_flag)
+    local neutral_cond = current_near_zero(motor_current) and not (notch_ge1 or low_bc_with_regen_flag)
     local coasting_cond = neutral_cond and (not regen_latch)
     local phase_reset_cond = coasting_cond or (field_current_excess_pulse and (not regen_flag))
 
@@ -589,8 +604,9 @@ function core_tick(stateless_in, state_in)
 
     local brake_current_high_phase1, field_current_excess_cond,
         field_current_excess_counter_next, field_current_excess_pulse =
-        field_current_excess_block(st_phase1_latch, st_regen_bc_smooth, st_field_current_excess_counter,
-            iF_a, notch_ge1, phase1_cap_charged)
+        field_current_excess_block(st_phase1_latch, st_phase2_latch, st_regen_latch, st_regen_bc_smooth,
+            st_field_current_excess_counter, iF_a, notch_ge1, notch_fb_ge1, motor_current,
+            low_bc_with_regen_flag, phase1_cap_charged)
 
     local phase1_latch, phase2_latch, regen_latch, traction_any_active = phase_state_machine(
         st_phase1_latch, st_phase2_latch, st_regen_latch,

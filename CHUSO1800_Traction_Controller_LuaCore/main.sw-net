@@ -124,7 +124,7 @@ module main
   inst CONST momelink_type_id_1911 (value=1911) : -> value=momelink_type_id_1911_value
   inst CONST vehicle_mass_tonnes (value=35) : -> value=vehicle_mass_tonnes_value
   inst COMPOSITE_READ_NUMBER inner_unit_acceleration (channel=26) : composite="Momelink inner unit" -> out=inner_unit_acceleration_out
-  inst COMPOSITE_WRITE_NUMBER momelink_advanced_frame (count=1, offset=1) : in1=bc_application_ratio_out, in2=inner_unit_acceleration_out, in15=momelink_type_id_1911_value, in22=vehicle_mass_tonnes_value, in23=traction_supply_voltage_out, in24=armature_current_out, in25=bc_target_abs_pressure_out, in26=model_acceleration_smoothed_out -> out=momelink_advanced_frame_out
+  inst COMPOSITE_WRITE_NUMBER momelink_advanced_frame (count=26, offset=1) : in1=bc_application_ratio_out, in2=inner_unit_acceleration_out, in15=momelink_type_id_1911_value, in22=vehicle_mass_tonnes_value, in23=traction_supply_voltage_out, in24=armature_current_out, in25=bc_target_abs_pressure_out, in26=model_acceleration_smoothed_out -> out=momelink_advanced_frame_out
   inst AND use_1900_advanced_frame : a=inner_unit_type_is_1911_out, b=vehicle_type_1900_out -> out=use_1900_advanced_frame_out
   inst COMPOSITE_SWITCHBOX momelink_output_frame_mux : a=momelink_advanced_frame_out, b=momelink_1800_frame_out, switch=use_1900_advanced_frame_out -> out="Momelink-A"
 
