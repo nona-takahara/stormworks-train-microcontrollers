@@ -94,28 +94,13 @@ module main
   inst FUNC_NUM_1 power_notch_command_delay (expression="x") : x=power_notch_command_out -> out=power_notch_command_out_delay
   inst FUNC_NUM_1 controller_stop_num_delay (expression="x") : x=controller_stop_num_out -> out=controller_stop_num_out_delay
   inst FUNC_NUM_1 db_auto_command_num_delay (expression="x") : x=db_auto_command_num_out -> out=db_auto_command_num_out_delay
-  # state_sync.luaのfb入力（ch17-32）は「前tickのch17-32」ではなく、LUA出力側で
-  # 2tick遅れとして確定済みのch1-16を1tick戻す必要がある。inc=core_outの
-  # パススルーだけにするとch17-32が「前tickの当tick計算値」へずれて、内部s1/s2と
-  # 外部fbが毎tick不一致になり再同期が暴走する。必ずcore_out ch1-16を読んで
-  # core_input ch17-32へ明示的に書き戻す（DESIGN_LOG.md #22）。
-  inst COMPOSITE_READ_NUMBER core_fb_out1 (channel=1) : composite=core_out -> out=core_fb_out1_out
-  inst COMPOSITE_READ_NUMBER core_fb_out2 (channel=2) : composite=core_out -> out=core_fb_out2_out
-  inst COMPOSITE_READ_NUMBER core_fb_out3 (channel=3) : composite=core_out -> out=core_fb_out3_out
-  inst COMPOSITE_READ_NUMBER core_fb_out4 (channel=4) : composite=core_out -> out=core_fb_out4_out
-  inst COMPOSITE_READ_NUMBER core_fb_out5 (channel=5) : composite=core_out -> out=core_fb_out5_out
-  inst COMPOSITE_READ_NUMBER core_fb_out6 (channel=6) : composite=core_out -> out=core_fb_out6_out
-  inst COMPOSITE_READ_NUMBER core_fb_out7 (channel=7) : composite=core_out -> out=core_fb_out7_out
-  inst COMPOSITE_READ_NUMBER core_fb_out8 (channel=8) : composite=core_out -> out=core_fb_out8_out
-  inst COMPOSITE_READ_NUMBER core_fb_state1 (channel=9) : composite=core_out -> out=core_fb_state1_out
-  inst COMPOSITE_READ_NUMBER core_fb_state2 (channel=10) : composite=core_out -> out=core_fb_state2_out
-  inst COMPOSITE_READ_NUMBER core_fb_state3 (channel=11) : composite=core_out -> out=core_fb_state3_out
-  inst COMPOSITE_READ_NUMBER core_fb_state4 (channel=12) : composite=core_out -> out=core_fb_state4_out
-  inst COMPOSITE_READ_NUMBER core_fb_state5 (channel=13) : composite=core_out -> out=core_fb_state5_out
-  inst COMPOSITE_READ_NUMBER core_fb_state6 (channel=14) : composite=core_out -> out=core_fb_state6_out
-  inst COMPOSITE_READ_NUMBER core_fb_state7 (channel=15) : composite=core_out -> out=core_fb_state7_out
-  inst COMPOSITE_READ_NUMBER core_fb_state8 (channel=16) : composite=core_out -> out=core_fb_state8_out
-  inst COMPOSITE_WRITE_NUMBER core_write (count=32, offset=1) : inc=core_out, in1=vehicle_speed_out, in2=traction_supply_voltage_out, in3=brake_pipe_for_inhibit_out, in4=brake_demand_pressure_out, in5=direction_sign_out, in6=power_notch_command_out, in7=controller_stop_num_out, in8=db_auto_command_num_out, in9=vehicle_speed_out_delay, in10=traction_supply_voltage_out_delay, in11=brake_pipe_for_inhibit_out_delay, in12=brake_demand_pressure_out_delay, in13=direction_sign_out_delay, in14=power_notch_command_out_delay, in15=controller_stop_num_out_delay, in16=db_auto_command_num_out_delay, in17=core_fb_out1_out, in18=core_fb_out2_out, in19=core_fb_out3_out, in20=core_fb_out4_out, in21=core_fb_out5_out, in22=core_fb_out6_out, in23=core_fb_out7_out, in24=core_fb_out8_out, in25=core_fb_state1_out, in26=core_fb_state2_out, in27=core_fb_state3_out, in28=core_fb_state4_out, in29=core_fb_state5_out, in30=core_fb_state6_out, in31=core_fb_state7_out, in32=core_fb_state8_out -> out=core_input
+  # ch1-16は毎tick明示的に上書き（i0+i1）。ch17-32はinc=core_out（LUA自身の
+  # 前回出力）をそのままパススルーする。StormworksのLUA入出力自体が1tick遅れ、
+  # さらにCOMPOSITE_WRITE_NUMBER→LUA入力の経路で1tick遅れるため、この自己ループは
+  # state_sync.luaが要求するo2_fb/s2_fbとしてジャスト2tick遅延になる。
+  # 見た目のチャンネル名だけでcore_out ch1-16をch17-32へずらして戻すと、実機では
+  # 余分な遅延/位相ずれを作るため不可（実機検証済み、DESIGN_LOG.md #22）。
+  inst COMPOSITE_WRITE_NUMBER core_write (count=16, offset=1) : inc=core_out, in1=vehicle_speed_out, in2=traction_supply_voltage_out, in3=brake_pipe_for_inhibit_out, in4=brake_demand_pressure_out, in5=direction_sign_out, in6=power_notch_command_out, in7=controller_stop_num_out, in8=db_auto_command_num_out, in9=vehicle_speed_out_delay, in10=traction_supply_voltage_out_delay, in11=brake_pipe_for_inhibit_out_delay, in12=brake_demand_pressure_out_delay, in13=direction_sign_out_delay, in14=power_notch_command_out_delay, in15=controller_stop_num_out_delay, in16=db_auto_command_num_out_delay -> out=core_input
   inst LUA core_logic (script_ref="deploy/chuso1800_deploy.lua") : composite=core_input -> composite=core_out
 
   # --- Core outputs（core_out ch1-8 = state_sync.luaが再同期済みの2tick遅れた出力。
