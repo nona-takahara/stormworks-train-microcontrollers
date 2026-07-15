@@ -1,0 +1,1632 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor id_counter="109" id_counter_node="16" name="CHUSO 1800 Traction Controller" description="No description set." width="3" length="6" sym0="4370" sym1="10922" sym2="10898" sym3="43691" sym4="37138" sym6="8743" sym7="21841" sym8="21842" sym9="21844" sym10="8739" sym12="35754" sym13="21161" sym14="19129" sym15="37546">
+	<nodes>
+		<n id="1" component_id="94">
+			<node label="Catenary Line Voltage [V]" description="The input signal to be processed." type="1" mode="1">
+				<position x="0" z="1"/>
+			</node>
+		</n>
+		<n id="2" component_id="95">
+			<node label="SAP [atm]" description="The input signal to be processed." type="1" mode="1">
+				<position x="1" z="2"/>
+			</node>
+		</n>
+		<n id="3" component_id="96">
+			<node label="DANRYU" description="The input signal to be processed.">
+				<position x="2" z="4"/>
+			</node>
+		</n>
+		<n id="4" component_id="97">
+			<node label="cam" description="The input signal to be processed.">
+				<position x="2" z="5"/>
+			</node>
+		</n>
+		<n id="5" component_id="98">
+			<node label="W" description="The input signal to be processed." type="1">
+				<position x="1" z="1"/>
+			</node>
+		</n>
+		<n id="6" component_id="99">
+			<node label="Controller Stop" description="The input signal to be processed." mode="1">
+				<position x="1" z="0"/>
+			</node>
+		</n>
+		<n id="7" component_id="100">
+			<node label="BP [atm]" description="The input signal to be processed." type="1" mode="1">
+				<position x="0" z="2"/>
+			</node>
+		</n>
+		<n id="8" component_id="101">
+			<node label="BC target [atm]" description="The input signal to be processed." type="1">
+				<position x="2" z="0"/>
+			</node>
+		</n>
+		<n id="9" component_id="102">
+			<node label="Simple IF" description="The input signal to be processed." type="5" mode="1">
+				<position x="0" z="3"/>
+			</node>
+		</n>
+		<n id="10" component_id="103">
+			<node label="Extended IF" description="The input signal to be processed." type="5" mode="1">
+				<position x="0" z="4"/>
+			</node>
+		</n>
+		<n id="11" component_id="104">
+			<node label="Momelink-A" description="The input signal to be processed." type="5">
+				<position x="1" z="5"/>
+			</node>
+		</n>
+		<n id="12" component_id="105">
+			<node label="BC [atm abs]" description="The input signal to be processed." type="1" mode="1">
+				<position x="2" z="2"/>
+			</node>
+		</n>
+		<n id="13" component_id="106">
+			<node label="Momelink inner unit" description="The input signal to be processed." type="5" mode="1">
+				<position x="0" z="5"/>
+			</node>
+		</n>
+		<n id="14" component_id="107">
+			<node label="MR [atm abs]" description="The input signal to be processed." type="1" mode="1">
+				<position x="2" z="3"/>
+			</node>
+		</n>
+		<n id="15" component_id="108">
+			<node label="Rolling Stock Status" description="The input signal to be processed." type="5">
+				<position x="1" z="4"/>
+			</node>
+		</n>
+		<n id="16" component_id="109">
+			<node label="Physics Sensor [+Z is front]" description="The input signal to be processed." type="5" mode="1">
+				<position x="0" z="0"/>
+			</node>
+		</n>
+	</nodes>
+	<group>
+		<data type="-1104064832">
+			<inputs/>
+			<outputs/>
+		</data>
+		<components>
+			<c type="33">
+				<object id="1" on="SAP" off="ECB" n="SAP or ECB">
+					<pos x="1.5" y="-27.25"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="2">
+					<pos x="-1" y="-26.25"/>
+					<in1 component_id="102"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="3">
+					<n text="0"/>
+					<pos x="-1" y="-27.25"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="4">
+					<n text="5" value="5"/>
+					<pos x="-1" y="-26.75"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="5">
+					<pos x="0.25" y="-27"/>
+					<in1 component_id="3"/>
+					<in2 component_id="4"/>
+					<in3 component_id="2"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="6">
+					<pos x="2.75" y="-27.5"/>
+					<in1 component_id="100"/>
+					<in2 component_id="5"/>
+					<in3 component_id="1"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="7">
+					<pos x="0.25" y="-24.25"/>
+					<in1 component_id="102"/>
+				</object>
+			</c>
+			<c type="10">
+				<object id="8" e="clamp(x+(5-y)*7,0,36)/8+1">
+					<pos x="1.5" y="-24.5"/>
+					<in1 component_id="7"/>
+					<in2 component_id="5"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="9">
+					<pos x="2.75" y="-24.75"/>
+					<in1 component_id="95"/>
+					<in2 component_id="8"/>
+					<in3 component_id="1"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="10" i="15">
+					<pos x="0.25" y="-20.5"/>
+					<in1 component_id="102"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="11" i="16">
+					<pos x="0.25" y="-22.25"/>
+					<in1 component_id="102"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="12">
+					<n text="1" value="1"/>
+					<pos x="0.25" y="-20"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="13">
+					<n text="0"/>
+					<pos x="0.25" y="-14.75"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="14">
+					<pos x="1.5" y="-19.5"/>
+					<in1 component_id="12"/>
+					<in2 component_id="13"/>
+					<in3 component_id="10"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="15">
+					<pos x="1.5" y="-20.25"/>
+					<in1 component_id="12"/>
+					<in2 component_id="13"/>
+					<in3 component_id="11"/>
+				</object>
+			</c>
+			<c type="7">
+				<object id="16">
+					<pos x="2.75" y="-20"/>
+					<in1 component_id="14"/>
+					<in2 component_id="15"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="17" i="1">
+					<pos x="2.75" y="-12"/>
+					<in1 component_id="102"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="18" i="17">
+					<pos x="0.25" y="-18.5"/>
+					<in1 component_id="102"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="19">
+					<pos x="1.5" y="-18.5"/>
+					<in1 component_id="12"/>
+					<in2 component_id="13"/>
+					<in3 component_id="18"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="20">
+					<pos x="1.5" y="-14.75"/>
+					<in1 component_id="12"/>
+					<in2 component_id="13"/>
+					<in3 component_id="99"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="21" i="8">
+					<pos x="2.75" y="-32"/>
+					<in1 component_id="109"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="22">
+					<n text="1500" value="1500"/>
+					<pos x="0.25" y="-5.5"/>
+				</object>
+			</c>
+			<c type="33">
+				<object id="23" on="On" off="Off" n="Catenary Line Voltage" v="true">
+					<pos x="-1" y="-5.75"/>
+				</object>
+			</c>
+			<c type="12">
+				<object id="24">
+					<min text="0"/>
+					<max text="0"/>
+					<pos x="-2.25" y="-6.25"/>
+					<in1 component_id="94"/>
+				</object>
+			</c>
+			<c>
+				<object id="25">
+					<pos x="-1" y="-6.25"/>
+					<in1 component_id="24"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="26">
+					<pos x="0.25" y="-6.25"/>
+					<in1 component_id="23"/>
+					<in2 component_id="25"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="27">
+					<pos x="1.5" y="20.75"/>
+					<in1 component_id="48"/>
+					<in2 component_id="49"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="28">
+					<pos x="1.5" y="-6.25"/>
+					<in1 component_id="94"/>
+					<in2 component_id="22"/>
+					<in3 component_id="26"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="29">
+					<pos x="2.75" y="3.5"/>
+					<in1 component_id="28"/>
+					<in3 component_id="27"/>
+				</object>
+			</c>
+			<c type="24">
+				<object id="30">
+					<pos x="-3.5" y="18.75"/>
+					<in2 component_id="39"/>
+					<in1 component_id="38"/>
+				</object>
+			</c>
+			<c type="24">
+				<object id="31">
+					<pos x="-3.5" y="19.75"/>
+					<in2 component_id="41"/>
+					<in1 component_id="40"/>
+				</object>
+			</c>
+			<c type="24">
+				<object id="32">
+					<pos x="-1" y="16"/>
+					<in2 component_id="37"/>
+					<in1 component_id="34"/>
+				</object>
+			</c>
+			<c type="24">
+				<object id="33">
+					<pos x="-1" y="19.5"/>
+					<in2 component_id="37"/>
+					<in1 component_id="35"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="34">
+					<pos x="-2.25" y="18"/>
+					<in1 component_id="30" node_index="1"/>
+					<in2 component_id="36"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="35">
+					<pos x="-2.25" y="19.5"/>
+					<in1 component_id="31" node_index="1"/>
+					<in2 component_id="36"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="36" i="5">
+					<pos x="-3.5" y="18"/>
+					<in1 component_id="103"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="37" i="6">
+					<pos x="-2.25" y="16"/>
+					<in1 component_id="103"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="38" i="3">
+					<pos x="-4.75" y="18.75"/>
+					<in1 component_id="103"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="39" i="4">
+					<pos x="-4.75" y="19.25"/>
+					<in1 component_id="103"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="40" i="7">
+					<pos x="-4.75" y="19.75"/>
+					<in1 component_id="103"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="41" i="8">
+					<pos x="-4.75" y="20.25"/>
+					<in1 component_id="103"/>
+				</object>
+			</c>
+			<c type="20">
+				<object id="42" name="Panta Height (Type)">
+					<pos x="0.25" y="26.75"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="43">
+					<pos x="1.5" y="26"/>
+					<in1 component_id="42"/>
+					<in2 component_id="45"/>
+					<in3 component_id="48"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="44">
+					<pos x="1.5" y="29.75"/>
+					<in1 component_id="42"/>
+					<in2 component_id="45"/>
+					<in3 component_id="49"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="45">
+					<n text="0.02" value="0.02"/>
+					<pos x="0.25" y="26.25"/>
+				</object>
+			</c>
+			<c type="33">
+				<object id="46" on="1900" off="1800" n="M type">
+					<pos x="-2.25" y="16.5"/>
+				</object>
+			</c>
+			<c>
+				<object id="47">
+					<pos x="-1" y="20.25"/>
+					<in1 component_id="46"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="48">
+					<pos x="0.25" y="20"/>
+					<in1 component_id="32"/>
+					<in2 component_id="47"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="49">
+					<pos x="0.25" y="20.75"/>
+					<in1 component_id="33"/>
+					<in2 component_id="47"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="50" n="Over Speed Th. [m/s]">
+					<v text="32" value="32"/>
+					<pos x="-9" y="-32"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="51" n="Power Limit Current [A]">
+					<v text="210" value="210"/>
+					<pos x="-7.75" y="-32"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="52" n="Brake Limit@320kPa [A]">
+					<v text="290" value="290"/>
+					<pos x="-6.5" y="-32"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="53" e="x">
+					<pos x="4" y="-31.25"/>
+					<in1 component_id="21"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="54" e="x">
+					<pos x="4" y="4.25"/>
+					<in1 component_id="29"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="55" e="x">
+					<pos x="4" y="-26.75"/>
+					<in1 component_id="6"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="56" e="x">
+					<pos x="4" y="-23.75"/>
+					<in1 component_id="9"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="57" e="x">
+					<pos x="4" y="-19.25"/>
+					<in1 component_id="16"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="58" e="x">
+					<pos x="4" y="-11.25"/>
+					<in1 component_id="17"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="59" e="x">
+					<pos x="4" y="-12.75"/>
+					<in1 component_id="20"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="60" e="x">
+					<pos x="4" y="-16.5"/>
+					<in1 component_id="19"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="61" count="16">
+					<pos x="5.25" y="-19.75"/>
+					<inc component_id="62"/>
+					<in1 component_id="21"/>
+					<in2 component_id="29"/>
+					<in3 component_id="6"/>
+					<in4 component_id="9"/>
+					<in5 component_id="16"/>
+					<in6 component_id="17"/>
+					<in7 component_id="20"/>
+					<in8 component_id="19"/>
+					<in9 component_id="53"/>
+					<in10 component_id="54"/>
+					<in11 component_id="55"/>
+					<in12 component_id="56"/>
+					<in13 component_id="57"/>
+					<in14 component_id="58"/>
+					<in15 component_id="59"/>
+					<in16 component_id="60"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="62" script="function i2f(a)local b=(&apos;f&apos;):unpack((&apos;I4&apos;):pack(a&amp;0xFFFFFFFF))return b end
+function f2i(b)local a=(&apos;I4&apos;):unpack((&apos;f&apos;):pack(b))return a end
+s1={0,0,0,0,0,0,0,0}s2={0,0,0,0,0,0,0,0}function onTick()local c,d,e,f={},{},{},{}local g,h,i
+for j=1,8 do c[j]=input.getNumber(j)d[j]=input.getNumber(j+8)e[j]=input.getNumber(j+16)f[j]=f2i(input.getNumber(j+24))end
+local k=true
+for j=1,8 do k=k and s2[j]==f[j]end
+if not k then i,s1=calculateTick(d,f)end
+g,h=calculateTick(c,s1)for j=1,8 do output.setNumber(j,e[j])output.setNumber(j+8,i2f(f[j]))output.setNumber(j+16,g[j])output.setNumber(j+24,i2f(h[j]))end
+s2=s1
+s1=h end
+local a=12.16
+local b=0.00029
+local c=0.07
+local d=0.85
+local e=150
+local f=4
+local g=5.31
+local h=0.86/2
+local i=35*1000
+local j={7.428,5.137,4.157,3.197,2.681,2.178,1.717,1.317,0.9710,0.7570,0.6386,0.3610,0.2276,0.1334,0,2.568,1.734,1.218,0.7570,0.4110,0.1334}local k={0,5.137,4.157,3.197,2.681,2.178,1.717,1.317,0.9710,0.7570,0.6386,0.3610,0.2276,0.1334,3.714,2.568,1.734,1.218,0.7570,0.4110,0.1334}local l=200
+local m=property.getNumber(&quot;Over Speed Th. [m/s]&quot;)local n=property.getNumber(&quot;Power Limit Current [A]&quot;)local o=4
+local p=300
+local q=400
+local r=-0.1
+local s=-0.05
+local t=6
+local u=12
+local v=30
+local w=600
+local x=30
+local y=w
+local z=y//x
+local A=1
+local function B(b,C,D)if b&lt;C then return C end
+if b&gt;D then return D end
+return b end
+function to_u32(E)return string.unpack(&quot;I4&quot;,string.pack(&quot;I4&quot;,math.floor(E or 0)&amp;0xFFFFFFFF))end
+function get_bits(F,G,H)local I=F&gt;&gt;G
+local J=1&lt;&lt;H
+local K=J-1
+return I&amp;K end
+function get_bit(F,G)local I=F&gt;&gt;G
+local L=I&amp;1
+return L~=0 end
+function put_bits(E,G,H)local J=1&lt;&lt;H
+local K=J-1
+local M=math.floor(E or 0)local N=M&amp;K
+return N&lt;&lt;G end
+function put_bit(O,G)local L=O and 1 or 0
+return L&lt;&lt;G end
+function sr_latch(P,Q,R)if R then return false end
+if Q then return true end
+return P end
+local function S(T,U)if U then return math.min(T+1,t)end
+return 0 end
+local function V(T)return T&gt;=t end
+local function W(T,U,X)if not U then return 0,false end
+local Y=T+1
+if Y&gt;=X then return 0,true end
+return Y,false end
+local function Z(_,U)if U then return math.min(_+z,y)end
+return math.max(_-A,0)end
+local function a0(_)return _&gt;=y end
+local function a1(a2)return a2*b*d*e/(d*math.abs(a2)+e)end
+local function a3(a2)return b*d*e*e/((d*math.abs(a2)+e)*(d*math.abs(a2)+e))end
+local function a4(a5,a6,a7)return a6*a5+a7 end
+local function a8(a5)return a5 end
+local function a9(a6,aa,a,ab,a5,a7)return a*a1(a4(a5,a6,a7))*a-aa+(c+ab)*a6 end
+local function ac(a6,aa,a,ab,a5,a7)return a*a3(a4(a5,a6,a7))*a8(a5)*a+c+ab end
+local function ad(aa,a,ab,a5,a7,ae)local j=ae
+for af=1,5 do local ag=ac(j,aa,a,ab,a5,a7)if math.abs(ag)&gt;=0.000001 then j=j-a9(j,aa,a,ab,a5,a7)/ag else if ag&gt;0 then j=j-a9(j,aa,a,ab,a5,a7)elseif ag&lt;0 then j=j+a9(j,aa,a,ab,a5,a7)end end end
+return j,a1(a4(a5,j,a7))end
+function physics_tick(ah,ai,aj,ak,al,am,an,ao,ap,aq,ar,as,at,au,av)local aw=ah*9.55*g/h
+local ax=aj+1
+local ay=100000
+local az=4
+local a7=150
+local aA=l
+if not am and not an then ai=0 end
+if am then az=8 end
+if an and ax==1 then az=4 end
+if ao then if aq then local aB=ak*f*9.55*a*av*at*g*0.99/h/i
+a7=au+(aB-ar)*20
+a7=a7*math.min(1,470/(a*math.abs(aw))/a1(a7+at*0.15))else if ap and al&lt;=3 then aA=au end
+if not ap then aA=0 end
+if aA==0 then aA=math.max(math.min(0,at+20),at-20)end
+a7=au+(at-aA)*0.1 end else aA=au
+if al==0 then aA=0 end
+a7=au+(at-aA)*0.1
+if al~=0 and a7&gt;180 then a7=180 end end
+if az==8 then ay=j[ax]end
+if az==4 then ay=k[ax]end
+if a7&lt;20 then a7=20 elseif a7&gt;500 then a7=500 end
+local j,aC=ad(ai/az,aw,ay/az,ak*0.2,a7*ak,l)if ai==0 then j=0
+aC=0 end
+local aD=9.55*a*aC*j
+local aE=math.min(ak*f*aD*g/h/i,0)-as
+if aE&lt;0.01 and j&lt;0 then aE=0 end
+return j,a*aC*aw,f*aD*g*0.99/h/i,ai*j*f/az*2,a7,aE,j,a7,aC end
+function zero_state()return{0,0,0,0,0,0,0,0}end
+function decode_state(aF)local aG=to_u32(aF[1])local aH=to_u32(aF[2])return get_bits(aG,0,5),get_bit(aG,5),get_bit(aG,6),get_bit(aG,7),get_bits(aG,8,4),get_bits(aG,12,5),get_bits(aH,0,10),get_bits(aH,10,3),get_bits(aH,13,3),get_bits(aH,16,3),aF[3],aF[4],aF[5],aF[6],aF[7]end
+function encode_state(aj,aI,aJ,aK,aL,aM,aN,aO,aP,aQ,at,au,av,aR,aS)local aT=put_bits(aj,0,5)|put_bit(aI,5)|put_bit(aJ,6)|put_bit(aK,7)|put_bits(aL,8,4)|put_bits(aM,12,5)local aU=put_bits(aN,0,10)|put_bits(aO,10,3)|put_bits(aP,13,3)|put_bits(aQ,16,3)return{aT,aU,at or 0,au or 0,av or 0,aR or 0,aS or 0,0}end
+function encode_stateless_in(ah,aV,aW,aX,ak,aY,aZ,a_)return{ah or 0,aV or 0,aW or 0,aX or 0,ak or 0,aY or 0,aZ and 1 or 0,a_ and 1 or 0}end
+function decode_stateless_out(b0)local b1=to_u32(b0[5])return b0[1],b0[2],b0[3],b0[4],get_bit(b1,0),get_bit(b1,1),get_bit(b1,2),get_bit(b1,3),get_bit(b1,4),get_bit(b1,5),get_bit(b1,6),get_bit(b1,7)end
+local function b2(b3)return b3[1],b3[2],b3[3],b3[4],b3[5],B(math.floor(b3[6]or 0),0,7),(b3[7]or 0)~=0,(b3[8]or 0)~=0 end
+local function b4(ah,aW,ak,aZ)local b5=math.abs(ah)&gt;m
+local b6=aW&lt;o
+return aZ or ak==0 or b5 or b6 end
+local function b7(aY,aj,b8)local al=aY*(b8 and 0 or 1)local b9=b8 and 0 or aj
+return al,al&gt;=1 and al&lt;=7,al&gt;=2 and al&lt;=7,al&gt;=3 and al&lt;=7,b9&gt;=0 and b9&lt;=1,b9&gt;=0 and b9&lt;=13,b9&gt;=14 and b9&lt;=20,b9==14,b9~=14 end
+local function ba(aX,a_)local as=-math.floor((aX-1)*2)/7.2
+return as,as&lt;s and a_,math.max(-as,0)end
+local function bb(bc,bd,be,a7,aE,b8,bf)if b8 then return 0,0,0,0,bf end
+return bc,bd,be,a7,aE end
+local function bg(aI,aJ,aQ,aO,aP,bc)local bh=aJ and n-20 or n
+local bi=bc&lt;bh
+return V(aQ),S(aQ,bi),V(aO),S(aO,aI),V(aP),S(aP,aJ)end
+local function bj(aI,aR,aM,a7,ap,bk)local bl=aI and aR&lt;r
+local bm=bl and q or p
+local bn=a7&gt;p
+local bo=a7&gt;bm and not ap
+local bp,bq=W(aM,bo,v)return bn and bk,bo,bp,bq end
+local function br(aI,aJ,aK,ap,bs,bt,bu,bv,bw,bx,by,bc,aq,bz,a_,bk,bA,bB)local bC=aI and ap
+local bD=aI and by and aK
+local bE=ap and bu
+local bF=bc&gt;=-50 and bc&lt;=50
+local bG=bF and not(ap or aq)local bH=bG and not aK
+local bI=bH or bz and not a_
+local bJ=bs and bv and bk and bB
+local bK=bE and not aJ or bz and aJ
+local bL=bt and bw and bA and bB
+local bM=bt and bx and bB
+local bN=bI or aI and not(bt and bx)local bO=bI or bz and bk or bM
+local bP=not aI and not aJ
+local bQ=not bu and bP
+return sr_latch(aI,bK,bO),sr_latch(aJ,bM,bN),sr_latch(aK,aJ and bu,bC or bP),bJ or bL or bQ or bD end
+local function bR(aj,aL,bS)local bp,bq=W(aL,bS,u)local bT=(aj+(bq and 1 or 0))%21
+local bU=bT-aj
+return bT,not(bU&gt;=0 and bU&lt;=1),bp end
+local function bV(aS,aR,aN,be,as,a_,bW)local bX=a0(aN)or not a_
+local bY=bX and 0 or as
+return be*0.2+aS*0.8,math.min(B(bY,aR-0.1,aR+0.02),0),Z(aN,bW)end
+function core_tick(b3,aF)local bZ,b_,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,ca,cb,cc=decode_state(aF)local ah,aV,aW,aX,ak,aY,aZ,a_=b2(b3)local b8=b4(ah,aW,ak,aZ)local al,ap,bs,bt,bu,bv,bw,bx,by=b7(aY,bZ,b8)local as,aq,bf=ba(aX,a_)local cd,ce,be,cf,cg,ch,ci,cj,ck=physics_tick(ah,aV,bZ,ak,al,b_,c0,c1,ap,aq,cb,as,c8,c9,ca)local bc,cl,cm,a7,aE=bb(cd,cf,be,cg,ch,b8,bf)local bB,cn,bk,co,bA,cp=bg(b_,c0,c7,c5,c6,bc)local bW,bo,cq,bz=bj(b_,cb,c3,a7,ap,bk)local aI,aJ,aK,bS=br(b_,c0,c1,ap,bs,bt,bu,bv,bw,bx,by,bc,aq,bz,a_,bk,bA,bB)local aj,cr,cs=bR(bZ,c2,bS)local aS,aR,aN=bV(cc,cb,c4,cm,as,a_,bW)local ct=put_bit(cr,0)|put_bit(aI,1)|put_bit(aJ,2)|put_bit(aK,3)|put_bit(ap,4)|put_bit(aq,5)|put_bit(bo,6)local b0={bc,cl,aS,aE,ct,0,0,0}local cu=encode_state(aj,aI,aJ,aK,cs,cq,aN,co,cp,cn,ci,cj,ck,aR,aS)return b0,cu end
+function calculateTick(b3,aF)local a={aF[1],aF[2],i2f(aF[3]),i2f(aF[4]),i2f(aF[5]),i2f(aF[6]),i2f(aF[7]),aF[8]}local b0,cu=core_tick(b3,a)local b={cu[1],cu[2],f2i(cu[3]),f2i(cu[4]),f2i(cu[5]),f2i(cu[6]),f2i(cu[7]),cu[8]}return b0,b end
+--[[
+//# sourceMappingURL=main.lua.map
+]]">
+					<pos x="0.25" y="-5"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="63">
+					<pos x="1.5" y="-2.5"/>
+					<in1 component_id="62"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="64" i="1">
+					<pos x="1.5" y="-0.25"/>
+					<in1 component_id="62"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="65" i="2">
+					<pos x="2.75" y="1.75"/>
+					<in1 component_id="62"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="66" i="3">
+					<pos x="1.5" y="2.5"/>
+					<in1 component_id="62"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="67" i="4">
+					<pos x="1.5" y="3"/>
+					<in1 component_id="62"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="68" e="x%2">
+					<pos x="2.75" y="3"/>
+					<in1 component_id="67"/>
+				</object>
+			</c>
+			<c type="12">
+				<object id="69">
+					<min text="1" value="1"/>
+					<max text="1" value="1"/>
+					<pos x="4" y="3"/>
+					<in1 component_id="68"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="70" e="floor(x/128)%2">
+					<pos x="2.75" y="4"/>
+					<in1 component_id="67"/>
+				</object>
+			</c>
+			<c type="12">
+				<object id="71">
+					<min text="1" value="1"/>
+					<max text="1" value="1"/>
+					<pos x="4" y="6.25"/>
+					<in1 component_id="70"/>
+				</object>
+			</c>
+			<c type="17">
+				<object id="72">
+					<pos x="2.75" y="-2.5"/>
+					<in1 component_id="63"/>
+				</object>
+			</c>
+			<c>
+				<object id="73">
+					<pos x="4" y="-2.5"/>
+					<in1 component_id="72"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="74" e="x*3.6+1">
+					<pos x="2.75" y="2.5"/>
+					<in1 component_id="66"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="75" count="2">
+					<pos x="5.25" y="4.75"/>
+					<in1 component_id="76"/>
+					<in2 component_id="65"/>
+					<inc component_id="82"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="76" e="max(x-1.45,0)/3.02">
+					<pos x="2.75" y="6.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="77" i="14">
+					<pos x="1.5" y="12.25"/>
+					<in1 component_id="106"/>
+				</object>
+			</c>
+			<c type="12">
+				<object id="78">
+					<min text="1911" value="1911"/>
+					<max text="1911" value="1911"/>
+					<pos x="2.75" y="12.25"/>
+					<in1 component_id="77"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="79">
+					<n text="1911" value="1911"/>
+					<pos x="2.75" y="6.75"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="80">
+					<n text="35" value="35"/>
+					<pos x="2.75" y="5.25"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="81" i="25">
+					<pos x="2.75" y="10.25"/>
+					<in1 component_id="106"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="82" count="1">
+					<pos x="4" y="4.75"/>
+					<in1 component_id="76"/>
+					<in2 component_id="81"/>
+					<in15 component_id="79"/>
+					<in22 component_id="80"/>
+					<in23 component_id="29"/>
+					<in24 component_id="63"/>
+					<in25 component_id="74"/>
+					<in26 component_id="65"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="83">
+					<pos x="4" y="12.25"/>
+					<in1 component_id="78"/>
+					<in2 component_id="46"/>
+				</object>
+			</c>
+			<c type="53">
+				<object id="84">
+					<pos x="6.5" y="8.75"/>
+					<in1 component_id="82"/>
+					<in2 component_id="75"/>
+					<in3 component_id="83"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="85" count="8">
+					<pos x="5.25" y="21.5"/>
+					<in1 component_id="71"/>
+					<in5 component_id="86"/>
+					<in6 component_id="48"/>
+					<in7 component_id="87"/>
+					<in8 component_id="49"/>
+					<in2/>
+					<in3/>
+					<in4/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="86">
+					<pos x="0.25" y="23.5"/>
+					<in1 component_id="30"/>
+					<in2 component_id="47"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="87">
+					<pos x="0.25" y="25.5"/>
+					<in1 component_id="31"/>
+					<in2 component_id="47"/>
+				</object>
+			</c>
+			<c type="53">
+				<object id="88">
+					<pos x="5.25" y="12"/>
+					<in1 component_id="106"/>
+					<in2 component_id="82"/>
+					<in3 component_id="83"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="89" i="23">
+					<pos x="6.5" y="12.5"/>
+					<in1 component_id="88"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="90" i="22">
+					<pos x="6.5" y="13"/>
+					<in1 component_id="88"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="91" e="max((x-1)*101.315,0)">
+					<pos x="6.5" y="8.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="92" i="24">
+					<pos x="6.5" y="12"/>
+					<in1 component_id="88"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="93" count="8">
+					<pos x="7.75" y="21.25"/>
+					<in2 component_id="91"/>
+					<in3 component_id="89"/>
+					<in5 component_id="90"/>
+					<in6 component_id="43"/>
+					<in7 component_id="44"/>
+					<in8 component_id="107"/>
+					<inc component_id="85"/>
+					<in1/>
+					<in4/>
+				</object>
+			</c>
+		</components>
+		<components_bridge>
+			<c type="2">
+				<object id="94">
+					<pos x="-5.25" y="-8"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="95">
+					<pos x="-5.25" y="-28"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="96">
+					<pos x="9" y="-2.25"/>
+					<in1 component_id="73"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="97">
+					<pos x="9" y="3"/>
+					<in1 component_id="69"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="98">
+					<pos x="9" y="-0.25"/>
+					<in1 component_id="64"/>
+				</object>
+			</c>
+			<c>
+				<object id="99">
+					<pos x="-5.25" y="-10"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="100">
+					<pos x="-5.25" y="-30"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="101">
+					<pos x="9" y="12"/>
+					<in1 component_id="92"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="102">
+					<pos x="-5.25" y="-26"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="103">
+					<pos x="-5.25" y="16.25"/>
+				</object>
+			</c>
+			<c type="5">
+				<object id="104">
+					<pos x="9" y="9"/>
+					<in1 component_id="84"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="105">
+					<pos x="-5.25" y="6.5"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="106">
+					<pos x="-5.25" y="10.5"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="107">
+					<pos x="-5.25" y="32"/>
+				</object>
+			</c>
+			<c type="5">
+				<object id="108">
+					<pos x="9" y="21.75"/>
+					<in1 component_id="93"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="109">
+					<pos x="-5.25" y="-32"/>
+				</object>
+			</c>
+		</components_bridge>
+		<groups/>
+		<component_states>
+			<c0 id="1" on="SAP" off="ECB" n="SAP or ECB">
+				<pos x="1.5" y="-27.25"/>
+			</c0>
+			<c1 id="2">
+				<pos x="-1" y="-26.25"/>
+				<in1 component_id="102"/>
+			</c1>
+			<c2 id="3">
+				<n text="0"/>
+				<pos x="-1" y="-27.25"/>
+			</c2>
+			<c3 id="4">
+				<n text="5" value="5"/>
+				<pos x="-1" y="-26.75"/>
+			</c3>
+			<c4 id="5">
+				<pos x="0.25" y="-27"/>
+				<in1 component_id="3"/>
+				<in2 component_id="4"/>
+				<in3 component_id="2"/>
+			</c4>
+			<c5 id="6">
+				<pos x="2.75" y="-27.5"/>
+				<in1 component_id="100"/>
+				<in2 component_id="5"/>
+				<in3 component_id="1"/>
+			</c5>
+			<c6 id="7">
+				<pos x="0.25" y="-24.25"/>
+				<in1 component_id="102"/>
+			</c6>
+			<c7 id="8" e="clamp(x+(5-y)*7,0,36)/8+1">
+				<pos x="1.5" y="-24.5"/>
+				<in1 component_id="7"/>
+				<in2 component_id="5"/>
+			</c7>
+			<c8 id="9">
+				<pos x="2.75" y="-24.75"/>
+				<in1 component_id="95"/>
+				<in2 component_id="8"/>
+				<in3 component_id="1"/>
+			</c8>
+			<c9 id="10" i="15">
+				<pos x="0.25" y="-20.5"/>
+				<in1 component_id="102"/>
+			</c9>
+			<c10 id="11" i="16">
+				<pos x="0.25" y="-22.25"/>
+				<in1 component_id="102"/>
+			</c10>
+			<c11 id="12">
+				<n text="1" value="1"/>
+				<pos x="0.25" y="-20"/>
+			</c11>
+			<c12 id="13">
+				<n text="0"/>
+				<pos x="0.25" y="-14.75"/>
+			</c12>
+			<c13 id="14">
+				<pos x="1.5" y="-19.5"/>
+				<in1 component_id="12"/>
+				<in2 component_id="13"/>
+				<in3 component_id="10"/>
+			</c13>
+			<c14 id="15">
+				<pos x="1.5" y="-20.25"/>
+				<in1 component_id="12"/>
+				<in2 component_id="13"/>
+				<in3 component_id="11"/>
+			</c14>
+			<c15 id="16">
+				<pos x="2.75" y="-20"/>
+				<in1 component_id="14"/>
+				<in2 component_id="15"/>
+			</c15>
+			<c16 id="17" i="1">
+				<pos x="2.75" y="-12"/>
+				<in1 component_id="102"/>
+			</c16>
+			<c17 id="18" i="17">
+				<pos x="0.25" y="-18.5"/>
+				<in1 component_id="102"/>
+			</c17>
+			<c18 id="19">
+				<pos x="1.5" y="-18.5"/>
+				<in1 component_id="12"/>
+				<in2 component_id="13"/>
+				<in3 component_id="18"/>
+			</c18>
+			<c19 id="20">
+				<pos x="1.5" y="-14.75"/>
+				<in1 component_id="12"/>
+				<in2 component_id="13"/>
+				<in3 component_id="99"/>
+			</c19>
+			<c20 id="21" i="8">
+				<pos x="2.75" y="-32"/>
+				<in1 component_id="109"/>
+			</c20>
+			<c21 id="22">
+				<n text="1500" value="1500"/>
+				<pos x="0.25" y="-5.5"/>
+			</c21>
+			<c22 id="23" on="On" off="Off" n="Catenary Line Voltage" v="true">
+				<pos x="-1" y="-5.75"/>
+			</c22>
+			<c23 id="24">
+				<min text="0"/>
+				<max text="0"/>
+				<pos x="-2.25" y="-6.25"/>
+				<in1 component_id="94"/>
+			</c23>
+			<c24 id="25">
+				<pos x="-1" y="-6.25"/>
+				<in1 component_id="24"/>
+			</c24>
+			<c25 id="26">
+				<pos x="0.25" y="-6.25"/>
+				<in1 component_id="23"/>
+				<in2 component_id="25"/>
+			</c25>
+			<c26 id="27">
+				<pos x="1.5" y="20.75"/>
+				<in1 component_id="48"/>
+				<in2 component_id="49"/>
+			</c26>
+			<c27 id="28">
+				<pos x="1.5" y="-6.25"/>
+				<in1 component_id="94"/>
+				<in2 component_id="22"/>
+				<in3 component_id="26"/>
+			</c27>
+			<c28 id="29">
+				<pos x="2.75" y="3.5"/>
+				<in1 component_id="28"/>
+				<in3 component_id="27"/>
+			</c28>
+			<c29 id="30">
+				<pos x="-3.5" y="18.75"/>
+				<in2 component_id="39"/>
+				<in1 component_id="38"/>
+			</c29>
+			<c30 id="31">
+				<pos x="-3.5" y="19.75"/>
+				<in2 component_id="41"/>
+				<in1 component_id="40"/>
+			</c30>
+			<c31 id="32">
+				<pos x="-1" y="16"/>
+				<in2 component_id="37"/>
+				<in1 component_id="34"/>
+			</c31>
+			<c32 id="33">
+				<pos x="-1" y="19.5"/>
+				<in2 component_id="37"/>
+				<in1 component_id="35"/>
+			</c32>
+			<c33 id="34">
+				<pos x="-2.25" y="18"/>
+				<in1 component_id="30" node_index="1"/>
+				<in2 component_id="36"/>
+			</c33>
+			<c34 id="35">
+				<pos x="-2.25" y="19.5"/>
+				<in1 component_id="31" node_index="1"/>
+				<in2 component_id="36"/>
+			</c34>
+			<c35 id="36" i="5">
+				<pos x="-3.5" y="18"/>
+				<in1 component_id="103"/>
+			</c35>
+			<c36 id="37" i="6">
+				<pos x="-2.25" y="16"/>
+				<in1 component_id="103"/>
+			</c36>
+			<c37 id="38" i="3">
+				<pos x="-4.75" y="18.75"/>
+				<in1 component_id="103"/>
+			</c37>
+			<c38 id="39" i="4">
+				<pos x="-4.75" y="19.25"/>
+				<in1 component_id="103"/>
+			</c38>
+			<c39 id="40" i="7">
+				<pos x="-4.75" y="19.75"/>
+				<in1 component_id="103"/>
+			</c39>
+			<c40 id="41" i="8">
+				<pos x="-4.75" y="20.25"/>
+				<in1 component_id="103"/>
+			</c40>
+			<c41 id="42" name="Panta Height (Type)">
+				<pos x="0.25" y="26.75"/>
+			</c41>
+			<c42 id="43">
+				<pos x="1.5" y="26"/>
+				<in1 component_id="42"/>
+				<in2 component_id="45"/>
+				<in3 component_id="48"/>
+			</c42>
+			<c43 id="44">
+				<pos x="1.5" y="29.75"/>
+				<in1 component_id="42"/>
+				<in2 component_id="45"/>
+				<in3 component_id="49"/>
+			</c43>
+			<c44 id="45">
+				<n text="0.02" value="0.02"/>
+				<pos x="0.25" y="26.25"/>
+			</c44>
+			<c45 id="46" on="1900" off="1800" n="M type">
+				<pos x="-2.25" y="16.5"/>
+			</c45>
+			<c46 id="47">
+				<pos x="-1" y="20.25"/>
+				<in1 component_id="46"/>
+			</c46>
+			<c47 id="48">
+				<pos x="0.25" y="20"/>
+				<in1 component_id="32"/>
+				<in2 component_id="47"/>
+			</c47>
+			<c48 id="49">
+				<pos x="0.25" y="20.75"/>
+				<in1 component_id="33"/>
+				<in2 component_id="47"/>
+			</c48>
+			<c49 id="50" n="Over Speed Th. [m/s]">
+				<v text="32" value="32"/>
+				<pos x="-9" y="-32"/>
+			</c49>
+			<c50 id="51" n="Power Limit Current [A]">
+				<v text="210" value="210"/>
+				<pos x="-7.75" y="-32"/>
+			</c50>
+			<c51 id="52" n="Brake Limit@320kPa [A]">
+				<v text="290" value="290"/>
+				<pos x="-6.5" y="-32"/>
+			</c51>
+			<c52 id="53" e="x">
+				<pos x="4" y="-31.25"/>
+				<in1 component_id="21"/>
+			</c52>
+			<c53 id="54" e="x">
+				<pos x="4" y="4.25"/>
+				<in1 component_id="29"/>
+			</c53>
+			<c54 id="55" e="x">
+				<pos x="4" y="-26.75"/>
+				<in1 component_id="6"/>
+			</c54>
+			<c55 id="56" e="x">
+				<pos x="4" y="-23.75"/>
+				<in1 component_id="9"/>
+			</c55>
+			<c56 id="57" e="x">
+				<pos x="4" y="-19.25"/>
+				<in1 component_id="16"/>
+			</c56>
+			<c57 id="58" e="x">
+				<pos x="4" y="-11.25"/>
+				<in1 component_id="17"/>
+			</c57>
+			<c58 id="59" e="x">
+				<pos x="4" y="-12.75"/>
+				<in1 component_id="20"/>
+			</c58>
+			<c59 id="60" e="x">
+				<pos x="4" y="-16.5"/>
+				<in1 component_id="19"/>
+			</c59>
+			<c60 id="61" count="16">
+				<pos x="5.25" y="-19.75"/>
+				<inc component_id="62"/>
+				<in1 component_id="21"/>
+				<in2 component_id="29"/>
+				<in3 component_id="6"/>
+				<in4 component_id="9"/>
+				<in5 component_id="16"/>
+				<in6 component_id="17"/>
+				<in7 component_id="20"/>
+				<in8 component_id="19"/>
+				<in9 component_id="53"/>
+				<in10 component_id="54"/>
+				<in11 component_id="55"/>
+				<in12 component_id="56"/>
+				<in13 component_id="57"/>
+				<in14 component_id="58"/>
+				<in15 component_id="59"/>
+				<in16 component_id="60"/>
+			</c60>
+			<c61 id="62" script="function i2f(a)local b=(&apos;f&apos;):unpack((&apos;I4&apos;):pack(a&amp;0xFFFFFFFF))return b end
+function f2i(b)local a=(&apos;I4&apos;):unpack((&apos;f&apos;):pack(b))return a end
+s1={0,0,0,0,0,0,0,0}s2={0,0,0,0,0,0,0,0}function onTick()local c,d,e,f={},{},{},{}local g,h,i
+for j=1,8 do c[j]=input.getNumber(j)d[j]=input.getNumber(j+8)e[j]=input.getNumber(j+16)f[j]=f2i(input.getNumber(j+24))end
+local k=true
+for j=1,8 do k=k and s2[j]==f[j]end
+if not k then i,s1=calculateTick(d,f)end
+g,h=calculateTick(c,s1)for j=1,8 do output.setNumber(j,e[j])output.setNumber(j+8,i2f(f[j]))output.setNumber(j+16,g[j])output.setNumber(j+24,i2f(h[j]))end
+s2=s1
+s1=h end
+local a=12.16
+local b=0.00029
+local c=0.07
+local d=0.85
+local e=150
+local f=4
+local g=5.31
+local h=0.86/2
+local i=35*1000
+local j={7.428,5.137,4.157,3.197,2.681,2.178,1.717,1.317,0.9710,0.7570,0.6386,0.3610,0.2276,0.1334,0,2.568,1.734,1.218,0.7570,0.4110,0.1334}local k={0,5.137,4.157,3.197,2.681,2.178,1.717,1.317,0.9710,0.7570,0.6386,0.3610,0.2276,0.1334,3.714,2.568,1.734,1.218,0.7570,0.4110,0.1334}local l=200
+local m=property.getNumber(&quot;Over Speed Th. [m/s]&quot;)local n=property.getNumber(&quot;Power Limit Current [A]&quot;)local o=4
+local p=300
+local q=400
+local r=-0.1
+local s=-0.05
+local t=6
+local u=12
+local v=30
+local w=600
+local x=30
+local y=w
+local z=y//x
+local A=1
+local function B(b,C,D)if b&lt;C then return C end
+if b&gt;D then return D end
+return b end
+function to_u32(E)return string.unpack(&quot;I4&quot;,string.pack(&quot;I4&quot;,math.floor(E or 0)&amp;0xFFFFFFFF))end
+function get_bits(F,G,H)local I=F&gt;&gt;G
+local J=1&lt;&lt;H
+local K=J-1
+return I&amp;K end
+function get_bit(F,G)local I=F&gt;&gt;G
+local L=I&amp;1
+return L~=0 end
+function put_bits(E,G,H)local J=1&lt;&lt;H
+local K=J-1
+local M=math.floor(E or 0)local N=M&amp;K
+return N&lt;&lt;G end
+function put_bit(O,G)local L=O and 1 or 0
+return L&lt;&lt;G end
+function sr_latch(P,Q,R)if R then return false end
+if Q then return true end
+return P end
+local function S(T,U)if U then return math.min(T+1,t)end
+return 0 end
+local function V(T)return T&gt;=t end
+local function W(T,U,X)if not U then return 0,false end
+local Y=T+1
+if Y&gt;=X then return 0,true end
+return Y,false end
+local function Z(_,U)if U then return math.min(_+z,y)end
+return math.max(_-A,0)end
+local function a0(_)return _&gt;=y end
+local function a1(a2)return a2*b*d*e/(d*math.abs(a2)+e)end
+local function a3(a2)return b*d*e*e/((d*math.abs(a2)+e)*(d*math.abs(a2)+e))end
+local function a4(a5,a6,a7)return a6*a5+a7 end
+local function a8(a5)return a5 end
+local function a9(a6,aa,a,ab,a5,a7)return a*a1(a4(a5,a6,a7))*a-aa+(c+ab)*a6 end
+local function ac(a6,aa,a,ab,a5,a7)return a*a3(a4(a5,a6,a7))*a8(a5)*a+c+ab end
+local function ad(aa,a,ab,a5,a7,ae)local j=ae
+for af=1,5 do local ag=ac(j,aa,a,ab,a5,a7)if math.abs(ag)&gt;=0.000001 then j=j-a9(j,aa,a,ab,a5,a7)/ag else if ag&gt;0 then j=j-a9(j,aa,a,ab,a5,a7)elseif ag&lt;0 then j=j+a9(j,aa,a,ab,a5,a7)end end end
+return j,a1(a4(a5,j,a7))end
+function physics_tick(ah,ai,aj,ak,al,am,an,ao,ap,aq,ar,as,at,au,av)local aw=ah*9.55*g/h
+local ax=aj+1
+local ay=100000
+local az=4
+local a7=150
+local aA=l
+if not am and not an then ai=0 end
+if am then az=8 end
+if an and ax==1 then az=4 end
+if ao then if aq then local aB=ak*f*9.55*a*av*at*g*0.99/h/i
+a7=au+(aB-ar)*20
+a7=a7*math.min(1,470/(a*math.abs(aw))/a1(a7+at*0.15))else if ap and al&lt;=3 then aA=au end
+if not ap then aA=0 end
+if aA==0 then aA=math.max(math.min(0,at+20),at-20)end
+a7=au+(at-aA)*0.1 end else aA=au
+if al==0 then aA=0 end
+a7=au+(at-aA)*0.1
+if al~=0 and a7&gt;180 then a7=180 end end
+if az==8 then ay=j[ax]end
+if az==4 then ay=k[ax]end
+if a7&lt;20 then a7=20 elseif a7&gt;500 then a7=500 end
+local j,aC=ad(ai/az,aw,ay/az,ak*0.2,a7*ak,l)if ai==0 then j=0
+aC=0 end
+local aD=9.55*a*aC*j
+local aE=math.min(ak*f*aD*g/h/i,0)-as
+if aE&lt;0.01 and j&lt;0 then aE=0 end
+return j,a*aC*aw,f*aD*g*0.99/h/i,ai*j*f/az*2,a7,aE,j,a7,aC end
+function zero_state()return{0,0,0,0,0,0,0,0}end
+function decode_state(aF)local aG=to_u32(aF[1])local aH=to_u32(aF[2])return get_bits(aG,0,5),get_bit(aG,5),get_bit(aG,6),get_bit(aG,7),get_bits(aG,8,4),get_bits(aG,12,5),get_bits(aH,0,10),get_bits(aH,10,3),get_bits(aH,13,3),get_bits(aH,16,3),aF[3],aF[4],aF[5],aF[6],aF[7]end
+function encode_state(aj,aI,aJ,aK,aL,aM,aN,aO,aP,aQ,at,au,av,aR,aS)local aT=put_bits(aj,0,5)|put_bit(aI,5)|put_bit(aJ,6)|put_bit(aK,7)|put_bits(aL,8,4)|put_bits(aM,12,5)local aU=put_bits(aN,0,10)|put_bits(aO,10,3)|put_bits(aP,13,3)|put_bits(aQ,16,3)return{aT,aU,at or 0,au or 0,av or 0,aR or 0,aS or 0,0}end
+function encode_stateless_in(ah,aV,aW,aX,ak,aY,aZ,a_)return{ah or 0,aV or 0,aW or 0,aX or 0,ak or 0,aY or 0,aZ and 1 or 0,a_ and 1 or 0}end
+function decode_stateless_out(b0)local b1=to_u32(b0[5])return b0[1],b0[2],b0[3],b0[4],get_bit(b1,0),get_bit(b1,1),get_bit(b1,2),get_bit(b1,3),get_bit(b1,4),get_bit(b1,5),get_bit(b1,6),get_bit(b1,7)end
+local function b2(b3)return b3[1],b3[2],b3[3],b3[4],b3[5],B(math.floor(b3[6]or 0),0,7),(b3[7]or 0)~=0,(b3[8]or 0)~=0 end
+local function b4(ah,aW,ak,aZ)local b5=math.abs(ah)&gt;m
+local b6=aW&lt;o
+return aZ or ak==0 or b5 or b6 end
+local function b7(aY,aj,b8)local al=aY*(b8 and 0 or 1)local b9=b8 and 0 or aj
+return al,al&gt;=1 and al&lt;=7,al&gt;=2 and al&lt;=7,al&gt;=3 and al&lt;=7,b9&gt;=0 and b9&lt;=1,b9&gt;=0 and b9&lt;=13,b9&gt;=14 and b9&lt;=20,b9==14,b9~=14 end
+local function ba(aX,a_)local as=-math.floor((aX-1)*2)/7.2
+return as,as&lt;s and a_,math.max(-as,0)end
+local function bb(bc,bd,be,a7,aE,b8,bf)if b8 then return 0,0,0,0,bf end
+return bc,bd,be,a7,aE end
+local function bg(aI,aJ,aQ,aO,aP,bc)local bh=aJ and n-20 or n
+local bi=bc&lt;bh
+return V(aQ),S(aQ,bi),V(aO),S(aO,aI),V(aP),S(aP,aJ)end
+local function bj(aI,aR,aM,a7,ap,bk)local bl=aI and aR&lt;r
+local bm=bl and q or p
+local bn=a7&gt;p
+local bo=a7&gt;bm and not ap
+local bp,bq=W(aM,bo,v)return bn and bk,bo,bp,bq end
+local function br(aI,aJ,aK,ap,bs,bt,bu,bv,bw,bx,by,bc,aq,bz,a_,bk,bA,bB)local bC=aI and ap
+local bD=aI and by and aK
+local bE=ap and bu
+local bF=bc&gt;=-50 and bc&lt;=50
+local bG=bF and not(ap or aq)local bH=bG and not aK
+local bI=bH or bz and not a_
+local bJ=bs and bv and bk and bB
+local bK=bE and not aJ or bz and aJ
+local bL=bt and bw and bA and bB
+local bM=bt and bx and bB
+local bN=bI or aI and not(bt and bx)local bO=bI or bz and bk or bM
+local bP=not aI and not aJ
+local bQ=not bu and bP
+return sr_latch(aI,bK,bO),sr_latch(aJ,bM,bN),sr_latch(aK,aJ and bu,bC or bP),bJ or bL or bQ or bD end
+local function bR(aj,aL,bS)local bp,bq=W(aL,bS,u)local bT=(aj+(bq and 1 or 0))%21
+local bU=bT-aj
+return bT,not(bU&gt;=0 and bU&lt;=1),bp end
+local function bV(aS,aR,aN,be,as,a_,bW)local bX=a0(aN)or not a_
+local bY=bX and 0 or as
+return be*0.2+aS*0.8,math.min(B(bY,aR-0.1,aR+0.02),0),Z(aN,bW)end
+function core_tick(b3,aF)local bZ,b_,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,ca,cb,cc=decode_state(aF)local ah,aV,aW,aX,ak,aY,aZ,a_=b2(b3)local b8=b4(ah,aW,ak,aZ)local al,ap,bs,bt,bu,bv,bw,bx,by=b7(aY,bZ,b8)local as,aq,bf=ba(aX,a_)local cd,ce,be,cf,cg,ch,ci,cj,ck=physics_tick(ah,aV,bZ,ak,al,b_,c0,c1,ap,aq,cb,as,c8,c9,ca)local bc,cl,cm,a7,aE=bb(cd,cf,be,cg,ch,b8,bf)local bB,cn,bk,co,bA,cp=bg(b_,c0,c7,c5,c6,bc)local bW,bo,cq,bz=bj(b_,cb,c3,a7,ap,bk)local aI,aJ,aK,bS=br(b_,c0,c1,ap,bs,bt,bu,bv,bw,bx,by,bc,aq,bz,a_,bk,bA,bB)local aj,cr,cs=bR(bZ,c2,bS)local aS,aR,aN=bV(cc,cb,c4,cm,as,a_,bW)local ct=put_bit(cr,0)|put_bit(aI,1)|put_bit(aJ,2)|put_bit(aK,3)|put_bit(ap,4)|put_bit(aq,5)|put_bit(bo,6)local b0={bc,cl,aS,aE,ct,0,0,0}local cu=encode_state(aj,aI,aJ,aK,cs,cq,aN,co,cp,cn,ci,cj,ck,aR,aS)return b0,cu end
+function calculateTick(b3,aF)local a={aF[1],aF[2],i2f(aF[3]),i2f(aF[4]),i2f(aF[5]),i2f(aF[6]),i2f(aF[7]),aF[8]}local b0,cu=core_tick(b3,a)local b={cu[1],cu[2],f2i(cu[3]),f2i(cu[4]),f2i(cu[5]),f2i(cu[6]),f2i(cu[7]),cu[8]}return b0,b end
+--[[
+//# sourceMappingURL=main.lua.map
+]]">
+				<pos x="0.25" y="-5"/>
+				<in1 component_id="61"/>
+			</c61>
+			<c62 id="63">
+				<pos x="1.5" y="-2.5"/>
+				<in1 component_id="62"/>
+			</c62>
+			<c63 id="64" i="1">
+				<pos x="1.5" y="-0.25"/>
+				<in1 component_id="62"/>
+			</c63>
+			<c64 id="65" i="2">
+				<pos x="2.75" y="1.75"/>
+				<in1 component_id="62"/>
+			</c64>
+			<c65 id="66" i="3">
+				<pos x="1.5" y="2.5"/>
+				<in1 component_id="62"/>
+			</c65>
+			<c66 id="67" i="4">
+				<pos x="1.5" y="3"/>
+				<in1 component_id="62"/>
+			</c66>
+			<c67 id="68" e="x%2">
+				<pos x="2.75" y="3"/>
+				<in1 component_id="67"/>
+			</c67>
+			<c68 id="69">
+				<min text="1" value="1"/>
+				<max text="1" value="1"/>
+				<pos x="4" y="3"/>
+				<in1 component_id="68"/>
+			</c68>
+			<c69 id="70" e="floor(x/128)%2">
+				<pos x="2.75" y="4"/>
+				<in1 component_id="67"/>
+			</c69>
+			<c70 id="71">
+				<min text="1" value="1"/>
+				<max text="1" value="1"/>
+				<pos x="4" y="6.25"/>
+				<in1 component_id="70"/>
+			</c70>
+			<c71 id="72">
+				<pos x="2.75" y="-2.5"/>
+				<in1 component_id="63"/>
+			</c71>
+			<c72 id="73">
+				<pos x="4" y="-2.5"/>
+				<in1 component_id="72"/>
+			</c72>
+			<c73 id="74" e="x*3.6+1">
+				<pos x="2.75" y="2.5"/>
+				<in1 component_id="66"/>
+			</c73>
+			<c74 id="75" count="2">
+				<pos x="5.25" y="4.75"/>
+				<in1 component_id="76"/>
+				<in2 component_id="65"/>
+				<inc component_id="82"/>
+			</c74>
+			<c75 id="76" e="max(x-1.45,0)/3.02">
+				<pos x="2.75" y="6.25"/>
+				<in1 component_id="105"/>
+			</c75>
+			<c76 id="77" i="14">
+				<pos x="1.5" y="12.25"/>
+				<in1 component_id="106"/>
+			</c76>
+			<c77 id="78">
+				<min text="1911" value="1911"/>
+				<max text="1911" value="1911"/>
+				<pos x="2.75" y="12.25"/>
+				<in1 component_id="77"/>
+			</c77>
+			<c78 id="79">
+				<n text="1911" value="1911"/>
+				<pos x="2.75" y="6.75"/>
+			</c78>
+			<c79 id="80">
+				<n text="35" value="35"/>
+				<pos x="2.75" y="5.25"/>
+			</c79>
+			<c80 id="81" i="25">
+				<pos x="2.75" y="10.25"/>
+				<in1 component_id="106"/>
+			</c80>
+			<c81 id="82" count="1">
+				<pos x="4" y="4.75"/>
+				<in1 component_id="76"/>
+				<in2 component_id="81"/>
+				<in15 component_id="79"/>
+				<in22 component_id="80"/>
+				<in23 component_id="29"/>
+				<in24 component_id="63"/>
+				<in25 component_id="74"/>
+				<in26 component_id="65"/>
+			</c81>
+			<c82 id="83">
+				<pos x="4" y="12.25"/>
+				<in1 component_id="78"/>
+				<in2 component_id="46"/>
+			</c82>
+			<c83 id="84">
+				<pos x="6.5" y="8.75"/>
+				<in1 component_id="82"/>
+				<in2 component_id="75"/>
+				<in3 component_id="83"/>
+			</c83>
+			<c84 id="85" count="8">
+				<pos x="5.25" y="21.5"/>
+				<in1 component_id="71"/>
+				<in5 component_id="86"/>
+				<in6 component_id="48"/>
+				<in7 component_id="87"/>
+				<in8 component_id="49"/>
+				<in2/>
+				<in3/>
+				<in4/>
+			</c84>
+			<c85 id="86">
+				<pos x="0.25" y="23.5"/>
+				<in1 component_id="30"/>
+				<in2 component_id="47"/>
+			</c85>
+			<c86 id="87">
+				<pos x="0.25" y="25.5"/>
+				<in1 component_id="31"/>
+				<in2 component_id="47"/>
+			</c86>
+			<c87 id="88">
+				<pos x="5.25" y="12"/>
+				<in1 component_id="106"/>
+				<in2 component_id="82"/>
+				<in3 component_id="83"/>
+			</c87>
+			<c88 id="89" i="23">
+				<pos x="6.5" y="12.5"/>
+				<in1 component_id="88"/>
+			</c88>
+			<c89 id="90" i="22">
+				<pos x="6.5" y="13"/>
+				<in1 component_id="88"/>
+			</c89>
+			<c90 id="91" e="max((x-1)*101.315,0)">
+				<pos x="6.5" y="8.25"/>
+				<in1 component_id="105"/>
+			</c90>
+			<c91 id="92" i="24">
+				<pos x="6.5" y="12"/>
+				<in1 component_id="88"/>
+			</c91>
+			<c92 id="93" count="8">
+				<pos x="7.75" y="21.25"/>
+				<in2 component_id="91"/>
+				<in3 component_id="89"/>
+				<in5 component_id="90"/>
+				<in6 component_id="43"/>
+				<in7 component_id="44"/>
+				<in8 component_id="107"/>
+				<inc component_id="85"/>
+				<in1/>
+				<in4/>
+			</c92>
+		</component_states>
+		<component_bridge_states>
+			<c0 id="94">
+				<pos x="-5.25" y="-8"/>
+			</c0>
+			<c1 id="95">
+				<pos x="-5.25" y="-28"/>
+			</c1>
+			<c2 id="96">
+				<pos x="9" y="-2.25"/>
+				<in1 component_id="73"/>
+			</c2>
+			<c3 id="97">
+				<pos x="9" y="3"/>
+				<in1 component_id="69"/>
+			</c3>
+			<c4 id="98">
+				<pos x="9" y="-0.25"/>
+				<in1 component_id="64"/>
+			</c4>
+			<c5 id="99">
+				<pos x="-5.25" y="-10"/>
+			</c5>
+			<c6 id="100">
+				<pos x="-5.25" y="-30"/>
+			</c6>
+			<c7 id="101">
+				<pos x="9" y="12"/>
+				<in1 component_id="92"/>
+			</c7>
+			<c8 id="102">
+				<pos x="-5.25" y="-26"/>
+			</c8>
+			<c9 id="103">
+				<pos x="-5.25" y="16.25"/>
+			</c9>
+			<c10 id="104">
+				<pos x="9" y="9"/>
+				<in1 component_id="84"/>
+			</c10>
+			<c11 id="105">
+				<pos x="-5.25" y="6.5"/>
+			</c11>
+			<c12 id="106">
+				<pos x="-5.25" y="10.5"/>
+			</c12>
+			<c13 id="107">
+				<pos x="-5.25" y="32"/>
+			</c13>
+			<c14 id="108">
+				<pos x="9" y="21.75"/>
+				<in1 component_id="93"/>
+			</c14>
+			<c15 id="109">
+				<pos x="-5.25" y="-32"/>
+			</c15>
+		</component_bridge_states>
+		<group_states/>
+	</group>
+</microprocessor>
+
