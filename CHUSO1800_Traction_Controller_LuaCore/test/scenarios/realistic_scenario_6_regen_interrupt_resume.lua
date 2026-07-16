@@ -1,4 +1,4 @@
--- User-specified realistic driving scenario 6 (DESIGN_LOG.md #27/#28):
+-- User-specified realistic driving scenario 6 (DESIGN_LOG.md #27/#28/#29):
 -- full-notch accel to 80km/h -> notch off -> SAP4 regen braking to 60km/h,
 -- interrupt (release SAP, 10s coast), re-brake to 30km/h, interrupt again,
 -- re-brake to 23km/h, interrupt again, re-brake to a full stop. Checks that
@@ -14,6 +14,11 @@
 -- requirement under test is that regen resumes at least once after an
 -- interruption (proving the interrupt/resume cycle doesn't get regen stuck
 -- off), not that every single leg reproduces it.
+--
+-- Driven with `db_auto = true` throughout (DESIGN_LOG.md #29): per SPEC.md
+-- §7.5, regen (Parallel->Series demotion via field-current-excess) requires
+-- "DB automatic" ON -- with it OFF the vehicle would disconnect from the
+-- catenary entirely instead of ever regen-braking.
 
 return function(h)
     local M = require("realistic_driving")
@@ -22,7 +27,7 @@ return function(h)
     local sim = Sim.new(h, "Scenario 6: 80km/h accel -> notch off -> regen interrupted/resumed repeatedly (60->30->23->stop)")
 
     sim:phase("full notch accel to 80km/h", {
-        notch = 4, seconds = 90,
+        notch = 4, seconds = 90, db_auto = true,
         until_fn = function(self) return self.speed >= kmh(80) end,
     })
 
@@ -31,7 +36,7 @@ return function(h)
     local function brake_leg(label, target_kmh)
         local saw_regen_this_leg = false
         sim:phase(label, {
-            notch = 0, sap = 4.0, seconds = 60,
+            notch = 0, sap = 4.0, seconds = 60, db_auto = true,
             until_fn = function(self, stateless_out, st)
                 if st.regen_latch and stateless_out[1] < -10 then saw_regen_this_leg = true end
                 return self.speed <= kmh(target_kmh)
@@ -41,7 +46,7 @@ return function(h)
     end
 
     local function interrupt()
-        sim:phase("interrupt regen: release brake, 10s coast", { notch = 0, sap = 1.0, seconds = 10 })
+        sim:phase("interrupt regen: release brake, 10s coast", { notch = 0, sap = 1.0, seconds = 10, db_auto = true })
     end
 
     brake_leg("SAP4 brake to 60km/h", 60)

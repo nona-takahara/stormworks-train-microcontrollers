@@ -1527,3 +1527,89 @@ Type ID）が一切送出されていなかった不具合を修正
   有無で分岐、巡航速度でのSeries正常降格を検証する新規ケースを追加）、
   `test/scenarios/stuck_at_top_of_ladder_recovery.lua`（DB自動系
   サブテストを巡航速度基準へ再構成）。
+
+## #29 PR #7レビューコメントによる2件の安全要件を追加：非常制動時の
+無条件全解放、DB自動OFF中の直列界磁制御の禁止（#28の前提を一部修正）
+
+- **経緯**：PR #7に対するリポジトリオーナー（実機のドメイン専門家）から
+  のレビューコメントで、以下2件の安全要件が明示的に追加された。
+  1. 「非常制動条件を受けたら無条件で界磁制御フラグを倒してください。
+     ノッチオフ時の急加速防止が目的です」
+  2. 「『ダイナミックブレーキ自動』フラグが倒れている/倒れたとき、直列
+     界磁制御への移行中/開始、直列界磁制御中のいずれかであれば、界磁
+     制御フラグを倒し、架線-モータ間を開放してください。これも運転士が
+     意図しない加速を防止するためです」
+- **要件1の実装範囲の検討**：要件1を文字通り「界磁制御ラッチ
+  (`regen_latch`)だけを倒す」と実装すると、`phase2_latch`（並列）は
+  ラッチされたままになる。この状態でEB解除後にnotchを再投入すると、
+  `phase1_set`の`power_with_regen and (not phase2_latch)`項が
+  `phase2_latch`でブロックされ、直列（抵抗あり）を経由せず並列の現在の
+  カム位置（低抵抗〜全短絡）へ直結してしまう──#23が元々問題にした
+  「低速で抵抗ゼロへ再接続し電流が跳ね上がる」危険パターンと同型になる。
+  ユーザーに確認したところ「phase1/phase2/regenを全解放（架線-モータ間
+  を完全開放）」が意図どおりであることが確認された。
+- **要件2の実装方針の確認**：要件2は#28で「`field_current_excess_pulse`
+  経由のParallel→Series降格は`regen_flag`に関わらず正しく発生すべき」と
+  した変更の前提を覆す。ユーザーへ改めて説明を試みたところ、こちらが
+  使った用語（"gate"・"phase"等、sw-net由来の語彙）が伝わらなかったため、
+  無印`CHUSO1800_Traction_Controller/SPEC.md`（ユーザー自身の語彙に近い、
+  GPTが起こした仕様書）を読み直して裏付けを取った。§7.5に次の記述がある：
+  「ノッチOFF時に界磁電流が選択閾値を超えると、0.1秒ON／0.4秒OFFの周期
+  パルスを生成する。このパルスは並列から直列への切替、直列の解除、または
+  DB自動OFF時の接続解除に使用される。」──すなわちこのパルスの働きは
+  DB自動の状態で分岐する（ON: 直列へ切替／OFF: 接続解除）ことが原典の
+  時点で明記されており、#28の「`regen_flag`に関わらずSeriesへ降格」は
+  誤りだったと確定した。
+- **原因**：#28は、`near_stop`（ほぼ停止状態）の速度条件を`phase_reset_
+  cond`の`field_current_excess_pulse and (not regen_flag)`項に追加して
+  「巡航中はDB自動OFFでも中立へ全解放されない」ようにしていた。しかし
+  正しくは、DB自動OFF中に直列界磁制御へ入る／留まること自体が「運転士が
+  意図しない加速」のリスクであり、速度に関わらず接続解除すべきだった。
+- **修正**：
+  1. `phase_reset_cond`から`near_stop`条件を削除し、`field_current_
+     excess_pulse and (not regen_flag)`を無条件（#28以前の挙動）へ戻した。
+  2. `phase1_set`の`field_current_excess_pulse and phase2_latch`項に
+     `regen_flag`を追加し、パルスによるParallel→Series降格そのものを
+     DB自動ON時限定にした（これにより上記1のリセット項と競合しなくなり、
+     DB自動OFF時はSR優先順位に頼らず構造的にSeriesへ入れない）。
+  3. `phase_state_machine`に`eb_condition`を新規引数として渡し、
+     `phase1_reset`/`phase2_reset`/`regen_latch`のリセット条件すべてに
+     `eb_condition`をOR項として追加（要件1：非常制動時の無条件全解放）。
+  4. `db_auto_off_in_series_field_control = (not regen_flag) and
+     phase1_latch and regen_latch`という毎tick監視する条件を新設し、同様に
+     3つのリセット条件へOR項として追加（要件2：DB自動が運転中にOFFへ
+     切り替わった場合も含めて継続的に監視・解放する）。
+- **確認**：新規テスト`test/scenarios/eb_and_db_auto_off_force_disconnect.
+  lua`で、(a) 並列＋界磁制御の「固着」状態から巡航速度でEBを受けたら
+  即座に全ラッチが解放されEB継続中は解放され続けること、(b) 直列界磁
+  制御中にDB自動がOFFへ切り替わったら次のtickで即座に全ラッチが解放
+  されること、(c) DB自動ONの直列界磁制御はこの修正で意図せず解除されない
+  こと、をそれぞれ確認した。既存の`field_current_excess_pulse_reset_
+  masking.lua`は、`regen_flag=false`が速度に関わらず常に中立へマスクされる
+  よう更新した（#28の`near_stop`限定を撤回）。ユーザー提案の実運転
+  シナリオ2〜4・6（回生が発生する想定のもの）は、いずれも`db_auto=true`
+  を明示しないと本来SPEC.md §7.5の意味で回生が発生しえないことが判明した
+  ため、全て`db_auto=true`を設定するよう修正した（シナリオ1・5は回生を
+  伴わないため変更不要）。`test/run_all.lua`（22/22）・`test/verify_
+  deploy_artifact.lua`（2件ともpass）で無回帰を確認した。
+- **教訓**：#28は「ユーザーの実運転シナリオでの検証」という強い裏付けが
+  あったが、それでも実装の勢いで`regen_flag`という既存の安全条件を
+  安易に無効化してしまった。ドメイン固有の安全要件（本件では「DB自動が
+  運転士の明示的な同意を表す」という設計思想）は、動作ログや物理
+  シミュレーションだけでは検出できず、原典の仕様書やドメイン専門家の
+  レビューでしか裏付けが取れない場合がある。またコミュニケーション面
+  でも、自分（Claude）が採用した独自の説明語彙（"gate"・"phase"等）が
+  ユーザー本来の語彙とズレていたため、原典SPEC.mdの言葉遣いに立ち返る
+  ことで初めて正確な意思疎通ができた。今後、状態機械の安全条件について
+  ユーザーと認識を合わせる際は、まず既存の一次資料（SPEC.md等）の語彙を
+  優先して使うこと。
+- **影響箇所**：`src/chuso1800_core.lua`（`phase_state_machine`に
+  `eb_condition`引数を追加、`phase_reset_cond`の`near_stop`を削除、
+  `phase1_set`に`regen_flag`を追加、`db_auto_off_in_series_field_control`
+  を新設し3つのリセット条件へ合流）、`deploy/chuso1800_deploy.lua`
+  （再生成、7,617文字＝8192文字制限内）、`test/scenarios/eb_and_db_auto_
+  off_force_disconnect.lua`（新規）、`test/scenarios/field_current_
+  excess_pulse_reset_masking.lua`（`regen_flag=false`の期待値を無条件
+  マスクへ更新）、`test/scenarios/realistic_scenario_{2,3,4,6}_*.lua`
+  （`db_auto=true`を明示するよう更新）、`test/run_all.lua`（新規テスト
+  登録）。

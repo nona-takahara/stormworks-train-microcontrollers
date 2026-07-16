@@ -26,32 +26,32 @@
 -- here -- both the literal gate net and this module land on
 -- Series=false/Parallel=false (full neutral) a handful of ticks later.
 --
--- The masking was originally DB-auto-dependent: with regen_flag ON,
--- `phase_reset_cond` drops its pulse-derived term entirely, so nothing masks
--- the SET and Series visibly engages (and stays engaged) exactly as the gate
--- net does.
+-- The masking is DB-auto-dependent: with regen_flag ON, `phase_reset_cond`
+-- drops its pulse-derived term entirely, so nothing masks the SET and Series
+-- visibly engages (and stays engaged) exactly as the gate net does.
 --
--- **DESIGN_LOG.md #28 update**: the regen_flag=false masking documented above
--- turned out not to be a harmless tick-model artifact after all -- it was a
--- symptom of the same underlying design gap behind #23/#26/#27. `phase_reset_
--- cond`'s `field_current_excess_pulse and (not regen_flag)` term fires this
--- same way (full reset to neutral instead of a clean Parallel->Series
--- demotion) any time field-current-excess trips while regen_flag is OFF --
--- including during perfectly ordinary highway-speed coasting, since iF_a's
--- update formula drifts upward without bound as long as any residual current
--- remains (confirmed: fires at ~9m/s with motor current still in the single
--- digits of amps). That is squarely the same "confirmed-in-game" regression
--- as #27 (loses Parallel+field-control readiness and regen-braking capability
--- on an ordinary notch-off coast) just reached via a different trigger
--- (field-current-excess instead of neutral_cond). The fix reuses #27's
--- `near_stop` speed gate: the DB-auto-OFF full-reset short-circuit now only
--- applies near a genuine stop (`STUCK_RELEASE_SPEED_THRESHOLD`=3m/s); above
--- that, DB-auto OFF now behaves exactly like DB-auto ON always did -- Series
--- visibly engages and stays engaged, matching the scenario the *literal gate
--- net itself never actually needed to handle* (this "coast at speed with a
--- pulse mid-decay" situation is outside what the 原稿-vs-module cross-check in
--- #22 exercised; the fix is scoped to this module only, per the same policy
--- used for #23/#24/#25).
+-- **DESIGN_LOG.md #28 update (superseded by #29, see below)**: #28 initially
+-- gated the regen_flag=false masking behind a `near_stop` speed check, on the
+-- theory that iF_a's unbounded upward drift during coasting made it fire too
+-- readily and that a clean Parallel->Series demotion (matching the
+-- regen_flag=true behavior) was the correct response at speed regardless of
+-- regen_flag.
+--
+-- **DESIGN_LOG.md #29 correction**: that theory was wrong. Per SPEC.md §7.5
+-- ("このパルスは並列から直列への切替、直列の解除、またはDB自動OFF時の接続
+-- 解除に使用される" -- this pulse is used to switch Parallel->Series, release
+-- Series, or disconnect entirely when DB-auto is OFF) and explicit correction
+-- from the PR author, the masking-to-neutral behavior for regen_flag=false is
+-- the *intended* one regardless of speed -- entering or remaining in series
+-- field control while DB-auto (dynamic-brake-auto) is OFF risks an
+-- unintended-acceleration surprise for the driver, so the controller must
+-- disconnect from the catenary instead of quietly demoting to Series. The fix
+-- reverts #28's `near_stop` gate on `phase_reset_cond`'s pulse term (masking
+-- is unconditional again, matching the original gate-net-derived behavior)
+-- and instead gates `phase1_set`'s pulse-driven Parallel->Series term with
+-- `regen_flag` directly, so the demotion path structurally cannot fire at all
+-- while DB-auto is OFF -- masking is therefore the only possible outcome,
+-- not a race resolved by reset-priority.
 --
 -- This test locks down all three branches so a future refactor of
 -- `phase_state_machine` cannot silently reorder these terms and change which
@@ -100,28 +100,30 @@ return function(h)
         h.assert_false(st.phase2_latch, "converges to neutral (phase2)")
     end
 
-    -- --- DESIGN_LOG.md #28: DB auto OFF, but coasting at ordinary speed
-    -- (above STUCK_RELEASE_SPEED_THRESHOLD) -- must NOT drop to full neutral;
-    -- must demote cleanly to Series like the regen_flag=true case always did.
+    -- --- DESIGN_LOG.md #29: DB auto OFF, coasting at ordinary speed (above
+    -- STUCK_RELEASE_SPEED_THRESHOLD) -- must ALSO mask to full neutral, same
+    -- as the near-stop case. `phase1_set`'s pulse term now requires
+    -- `regen_flag`, so there is structurally no path to a Series SET while
+    -- DB-auto is OFF, at any speed. ---
     do
         local state = make_state()
         local inputs = make_inputs(false, 5)
-        local set_tick = nil
+        local saw_phase1_on = false
         for tick = 1, 40 do
             local stateless_out, new_state = core_tick(inputs, state)
             state = new_state
             local st = h.decode_state(state)
-            if st.phase1_latch and not set_tick then set_tick = tick end
+            if st.phase1_latch then saw_phase1_on = true end
         end
-        h.assert_true(set_tick ~= nil,
-            "DESIGN_LOG.md #28: regen_flag=false at speed must still demote to Series, not mask to neutral")
+        h.assert_false(saw_phase1_on,
+            "DESIGN_LOG.md #29: regen_flag=false at speed must also mask to neutral, not demote to Series")
         local st = h.decode_state(state)
-        h.assert_true(st.phase1_latch, "Series stays latched (not masked) once set")
-        h.assert_false(st.phase2_latch, "Parallel has been reset by the demotion")
+        h.assert_false(st.phase1_latch, "converges to neutral (phase1)")
+        h.assert_false(st.phase2_latch, "converges to neutral (phase2)")
     end
 
     -- --- DB auto ON: phase_reset_cond drops the pulse term regardless of
-    -- speed, SET holds (unaffected by the #28 near_stop gate) ---
+    -- speed, SET holds ---
     do
         local state = make_state()
         local inputs = make_inputs(true, 5)
