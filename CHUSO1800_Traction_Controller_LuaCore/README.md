@@ -196,13 +196,16 @@ Stormworks実機は不要、素のLuaだけで動く：
 lua test/run_all.lua
 ```
 
-16本のシナリオ（`test/scenarios/*.lua`）。カバー範囲：
+17本のシナリオ（`test/scenarios/*.lua`）。カバー範囲：
 
 - **未変更の** `../CHUSO1800_Traction_Controller/scripts/n409.lua` に対する
   数値回帰（小さな `input`/`output` シム経由で `loadfile` するため、同ファイル
   が変更されていないことの受動的な再確認にもなる）
 - SPEC.md §3.6 状態遷移図の完全な走査
 - SPEC.md記載のコーナーケース（H4/H5/H6/H7）の検証
+- `test/realistic_driving.lua`（クローズドループ速度シミュレーション
+  ハーネス）を使った、実運転を想定した加減速シナリオ（`test/scenarios/
+  realistic_scenario_*.lua`。DESIGN_LOG.md #27/#28参照）
 
 `deploy/main.lua`（後述）には自動テストを設けていない。`dofile`が作業
 ディレクトリ相対のためテストにはサブプロセスでの`deploy/`実行が必要になり、
