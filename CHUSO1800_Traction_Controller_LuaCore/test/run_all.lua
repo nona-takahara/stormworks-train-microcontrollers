@@ -51,6 +51,10 @@ local scenario_names = {
     "stuck_at_top_of_ladder_recovery",
     "realistic_scenario_1_low_speed_no_regen",
     "realistic_scenario_2_highway_coast_reaccel_regen",
+    "realistic_scenario_3_gradual_decel_series_demotion",
+    "realistic_scenario_4_gradual_decel_then_brake",
+    "realistic_scenario_5_emergency_brake_reaccel",
+    "realistic_scenario_6_regen_interrupt_resume",
 }
 
 local total, failed = 0, 0
