@@ -25,6 +25,25 @@
 --    in* series field control (e.g. entered while DB-auto was ON, then the
 --    driver turns it off mid-brake) -- the controller must disconnect from
 --    the catenary on the very next tick, not wait for some other condition.
+--
+-- **Follow-up (still #29)**: a PR reviewer follow-up pointed out that
+-- "released on the state-machine tick" is not the same as "output zero on
+-- that same tick" -- `physics_tick` always computes the current tick's
+-- electrical output from the *previous* tick's latch state (see the file's
+-- own "tickモデル" header note), so a naive reading of these two
+-- requirements could still leave one tick where the real physical output
+-- (`motor_current` / the `elec_W` that feeds the `W` output port directly)
+-- reflects the old, still-connected state even though the latches already
+-- read as released. Measured directly: without the fix, this showed up as
+-- ~49A / a raw (pre-smoothing) acceleration of ~0.24 m/s^2 for exactly one
+-- tick during a field-current-excess-triggered disconnect -- over twice the
+-- 0.1 m/s^2 bound the reviewer asked for. The fix has `phase_state_machine`
+-- also return `output_zero_this_tick` (true exactly when at least one of
+-- phase1/phase2 was connected coming in and both are released this same
+-- tick), which `core_tick` uses to retroactively zero `motor_current`/
+-- `elec_W` for that tick's output -- so every sub-test below also asserts
+-- `stateless_out[1]` (motor_current) and `stateless_out[2]` (W) are exactly
+-- zero on the disconnect tick itself, not just the latch state.
 
 return function(h)
     -- --- requirement 1: EB forces full disconnect from a stuck Parallel+
@@ -48,6 +67,8 @@ return function(h)
         h.assert_false(st.phase1_latch, "EB: series/phase1 forced off on the EB tick itself")
         h.assert_false(st.phase2_latch, "EB: parallel/phase2 forced off on the EB tick itself")
         h.assert_false(st.regen_latch, "EB: field-control/regen forced off on the EB tick itself")
+        h.assert_near(stateless_out[1], 0, 1e-9, "EB: motor_current output is exactly zero on the EB tick itself")
+        h.assert_near(stateless_out[2], 0, 1e-9, "EB: W (real physical drive) output is exactly zero on the EB tick itself")
 
         -- stays released for as long as EB holds, regardless of speed
         state = new_state
@@ -82,6 +103,46 @@ return function(h)
         h.assert_false(st.phase1_latch, "DB-auto OFF mid series-field-control: series/phase1 forced off immediately")
         h.assert_false(st.phase2_latch, "DB-auto OFF mid series-field-control: parallel/phase2 forced off immediately")
         h.assert_false(st.regen_latch, "DB-auto OFF mid series-field-control: field-control/regen forced off immediately")
+        h.assert_near(stateless_out[1], 0, 1e-9, "DB-auto OFF mid series-field-control: motor_current output is exactly zero immediately")
+        h.assert_near(stateless_out[2], 0, 1e-9, "DB-auto OFF mid series-field-control: W (real physical drive) output is exactly zero immediately")
+    end
+
+    -- --- follow-up regression: field-current-excess-triggered disconnect
+    -- (DB-auto OFF, Parallel+field-control, cruising, current still
+    -- meaningfully nonzero the tick the disconnect is decided) must ALSO
+    -- output exactly zero on that same tick, not just release the latches.
+    -- This reproduces the ~49A / ~0.24 m/s^2 raw-accel leak found via direct
+    -- measurement before the `output_zero_this_tick` fix. ---
+    do
+        local state = h.encode_state({
+            position_counter = 0,
+            phase1_latch = false,
+            phase2_latch = true,
+            regen_latch = true,
+            OLD_I = 60,
+            OLD_IF_A = 299, -- just under threshold; will cross it and trip the pulse shortly
+            OLD_PHI = 0.03,
+        })
+        local inputs = h.encode_stateless_in({
+            speed = 30 / 3.6, catenary_voltage_sw = 1500, notch_pos = 0,
+            direction = 1, brake_pressure_sw = 5, sap_pressure_sw = 1.0,
+            regen_flag = false,
+        })
+        local disconnect_tick, output_at_disconnect = nil, nil
+        for tick = 1, 60 do
+            local stateless_out, new_state = core_tick(inputs, state)
+            state = new_state
+            local st = h.decode_state(state)
+            if (not st.phase1_latch) and (not st.phase2_latch) and (not st.regen_latch) and not disconnect_tick then
+                disconnect_tick = tick
+                output_at_disconnect = stateless_out
+            end
+        end
+        h.assert_true(disconnect_tick ~= nil, "the field-current-excess-triggered disconnect does eventually fire")
+        h.assert_near(output_at_disconnect[1], 0, 1e-9,
+            "field-current-excess disconnect: motor_current output is exactly zero on the disconnect tick itself, tick " .. tostring(disconnect_tick))
+        h.assert_near(output_at_disconnect[2], 0, 1e-9,
+            "field-current-excess disconnect: W (real physical drive) output is exactly zero on the disconnect tick itself, tick " .. tostring(disconnect_tick))
     end
 
     -- --- negative case: DB-auto ON, in series field control -- must NOT

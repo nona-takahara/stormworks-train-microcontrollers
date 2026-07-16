@@ -594,10 +594,29 @@ local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
     local traction_all_off = (not phase1_latch) and (not phase2_latch)
     local regen_off_all = (not notch_fb_ge1) and traction_all_off
 
-    return sr_latch(phase1_latch, phase1_set, phase1_reset),
-        sr_latch(phase2_latch, phase2_set_cond, phase2_reset),
+    local phase1_latch_next = sr_latch(phase1_latch, phase1_set, phase1_reset)
+    local phase2_latch_next = sr_latch(phase2_latch, phase2_set_cond, phase2_reset)
+
+    -- 【#29フォローアップ】PR #7レビューで「1tickたりとも異常な出力トルク
+    -- (加速度換算)を出してはならない」との指摘を受けた。physics_tickは
+    -- 常にOLDのphase1/phase2/regenで今tickの電気出力を計算する（ファイル
+    -- 冒頭「tickモデル」参照）ため、`force_full_disconnect`（EB／DB自動OFF
+    -- 中の直列界磁制御）や`phase_reset_cond`（coasting_cond／DB自動OFF時の
+    -- 界磁電流超過）がまさにこのtickで両ラッチを新規に全解放へ倒しても、
+    -- 今tickの電気出力自体はまだOLDの（接続されたままの）状態で計算済み
+    -- ─ 実測で電機子電流49A・生の加速度換算0.24 m/s²相当が1tickだけ
+    -- 出力される事例を確認した（`0.1 m/s^2`の閾値を超過）。
+    -- `output_zero_this_tick`は「直前まで（phase1かphase2の）どちらかは
+    -- 接続されていたが、このtickで両方とも解放される」ケースを検出し、
+    -- `core_tick`側で今tickの`motor_current`/`elec_W`（架線-モータ間へ
+    -- 実際に出力される値）を事後的に0へ上書きするために使う。
+    local output_zero_this_tick = (phase1_latch or phase2_latch) and (not phase1_latch_next) and (not phase2_latch_next)
+
+    return phase1_latch_next,
+        phase2_latch_next,
         sr_latch(regen_latch, phase2_latch and notch_fb_ge1, phase1_notch_active or traction_all_off or force_full_disconnect),
-        phase1_set_cond or phase2_blinker_cond or regen_off_all or phase1_regen_active
+        phase1_set_cond or phase2_blinker_cond or regen_off_all or phase1_regen_active,
+        output_zero_this_tick
 end
 
 -- SPEC §3.2 カム進段（traction_any_active中の周期パルス）。戻り値:
@@ -666,11 +685,21 @@ function core_tick(stateless_in, state_in)
         field_current_excess_block(st_phase1_latch, st_regen_bc_smooth, st_field_current_excess_counter,
             iF_a, notch_ge1, phase1_cap_charged)
 
-    local phase1_latch, phase2_latch, regen_latch, traction_any_active = phase_state_machine(
+    local phase1_latch, phase2_latch, regen_latch, traction_any_active, output_zero_this_tick = phase_state_machine(
         st_phase1_latch, st_phase2_latch, st_regen_latch,
         notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1, notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14,
         motor_current, low_bc_with_regen_flag, field_current_excess_pulse, regen_flag,
         phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged, speed, eb_condition)
+
+    -- 【#29フォローアップ】`output_zero_this_tick`（`phase_state_machine`
+    -- 内で算出、コメント参照）が真の場合、今tickの実出力（架線-モータ間へ
+    -- 実際に流れる`motor_current`と出力ポート`W`直結の`elec_W`）を事後的に
+    -- 0へ上書きする。debounce_block／field_current_excess_blockは既に
+    -- 上書き前の値で評価済みのためこの上書きの影響を受けない（意図通り、
+    -- 判定タイマー自体は実電流に基づかせる）。
+    if output_zero_this_tick then
+        motor_current, elec_W = 0, 0
+    end
 
     local position_counter, cam_pulse, traction_advance_counter_next =
         advance_cam(st_position_counter, st_traction_advance_counter, traction_any_active)

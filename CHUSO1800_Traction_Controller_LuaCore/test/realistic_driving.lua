@@ -117,6 +117,29 @@ function Sim:phase(label, opts)
             self:anomaly(string.format("motor_current=%.1fA exceeds %dA threshold (phase '%s')",
                 d.motor_current, CURRENT_SPIKE_A, label))
         end
+        -- DESIGN_LOG.md #29 follow-up: a PR reviewer measurement found that
+        -- physics_tick's "always compute from the OLD latch state" tick
+        -- model (see chuso1800_core.lua's own header note) could leave one
+        -- tick where the real physical output (motor_current / stateless_
+        -- out[2]="W", the output directly wired to the "W" port) was still
+        -- nonzero even though phase_state_machine had just decided to fully
+        -- disconnect (measured: ~49A / ~0.24 m/s^2 raw accel, over twice the
+        -- 0.1 m/s^2 the reviewer asked for). The fix (`output_zero_this_
+        -- tick` in phase_state_machine) makes this an always-true invariant:
+        -- with both series/phase1 and parallel/phase2 released, the real
+        -- output must be exactly zero, every tick, in every scenario -- not
+        -- just at the specific transition moments the unit-level regression
+        -- test (`eb_and_db_auto_off_force_disconnect.lua`) constructs.
+        -- Checking it here means every realistic_scenario_*.lua exercises it
+        -- for free, per the project's preference for extending the existing
+        -- scenario set over adding narrow new ones.
+        if (not st.phase1_latch) and (not st.phase2_latch) then
+            if math.abs(d.motor_current) > 1e-9 or math.abs(d.W) > 1e-9 then
+                self:anomaly(string.format(
+                    "output nonzero while fully disconnected: motor_current=%.4fA W=%.4f (phase '%s')",
+                    d.motor_current, d.W, label))
+            end
+        end
         if opts.expect_cam_static and st.position_counter ~= self.last_pos then
             self:anomaly(string.format("cam moved %d -> %d during phase '%s' (expected static)",
                 self.last_pos, st.position_counter, label))
