@@ -56,6 +56,7 @@ local scenario_names = {
     "realistic_scenario_4_gradual_decel_then_brake",
     "realistic_scenario_5_emergency_brake_reaccel",
     "realistic_scenario_6_regen_interrupt_resume",
+    "realistic_scenario_7_db_auto_off_no_regen",
 }
 
 local total, failed = 0, 0
