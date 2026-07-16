@@ -83,6 +83,14 @@ local BRAKE_LIMIT_400 = 400
 local REGEN_BC_MIN = -0.1
 local BC_TARGET_MIN = -0.05
 
+-- 「固着カムからの脱出」（DESIGN_LOG.md #23/#26/#27）の発動をほぼ停止状態
+-- （並列の全短絡ステップへ再接続しても実害が出ない速度域）だけに限定する
+-- しきい値。8m/s以上では定常電流が自己制御域（200A、POWER_LIMIT_CURRENT
+-- 未満）へ収束することを確認済みだが、この値は「巡航中の短い惰性走行では
+-- 絶対に解放しない」ための保守的なマージンを取ってある（経緯は
+-- `DESIGN_LOG.md` #27）。
+local STUCK_RELEASE_SPEED_THRESHOLD = 3 -- m/s
+
 -- tick数由来のタイマー定数（Stormworksは60tick/秒前提、SPEC §0.2）。
 local CAP_DEBOUNCE_TICKS = 6              -- 0.1sデバウンス、無効化で即0
 local CAM_ADVANCE_PERIOD_TICKS = 12       -- 0.1s+0.1s（traction_blinker周期）
@@ -494,21 +502,43 @@ end
 local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
     notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1, notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14,
     motor_current, low_bc_with_regen_flag, field_current_excess_pulse, regen_flag,
-    phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged)
+    phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged, speed)
     local phase1_notch_active = phase1_latch and notch_ge1
     local phase1_regen_active = phase1_latch and notch_fb_ne14 and regen_latch
     local power_with_regen = notch_ge1 and notch_fb_ge1
 
+    -- ほぼ停止状態（STUCK_RELEASE_SPEED_THRESHOLD未満）かどうか。
+    -- stuck_at_top_idleとphase_reset_condの双方で共有する（#28）。
+    local near_stop = math.abs(speed) < STUCK_RELEASE_SPEED_THRESHOLD
     local neutral_cond = current_near_zero(motor_current) and not (notch_ge1 or low_bc_with_regen_flag)
     local coasting_cond = neutral_cond and (not regen_latch)
-    local phase_reset_cond = coasting_cond or (field_current_excess_pulse and (not regen_flag))
+    -- 【#28で修正】`field_current_excess_pulse and (not regen_flag)`は元々
+    -- 「DB自動OFF中に界磁電流超過を検知したら直列へ降格させず中立へ全解放
+    -- する」という意図だったが、iF_a（界磁電流相当値）はnotch=0後も電流が
+    -- 完全に0でない限り毎tick`+ (OLD_I - target_i) * 0.1`ずつ際限なく増え
+    -- 続ける式になっており（物理的には巡航中の並列全短絡ステップでは速度
+    -- 低下とともに電流がわずかに上がり続けるため、OLD_Iが正である限り
+    -- 止まらない）、notch-off直後の一時的な高電流だけでなく、巡航中の
+    -- 通常の惰性走行でも数秒〜十数秒後に必ず300/400Aしきい値を超えてしまう
+    -- （速度9m/s前後、電流はまだ一桁A程度でも発火することを診断で確認）。
+    -- ユーザー確認済み仕様：惰性走行中は速度に関わらず並列＋界磁制御を
+    -- 維持し電機子電流を界磁制御で0A近辺に保つのが正常動作であり、pulseが
+    -- 発火しても並列→直列への正しい降格（phase1_set経由）に繋がるべきで、
+    -- 中立への全解放は本来「ほぼ停止していて再接続の危険がある」場合
+    -- （stuck_at_top_idleと同じ`near_stop`）に限定すべきだった。near_stopを
+    -- 追加したことで、巡航中はphase1_setのみが有効になり（phase1_resetは
+    -- この項からは発生しないため）、意図通りParallel→Seriesへ正しく降格
+    -- する（phase2はその1tick後、`phase1_latch and not(...)`経由で自然に
+    -- リセットされる）。
+    local phase_reset_cond = coasting_cond or (field_current_excess_pulse and (not regen_flag) and near_stop)
 
-    -- 「固着カムからの脱出」（DESIGN_LOG.md #23/#26）：カム0で並列(phase2)＋
-    -- 界磁制御(regen_latch)だけが立ったまま直列(phase1)が一度も立たない
-    -- 状態は、coasting_condが要求する`not regen_latch`が恒久的に満たせない
-    -- ため、界磁電流が閾値を超えない限り自然には解けない。しかしnotch/回生
-    -- 要求ともに無く電流もほぼ0まで収束しているなら「単に停止している」
-    -- だけなので、phase2_resetへ直接合流させて中立へ解放する。
+    -- 「固着カムからの脱出」（DESIGN_LOG.md #23/#26/#27/#28）：カム0で並列
+    -- (phase2)＋界磁制御(regen_latch)だけが立ったまま直列(phase1)が一度も
+    -- 立たない状態は、coasting_condが要求する`not regen_latch`が恒久的に
+    -- 満たせないため、界磁電流が閾値を超えない限り自然には解けない。
+    -- しかしnotch/回生要求ともに無く電流もほぼ0まで収束しているなら
+    -- 「単に停止している」だけなので、phase2_resetへ直接合流させて中立へ
+    -- 解放する。
     -- 【#26で修正】当初はこれをfield_current_excess_pulse経由で
     -- phase1_set（並列→直列の降格SET）にも合流させていたが、
     -- `regen_flag`（DB自動）がONの間はphase_reset_condのpulse項が
@@ -518,8 +548,18 @@ local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
     -- を持ち上げカムが勝手に回り出す実機バグを引き起こした。phase1_setには
     -- 一切合流させず、直接phase2_resetにのみ作用させることでこの経路自体を
     -- 断つ。
+    -- 【#27で修正】`neutral_cond`（電流ほぼ0・notch/回生要求なし）だけを
+    -- 条件にすると、高速巡航中の数秒程度の通常の惰性走行（電流は界磁制御
+    -- 自体によってすぐ0Aへ収束する─ユーザー確認済みの仕様）でも即座に解放
+    -- してしまい、並列＋界磁制御まで積み上げた進行状態を毎回失っていた
+    -- （再力行のたび直列0から登り直しになり、かつ回生制動の前提となる
+    -- `regen_latch`も失われ回生が一切発生しなくなる実機バグ）。実際に
+    -- 再接続が危険なのは、並列の全短絡ステップ（`PR[1]=0Ω`）へほぼ停止
+    -- 状態から再接続する場合だけ（`STUCK_RELEASE_SPEED_THRESHOLD`＝3m/s
+    -- 未満、経緯は同定数のコメント参照）なので、速度条件を追加して
+    -- 高速巡航中は解放しないようにした。
     local stuck_at_top_idle = regen_latch and phase2_latch and (not phase1_latch) and notch_fb_ge1
-        and neutral_cond
+        and neutral_cond and near_stop
 
     local phase1_set_cond = notch_ge2 and notch_fb_range_low
         and phase1_cap_charged and current_below_limit_cap_charged
@@ -616,7 +656,7 @@ function core_tick(stateless_in, state_in)
         st_phase1_latch, st_phase2_latch, st_regen_latch,
         notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1, notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14,
         motor_current, low_bc_with_regen_flag, field_current_excess_pulse, regen_flag,
-        phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged)
+        phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged, speed)
 
     local position_counter, cam_pulse, traction_advance_counter_next =
         advance_cam(st_position_counter, st_traction_advance_counter, traction_any_active)

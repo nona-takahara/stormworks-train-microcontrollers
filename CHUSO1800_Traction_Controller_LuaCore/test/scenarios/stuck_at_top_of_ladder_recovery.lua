@@ -53,6 +53,28 @@
 -- table again instead of resuming from Parallel. See DESIGN_LOG.md #26.
 -- Routing `stuck_at_top_idle` directly into `phase2_reset` instead removes
 -- any path from it to `phase1_set` entirely, independent of `regen_flag`.
+--
+-- **Revision history (2)**: the #26 fix was STILL too broad. `neutral_cond`
+-- (current settled near zero + no notch/brake demand) is satisfied by any
+-- ordinary high-speed coast, not just a genuinely stuck near-stop vehicle --
+-- field-control naturally drives armature current to ~0A within a second or
+-- two of notch-off at ANY speed (this is correct behavior, confirmed by the
+-- user: above ~40km/h coasting, field-control is *supposed* to hold current
+-- at 0A). So a routine "60km/h, notch off, coast 10s, re-power" cycle hit
+-- `stuck_at_top_idle` too, releasing Parallel+field-control state that was
+-- perfectly valid, forcing a full Series-through-Parallel ladder re-climb on
+-- re-power and silently discarding regen-braking readiness (confirmed via a
+-- realistic closed-loop driving-scenario simulation: a 10s coast at 60km/h
+-- destroyed cam state that should have persisted through to an 85km/h
+-- re-acceleration). The fix adds a speed gate, `STUCK_RELEASE_SPEED_THRESHOLD
+-- = 3` m/s: `stuck_at_top_idle` now only fires when the vehicle is also
+-- genuinely near a stop, which is the only situation the original #23 bug
+-- report actually described (Parallel+field-control parked with the cam on
+-- position 0 while stationary). The threshold was chosen from a diagnostic
+-- current-vs-speed sweep of re-power current after release: settling to a
+-- safe ~200A steady state at 8+ m/s reapply, with 3 m/s kept as a
+-- conservative margin well below that so no plausible cruising/coasting speed
+-- can ever trigger release. See DESIGN_LOG.md #27.
 
 return function(h)
     local function stuck_state()
@@ -67,15 +89,23 @@ return function(h)
         })
     end
 
-    -- --- idle (no notch, no brake demand): both latches release within ~0.5s ---
+    -- --- idle (no notch, no brake demand), genuinely near a stop (speed below
+    -- STUCK_RELEASE_SPEED_THRESHOLD): both latches release once current decays
+    -- near zero. At near-zero speed with Parallel fully shorted (PR[1]=0), the
+    -- residual field current (OLD_IF_A=20 seed) initially drives several
+    -- thousand amps (the same "confirmed-bad outcome" this test's own header
+    -- describes) -- neutral_cond only becomes true, and release only fires,
+    -- once that decays under the 50A near-zero threshold (~170 ticks / ~2.9s
+    -- here), which is why this loop runs longer than the 150-tick budget used
+    -- elsewhere in this file. ---
     do
         local state = stuck_state()
         local idle_inputs = h.encode_stateless_in({
-            speed = 15, catenary_voltage_sw = 1500, notch_pos = 0,
+            speed = 1, catenary_voltage_sw = 1500, notch_pos = 0,
             direction = 1, brake_pressure_sw = 5, sap_pressure_sw = 5,
         })
         local released_tick = nil
-        for tick = 1, 150 do
+        for tick = 1, 300 do
             local stateless_out, new_state = core_tick(idle_inputs, state)
             state = new_state
             local st = h.decode_state(state)
@@ -94,10 +124,10 @@ return function(h)
     do
         local state = stuck_state()
         local idle_inputs = h.encode_stateless_in({
-            speed = 15, catenary_voltage_sw = 1500, notch_pos = 0,
+            speed = 1, catenary_voltage_sw = 1500, notch_pos = 0,
             direction = 1, brake_pressure_sw = 5, sap_pressure_sw = 5,
         })
-        for tick = 1, 150 do
+        for tick = 1, 300 do
             local stateless_out, new_state = core_tick(idle_inputs, state)
             state = new_state
         end
@@ -141,9 +171,18 @@ return function(h)
         end
     end
 
-    -- --- DESIGN_LOG.md #26 regression: idle release with DB-auto (regen_flag)
-    -- ON, but no actual brake demand, must NOT spuriously SET Series (the
-    -- confirmed-in-game "cam creeps forward with notch off" bug). ---
+    -- --- DESIGN_LOG.md #26 regression: coasting with DB-auto (regen_flag) ON,
+    -- no actual brake demand, must NOT spuriously SET Series via
+    -- `stuck_at_top_idle` leaking into `phase1_set` (the confirmed-in-game
+    -- "cam creeps forward with notch off" bug). Deliberately run at a coasting
+    -- speed (not near a stop): at near-stop speed this module's own
+    -- fully-shorted-Parallel physics makes armature current genuinely run
+    -- away (see DESIGN_LOG.md #28), which legitimately trips the *separate*,
+    -- pre-existing `field_current_excess_pulse` -> `phase1_set` demotion path
+    -- (SPEC.md §7.5) -- a real, wanted Series engagement, not the #26 bug.
+    -- Testing at a coasting speed isolates the actual claim under test:
+    -- `stuck_at_top_idle` itself (structurally decoupled from `phase1_set`
+    -- since #26) must never be the thing that sets Series. ---
     do
         local state = stuck_state()
         local idle_db_auto_inputs = h.encode_stateless_in({
@@ -152,21 +191,42 @@ return function(h)
             regen_flag = true, -- DB-auto left on, a common standing driving mode
         })
         local saw_bogus_series_set = false
-        local released_tick = nil
-        for tick = 1, 150 do
+        for tick = 1, 300 do
             local stateless_out, new_state = core_tick(idle_db_auto_inputs, state)
             state = new_state
             local st = h.decode_state(state)
             if st.phase1_latch then saw_bogus_series_set = true end
-            if (not st.phase2_latch) and (not st.regen_latch) and not released_tick then
-                released_tick = tick
-            end
+            h.assert_true(st.phase2_latch, "DESIGN_LOG.md #26/#27: stays latched while coasting at speed, tick " .. tick)
+            h.assert_true(st.regen_latch, "DESIGN_LOG.md #26/#27: field-control stays latched while coasting at speed, tick " .. tick)
         end
         h.assert_false(saw_bogus_series_set,
-            "DESIGN_LOG.md #26: idle release under DB-auto must never SET Series")
-        h.assert_true(released_tick ~= nil, "still releases to neutral under DB-auto with no brake demand")
+            "DESIGN_LOG.md #26: coasting release path under DB-auto must never SET Series")
         local st = h.decode_state(state)
-        h.assert_eq(st.position_counter, 0, "cam untouched (no creeping forward) under DB-auto idle release")
+        h.assert_eq(st.position_counter, 0, "cam untouched (no creeping forward) under DB-auto coasting")
+    end
+
+    -- --- DESIGN_LOG.md #27 regression: coasting at highway speed (notch off,
+    -- no brake demand, current settled to 0A by field-control -- the CORRECT
+    -- behavior above ~40km/h) must NOT release Parallel+field-control. Only a
+    -- genuine near-stop (speed < STUCK_RELEASE_SPEED_THRESHOLD) may release.
+    -- Confirmed-in-game symptom this locks down: a brief coast at speed
+    -- silently discards regen-braking readiness and forces a full ladder
+    -- re-climb on the next re-power. ---
+    do
+        local state = stuck_state()
+        local highway_coast_inputs = h.encode_stateless_in({
+            speed = 60 / 3.6, catenary_voltage_sw = 1500, notch_pos = 0,
+            direction = 1, brake_pressure_sw = 5, sap_pressure_sw = 1.0, -- no demand
+        })
+        for tick = 1, 150 do
+            local stateless_out, new_state = core_tick(highway_coast_inputs, state)
+            state = new_state
+            local st = h.decode_state(state)
+            h.assert_true(st.phase2_latch,
+                "DESIGN_LOG.md #27: Parallel must stay latched while coasting at speed, tick " .. tick)
+            h.assert_true(st.regen_latch,
+                "DESIGN_LOG.md #27: field-control must stay latched while coasting at speed, tick " .. tick)
+        end
     end
 
     -- --- negative case: must NOT release while there is an active brake demand.
