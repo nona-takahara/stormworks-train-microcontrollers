@@ -1693,3 +1693,57 @@ Type ID）が一切送出されていなかった不具合を修正
     （不変条件チェックを追加）、`test/scenarios/eb_and_db_auto_off_
     force_disconnect.lua`（出力ゼロを直接検証するアサーション・新規
     サブテストを追加）。
+- **追記3（さらなる訂正：実際の車両制御はMomelink-A経由、`W`出力ポートは
+  別系統）**：追記2への対応をユーザーへ報告したところ、根本的な訂正を
+  受けた。「実際の車両制御はMomelink-Aを使っており、2番出力（`W`）は
+  別のシステム向け。今のところ2番の単位は仕事率（電力）のWだが今後変わる
+  可能性がある。したがって車両シミュレーションはMomelink-Aを使うのが
+  妥当。Momelink-AのN1が速度絶対値を減らす量、N2は単に速度に加算する量で
+  どちらも単位はm/s^2」との説明を受けた。
+  - **影響**：追記2で「`motor_current`/`W`（`stateless_out[2]`）が実際に
+    車両を駆動する値」と誤認していたことが判明した。実際に車両を駆動する
+    のはMomelink-AのN2＝`stateless_out[3]`（このコードベースでの名称
+    `bc_target_smooth`。実体は自車の加速度。DESIGN_LOG.md #20/#25の
+    「Momelink-A送出専用」という理解自体は正しかったが、それこそが実車の
+    物理を駆動する値であり「Momelink-A送出専用＝自車の物理に無関係」と
+    早合点していたのが誤りだった）。追記2で最初に検出した`bc_target_
+    smooth`のEMA平滑化による遅延（EB直後0.39 m/s^2、0.1 m/s^2を下回る
+    まで約7tick）は、`motor_current`/`W`の1tickラグとは独立した、**本来
+    最優先で修正すべきだった実車物理側の不具合**だったと判明した。
+  - **修正**：`smooth_bc`に`force_bc_target_zero`
+    （`eb_condition or output_zero_this_tick`）を追加し、真の間はEMA式
+    （`accel*0.2 + bc_target_smooth*0.8`）自体をバイパスして、出力にも
+    次tickへ持ち越す平滑化状態にも直接0を書き込むようにした。EMAは
+    「直前までの記憶」を状態として持ち越す性質上、accel入力を0にするだけ
+    では記憶が残ってしまうため、状態そのものを0へ書き換える必要がある。
+  - **確認**：同じ計装で再測定し、EB直後・界磁電流超過パルス発火直後の
+    いずれも、`bc_target_smooth`（Momelink-A N2）が該当tickで厳密に
+    0.00000になることを確認した（従来は0.39 m/s^2・0.34 m/s^2程度が
+    1tick出力されていた）。
+  - **テスト**：`test/realistic_driving.lua`の不変条件チェックに
+    `bc_target_smooth`も追加（全解放中は`motor_current`/`W`/
+    `bc_target_smooth`いずれも厳密に0であることを検証）。
+    `test/scenarios/eb_and_db_auto_off_force_disconnect.lua`の各サブ
+    テストに、EMA遅延バグを実際に踏むよう`bc_target_smooth`の初期状態を
+    意図的に非ゼロ（0.4〜0.5）でシードした上で、解放tickでの
+    `stateless_out[3]`が厳密に0であることを検証するアサーションを追加した。
+    `test/run_all.lua`（23/23）・`test/verify_deploy_artifact.lua`
+    （2件ともpass）で無回帰を確認した。
+  - **教訓**：「どの出力チャンネルが実際に車両を駆動するか」という
+    アーキテクチャ上の前提を、コード内のコメントやテーブル名（`W`という
+    出力ポート名、"実体は自車平滑加速度"という既存コメント）から**類推**
+    してしまい、ドメイン専門家（PR作成者）への確認を後回しにしたことが
+    誤りの原因だった。特に安全に関わる「どの信号が実際の物理を駆動するか」
+    という前提は、コードの内部的な名前付けやコメントの言い回しだけでは
+    確定できない場合がある——今回のように、名前は"W"（Watts、電力の意）
+    でありながら実は別系統向けで、逆に一見「送出専用」に見えた`bc_target_
+    smooth`こそが本命だった、という逆転が起こり得る。安全上重要な判断を
+    伴う検証では、早い段階でドメイン専門家に一次情報を確認すべきだった。
+  - **影響箇所**：`src/chuso1800_core.lua`（`smooth_bc`に
+    `force_bc_target_zero`引数を追加しEMAをバイパス、呼び出し側で
+    `eb_condition or output_zero_this_tick`を渡すよう変更）、
+    `deploy/chuso1800_deploy.lua`（再生成、7,747文字＝8192文字制限内）、
+    `test/realistic_driving.lua`（不変条件チェックに`bc_target_smooth`を
+    追加）、`test/scenarios/eb_and_db_auto_off_force_disconnect.lua`
+    （各サブテストに`bc_target_smooth`の非ゼロ初期シードと出力ゼロ
+    アサーションを追加）。

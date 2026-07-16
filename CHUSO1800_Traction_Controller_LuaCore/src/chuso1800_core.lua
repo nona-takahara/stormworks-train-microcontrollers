@@ -631,13 +631,24 @@ end
 
 -- SPEC §3.8 BC／regen-BC平滑化。戻り値: bc_target_smooth,
 -- regen_bc_smooth, regen_delay_level, regen_delay_active。
+-- 【#29フォローアップ2】`bc_target_smooth`はMomelink-A N2として実際の
+-- 車両を駆動する値だとPRレビューで判明した（`W`出力ポートは別系統向け）。
+-- 元々のEMA式（`accel*0.2 + bc_target_smooth*0.8`）は、EBや#29の全解放
+-- 条件でaccel入力（`eb_substitute`済みの`elec_accel`）自体は同tickで0に
+-- なっても、直前までの正の加速度の記憶を平滑化状態が引きずるため、
+-- 0.1 m/s^2を下回るまで最大十数tick（実測：EB直後0.39 m/s^2からの減衰で
+-- 約7tick）かかってしまう。`force_bc_target_zero`（EBまたは
+-- `output_zero_this_tick`）が真の間はEMAそのものをバイパスし、出力にも
+-- 次tickへ持ち越す状態にも0を直接書き込むことで、記憶を残さず即座に0へ
+-- 揃える。
 local function smooth_bc(bc_target_smooth, regen_bc_smooth, regen_delay_level, regen_delay_active,
-    accel, regen_bc_target, regen_flag, brake_current_high_phase1)
+    accel, regen_bc_target, regen_flag, brake_current_high_phase1, force_bc_target_zero)
     local regen_bc_enable = regen_delay_active or (not regen_flag)
     local regen_bc_sw = regen_bc_enable and 0 or regen_bc_target
     local regen_delay_level_next, regen_delay_active_next =
         regen_delay_step(regen_delay_level, regen_delay_active, brake_current_high_phase1)
-    return accel * 0.2 + bc_target_smooth * 0.8,
+    local bc_target_smooth_next = force_bc_target_zero and 0 or (accel * 0.2 + bc_target_smooth * 0.8)
+    return bc_target_smooth_next,
         math.min(clamp(regen_bc_sw, regen_bc_smooth - 0.1, regen_bc_smooth + 0.02), 0),
         regen_delay_level_next, regen_delay_active_next
 end
@@ -705,7 +716,8 @@ function core_tick(stateless_in, state_in)
         advance_cam(st_position_counter, st_traction_advance_counter, traction_any_active)
     local bc_target_smooth, regen_bc_smooth, regen_delay_level, regen_delay_active =
         smooth_bc(st_bc_target_smooth, st_regen_bc_smooth, st_regen_delay_level, st_regen_delay_active,
-            elec_accel, regen_bc_target, regen_flag, brake_current_high_phase1)
+            elec_accel, regen_bc_target, regen_flag, brake_current_high_phase1,
+            eb_condition or output_zero_this_tick)
 
     ----------------------------------------------------------------
     -- 出力の組み立て

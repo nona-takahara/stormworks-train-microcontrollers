@@ -120,24 +120,34 @@ function Sim:phase(label, opts)
         -- DESIGN_LOG.md #29 follow-up: a PR reviewer measurement found that
         -- physics_tick's "always compute from the OLD latch state" tick
         -- model (see chuso1800_core.lua's own header note) could leave one
-        -- tick where the real physical output (motor_current / stateless_
-        -- out[2]="W", the output directly wired to the "W" port) was still
-        -- nonzero even though phase_state_machine had just decided to fully
-        -- disconnect (measured: ~49A / ~0.24 m/s^2 raw accel, over twice the
-        -- 0.1 m/s^2 the reviewer asked for). The fix (`output_zero_this_
-        -- tick` in phase_state_machine) makes this an always-true invariant:
-        -- with both series/phase1 and parallel/phase2 released, the real
-        -- output must be exactly zero, every tick, in every scenario -- not
-        -- just at the specific transition moments the unit-level regression
-        -- test (`eb_and_db_auto_off_force_disconnect.lua`) constructs.
-        -- Checking it here means every realistic_scenario_*.lua exercises it
-        -- for free, per the project's preference for extending the existing
+        -- tick where the real physical output was still nonzero even though
+        -- phase_state_machine had just decided to fully disconnect. Two
+        -- distinct channels turned out to be involved: `motor_current` (also
+        -- fed to the "W" output port, confirmed by the PR author to go to a
+        -- *separate* system, not the vehicle's own physics) measured ~49A
+        -- for one tick, and -- more importantly -- `bc_target_smooth`
+        -- (Momelink-A N2, confirmed by the PR author to be what *actually*
+        -- drives this vehicle's real acceleration) measured a raw value of
+        -- ~0.39 m/s^2 immediately after EB, decaying over ~7 ticks before
+        -- dropping under the reviewer's 0.1 m/s^2 bound (its EMA smoothing
+        -- carries forward pre-disconnect history even though the accel
+        -- *input* feeding it was already correctly zeroed). Both are now
+        -- fixed at the source (`output_zero_this_tick` retroactively zeros
+        -- motor_current/W; `smooth_bc`'s `force_bc_target_zero` bypasses the
+        -- EMA and zeros both the output and the carried-forward state), so
+        -- this checks both as an always-true invariant: with both series/
+        -- phase1 and parallel/phase2 released, all three must be exactly
+        -- zero, every tick, in every scenario -- not just at the specific
+        -- transition moments the unit-level regression test
+        -- (`eb_and_db_auto_off_force_disconnect.lua`) constructs. Checking
+        -- it here means every realistic_scenario_*.lua exercises it for
+        -- free, per the project's preference for extending the existing
         -- scenario set over adding narrow new ones.
         if (not st.phase1_latch) and (not st.phase2_latch) then
-            if math.abs(d.motor_current) > 1e-9 or math.abs(d.W) > 1e-9 then
+            if math.abs(d.motor_current) > 1e-9 or math.abs(d.W) > 1e-9 or math.abs(d.bc_target_smooth) > 1e-9 then
                 self:anomaly(string.format(
-                    "output nonzero while fully disconnected: motor_current=%.4fA W=%.4f (phase '%s')",
-                    d.motor_current, d.W, label))
+                    "output nonzero while fully disconnected: motor_current=%.4fA W=%.4f bc_target_smooth(Momelink-A N2, real drive signal)=%.5f (phase '%s')",
+                    d.motor_current, d.W, d.bc_target_smooth, label))
             end
         end
         if opts.expect_cam_static and st.position_counter ~= self.last_pos then

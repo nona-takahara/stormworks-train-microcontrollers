@@ -31,19 +31,30 @@
 -- that same tick" -- `physics_tick` always computes the current tick's
 -- electrical output from the *previous* tick's latch state (see the file's
 -- own "tickモデル" header note), so a naive reading of these two
--- requirements could still leave one tick where the real physical output
--- (`motor_current` / the `elec_W` that feeds the `W` output port directly)
--- reflects the old, still-connected state even though the latches already
--- read as released. Measured directly: without the fix, this showed up as
--- ~49A / a raw (pre-smoothing) acceleration of ~0.24 m/s^2 for exactly one
--- tick during a field-current-excess-triggered disconnect -- over twice the
--- 0.1 m/s^2 bound the reviewer asked for. The fix has `phase_state_machine`
--- also return `output_zero_this_tick` (true exactly when at least one of
--- phase1/phase2 was connected coming in and both are released this same
--- tick), which `core_tick` uses to retroactively zero `motor_current`/
--- `elec_W` for that tick's output -- so every sub-test below also asserts
--- `stateless_out[1]` (motor_current) and `stateless_out[2]` (W) are exactly
--- zero on the disconnect tick itself, not just the latch state.
+-- requirements could still leave real output nonzero for one tick even
+-- though the latches already read as released. Two distinct channels
+-- turned out to matter here, per further PR discussion:
+--   - `motor_current` / `stateless_out[2]` ("W", output port) -- confirmed
+--     by the PR author to go to a *separate* system, not this vehicle's own
+--     physics. Measured ~49A for one tick during a field-current-excess-
+--     triggered disconnect before the fix.
+--   - `stateless_out[3]` ("bc_target_smooth" in this codebase's naming) --
+--     confirmed by the PR author to be Momelink-A's N2, which *is* what
+--     actually drives this vehicle's real acceleration. Its EMA smoothing
+--     carries forward pre-disconnect history even once the accel feeding it
+--     is correctly zeroed, measured at ~0.39 m/s^2 immediately after EB,
+--     taking ~7 ticks to fall under the reviewer's 0.1 m/s^2 bound.
+-- Both are now fixed at the source: `phase_state_machine` returns
+-- `output_zero_this_tick` (true exactly when at least one of phase1/phase2
+-- was connected coming in and both are released this same tick), which
+-- `core_tick` uses to retroactively zero `motor_current`/`elec_W`, and also
+-- passes into `smooth_bc` (as `force_bc_target_zero`, alongside
+-- `eb_condition`) to bypass the EMA and zero both `bc_target_smooth`'s
+-- output and its carried-forward state in one step. So every sub-test below
+-- asserts `stateless_out[1]` (motor_current), `stateless_out[2]` (W), and
+-- `stateless_out[3]` (bc_target_smooth / Momelink-A N2, the real drive
+-- signal) are all exactly zero on the disconnect tick itself, not just the
+-- latch state.
 
 return function(h)
     -- --- requirement 1: EB forces full disconnect from a stuck Parallel+
@@ -57,6 +68,10 @@ return function(h)
             OLD_I = 0,
             OLD_IF_A = 20,
             OLD_PHI = 0,
+            -- nonzero seed so the bc_target_smooth (Momelink-A N2) EMA has
+            -- real pre-EB history to (fail to) decay from, matching a
+            -- vehicle that was genuinely accelerating right up to the EB trip
+            bc_target_smooth = 0.5,
         })
         local eb_inputs = h.encode_stateless_in({
             speed = 20, catenary_voltage_sw = 1500, notch_pos = 0,
@@ -68,7 +83,8 @@ return function(h)
         h.assert_false(st.phase2_latch, "EB: parallel/phase2 forced off on the EB tick itself")
         h.assert_false(st.regen_latch, "EB: field-control/regen forced off on the EB tick itself")
         h.assert_near(stateless_out[1], 0, 1e-9, "EB: motor_current output is exactly zero on the EB tick itself")
-        h.assert_near(stateless_out[2], 0, 1e-9, "EB: W (real physical drive) output is exactly zero on the EB tick itself")
+        h.assert_near(stateless_out[2], 0, 1e-9, "EB: W output is exactly zero on the EB tick itself")
+        h.assert_near(stateless_out[3], 0, 1e-9, "EB: bc_target_smooth (Momelink-A N2, real drive signal) is exactly zero on the EB tick itself")
 
         -- stays released for as long as EB holds, regardless of speed
         state = new_state
@@ -92,6 +108,7 @@ return function(h)
             OLD_I = 5,
             OLD_IF_A = 50,
             OLD_PHI = 0.02,
+            bc_target_smooth = 0.5, -- pre-transition accel history, see requirement-1 sub-test
         })
         local db_auto_off_inputs = h.encode_stateless_in({
             speed = 15, catenary_voltage_sw = 1500, notch_pos = 0,
@@ -104,15 +121,16 @@ return function(h)
         h.assert_false(st.phase2_latch, "DB-auto OFF mid series-field-control: parallel/phase2 forced off immediately")
         h.assert_false(st.regen_latch, "DB-auto OFF mid series-field-control: field-control/regen forced off immediately")
         h.assert_near(stateless_out[1], 0, 1e-9, "DB-auto OFF mid series-field-control: motor_current output is exactly zero immediately")
-        h.assert_near(stateless_out[2], 0, 1e-9, "DB-auto OFF mid series-field-control: W (real physical drive) output is exactly zero immediately")
+        h.assert_near(stateless_out[2], 0, 1e-9, "DB-auto OFF mid series-field-control: W output is exactly zero immediately")
+        h.assert_near(stateless_out[3], 0, 1e-9, "DB-auto OFF mid series-field-control: bc_target_smooth (Momelink-A N2, real drive signal) is exactly zero immediately")
     end
 
     -- --- follow-up regression: field-current-excess-triggered disconnect
     -- (DB-auto OFF, Parallel+field-control, cruising, current still
     -- meaningfully nonzero the tick the disconnect is decided) must ALSO
     -- output exactly zero on that same tick, not just release the latches.
-    -- This reproduces the ~49A / ~0.24 m/s^2 raw-accel leak found via direct
-    -- measurement before the `output_zero_this_tick` fix. ---
+    -- This reproduces the ~49A motor_current / ~0.34 m/s^2 bc_target_smooth
+    -- leak found via direct measurement before the fix. ---
     do
         local state = h.encode_state({
             position_counter = 0,
@@ -122,6 +140,7 @@ return function(h)
             OLD_I = 60,
             OLD_IF_A = 299, -- just under threshold; will cross it and trip the pulse shortly
             OLD_PHI = 0.03,
+            bc_target_smooth = 0.4,
         })
         local inputs = h.encode_stateless_in({
             speed = 30 / 3.6, catenary_voltage_sw = 1500, notch_pos = 0,
@@ -142,7 +161,9 @@ return function(h)
         h.assert_near(output_at_disconnect[1], 0, 1e-9,
             "field-current-excess disconnect: motor_current output is exactly zero on the disconnect tick itself, tick " .. tostring(disconnect_tick))
         h.assert_near(output_at_disconnect[2], 0, 1e-9,
-            "field-current-excess disconnect: W (real physical drive) output is exactly zero on the disconnect tick itself, tick " .. tostring(disconnect_tick))
+            "field-current-excess disconnect: W output is exactly zero on the disconnect tick itself, tick " .. tostring(disconnect_tick))
+        h.assert_near(output_at_disconnect[3], 0, 1e-9,
+            "field-current-excess disconnect: bc_target_smooth (Momelink-A N2, real drive signal) is exactly zero on the disconnect tick itself, tick " .. tostring(disconnect_tick))
     end
 
     -- --- negative case: DB-auto ON, in series field control -- must NOT
