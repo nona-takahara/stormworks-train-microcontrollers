@@ -1307,3 +1307,80 @@ Type ID）が一切送出されていなかった不具合を修正
   （`momelink_advanced_frame`の`count`修正1行）、`SIGNAL_MAP.md`
   （stateless_out slot3の説明を実態＝Momelink ch2/26向けへ訂正）。
   比較検証に使ったsw-net-simハーネスはスクラッチパッドの使い捨て。
+
+## #26 #23の固着解除ロジックが`DB自動`ON時に直列を誤ってSETし、
+カムが高速域のノッチオフで勝手に前進する回帰バグを修正
+
+- **経緯**：ユーザーから「高速域でノッチオフするとカムが前進してしまい、
+  直列界磁（phase1_latch＋regen_latch同時ON）まで進段してしまう。再力行は
+  並列初段からやり直しになる。固着解除ロジックが誤って発動していないか」
+  との報告を受けた。
+- **再現と切り分け**：フル力行から速度フィードバックを模したシミュレーション
+  でカム位置0・並列＋界磁制御まで到達させ、notchを0に落として`regen_flag`
+  （Simple IF B18＝DB自動）をONにしたまま放置したところ、約50tick後に
+  `phase1_latch`が誤ってtrueになり、以降`phase1_regen_active`
+  （`phase1_latch and notch_fb_ne14 and regen_latch`）が`traction_any_active`
+  を持ち上げ続け、notch=0のままカムが0→1→2→…と際限なく進段することを
+  確認した。ユーザー報告と完全に一致する現象。
+  - **切り分け時の失敗**：当初`sap_pressure_sw=5`を「ゲート側解決済みの
+    最終値」として直接与えて再現を試みたが、これは実際には強い回生
+    ブレーキ要求（`low_bc_with_regen_flag=true`、ECBモードでの1atm≈無制動
+    という前提を誤って無視した値）を注入してしまっており、`stuck_at_top_idle`
+    ではなく既存の`field_current_excess`（界磁電流300A超過、SPEC.md
+    §7.5）の方が実際の引き金になっていた（この経路は#23より前の
+    セッション開始前ベースラインでも同様に発生し、本セッションの変更とは
+    無関係）。`sap_pressure_sw=1.0`（無制動の解決済み値）に修正して
+    再テストしたところ、`regen_flag=false`では正しく中立へ解放される一方、
+    `regen_flag=true`のときだけ`phase1_latch`が誤ってSETされることを確認し、
+    これが#23で追加した`stuck_at_top_idle`固有のバグであると確定させた。
+- **原因**：#23の実装は`stuck_at_top_idle`を既存の
+  `field_current_excess_cond`→`field_current_excess_pulse`チェーンへ
+  合流させていた。この`pulse`は`phase1_set`
+  （`field_current_excess_pulse and phase2_latch`、並列→直列降格用、
+  SPEC.md §7.5）へも**無条件に**配線されており、「なぜpulseが発火したか」
+  を区別しない。一方`phase_reset_cond`（`coasting_cond or
+  (field_current_excess_pulse and (not regen_flag))`）は、`regen_flag`
+  （DB自動）がONの間はpulse由来の項が`not regen_flag`で無効化される
+  設計になっている。このため`regen_flag=true`の間に`stuck_at_top_idle`が
+  pulseを発火させると、同tickで`phase1_set`はマスクされずに素通りする
+  一方、`phase_reset_cond`（延いては`phase1_reset`）は
+  `coasting_cond`（`not regen_latch`を要求、まだ固着中でtrue化できない）も
+  他の項も不成立のためfalseのまま──`phase1_set=true`かつ
+  `phase1_reset=false`という非対称な組み合わせになり、直列が
+  **マスクされずに実際にSETしてしまっていた**。
+- **修正**：`stuck_at_top_idle`を`field_current_excess_cond`/`pulse`
+  チェーンから完全に切り離し、`phase_state_machine`内で直接計算した上で
+  `phase2_reset`へのみ`or`で合流させた（`phase1_set`には一切経路を
+  持たせない）。判定式自体は`current_near_zero(motor_current) and
+  not(notch_ge1 or low_bc_with_regen_flag)`という既存の`neutral_cond`
+  （`coasting_cond`と共用）をそのまま再利用しており、`regen_flag`の値に
+  一切依存しない（これにより`regen_flag`がON/OFFいずれでも同じ経路で
+  中立へ解放される）。`regen_latch`自身のリセットは既存の
+  `traction_all_off`経由で1tick遅れて追従する（`coasting_cond`駆動の
+  通常解放と同じタイミング挙動）。`field_current_excess_block`は
+  #23以前の元の6引数シグネチャへ戻し、`stuck_at_top_idle`関連の引数
+  （`phase2_latch`／`regen_latch`／`notch_fb_ge1`／`motor_current`／
+  `low_bc_with_regen_flag`）は不要になったため削除した。
+- **確認**：上記の`sap_pressure_sw=1.0`・`regen_flag=true`シナリオを
+  修正後コードで再実行し、`phase1_latch`が一切trueにならないまま
+  `phase2_latch`／`regen_latch`が正しく中立へ解放され、カム位置も0の
+  ままであることを確認した。`test/run_all.lua`（15/15）・
+  `test/verify_deploy_artifact.lua`（2件とも pass）で無回帰を確認した。
+- **教訓**：`field_current_excess_pulse`のような「複数の意味を持つ
+  共有パルス」に新しい発火条件を安易に合流させると、その pulse を
+  消費する**すべての**下流ロジック（このケースでは`phase1_set`）に
+  意図しない影響が及ぶ。#22で発見した「co-onマスキング」もこの
+  同じ共有pulseの副作用の一種であり、今回のバグもその類縁。今後
+  同様の共有パルスへ新条件を追加する場合は、まず「そのpulseを
+  消費する全ての下流項」を洗い出し、新条件がそれぞれに対して
+  意図通りかを個別に確認すること。
+- **テスト**：`test/scenarios/stuck_at_top_of_ladder_recovery.lua`に
+  新しいケース（`regen_flag=true`・無制動での固着解除が直列を
+  誤ってSETしないこと、正しく中立へ解放されカム位置も不変であること）
+  を追加し、ヘッダコメントに本エントリへの改訂履歴を追記した。
+- **影響箇所**：`src/chuso1800_core.lua`（`field_current_excess_block`を
+  元のシグネチャへ復元、`phase_state_machine`に`stuck_at_top_idle`を
+  移設）、`deploy/chuso1800_deploy.lua`（`node build.js`で再生成、
+  7,488文字＝8192文字制限内）、
+  `test/scenarios/stuck_at_top_of_ladder_recovery.lua`（新規ケース・
+  ヘッダコメント更新）。

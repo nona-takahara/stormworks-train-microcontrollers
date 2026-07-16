@@ -24,16 +24,35 @@
 -- vehicle creeps forward indefinitely on the wrong (weak-field/cruise, not
 -- Series/starting) torque curve and never climbs the resistance ladder.
 --
--- The fix (src/chuso1800_core.lua's `field_current_excess_block`) folds a
--- new "stuck_at_top_idle" condition into the *existing*
--- `field_current_excess_cond` -> `field_current_excess_pulse` chain (the
--- same debounced pulse `phase_state_machine` already uses for the Parallel
--- -> Series demotion and for the neutral-side reset), rather than adding a
--- parallel mechanism: cam at 0, Parallel+field-control latched but Series
--- not, no notch/brake demand, and current settled near zero. After the same
--- 0.5s debounce this reuses to demote Parallel on genuine field-current
--- excess, both latches release back to neutral, so the next power
--- application goes through the normal Series-with-resistance restart path.
+-- The fix (src/chuso1800_core.lua's `phase_state_machine`) ORs a
+-- "stuck_at_top_idle" condition directly into `phase2_reset`: cam at 0,
+-- Parallel+field-control latched but Series not, no notch/brake demand, and
+-- current settled near zero (`neutral_cond`, shared with `coasting_cond`).
+-- Once Parallel releases, `regen_latch`'s own reset (`traction_all_off`)
+-- follows one tick later, same as the ordinary coasting path.
+--
+-- **Revision history**: the first version of this fix (see git blame /
+-- DESIGN_LOG.md #23) instead folded `stuck_at_top_idle` into the *existing*
+-- `field_current_excess_cond` -> `field_current_excess_pulse` chain, reusing
+-- the same debounced pulse `phase_state_machine` uses for the genuine
+-- Parallel -> Series demotion on field-current overcurrent (SPEC.md §7.5).
+-- That pulse unconditionally feeds `phase1_set`
+-- (`field_current_excess_pulse and phase2_latch`), with no awareness of
+-- *why* it fired. Whenever DB-auto (`regen_flag`) was ON, `phase_reset_cond`
+-- drops its own pulse-derived masking term (`field_current_excess_pulse and
+-- (not regen_flag)`), so nothing canceled the SET on the same tick: Series
+-- (phase1) spuriously latched ON right alongside the still-latched
+-- field-control (`regen_latch`), and `phase1_regen_active` (`phase1_latch
+-- and notch_fb_ne14 and regen_latch`) then fed `traction_any_active`,
+-- driving the cam forward through the Series resistance table with zero
+-- notch demand -- a real-machine regression (confirmed by the user against
+-- actual Stormworks play with DB-auto left on, a common standing driving
+-- mode) matching exactly the confirmed-bad outcome this test's "co-on set"
+-- case below locks down: cam creeping forward at speed with no notch
+-- applied, and the next power application having to climb the whole Series
+-- table again instead of resuming from Parallel. See DESIGN_LOG.md #26.
+-- Routing `stuck_at_top_idle` directly into `phase2_reset` instead removes
+-- any path from it to `phase1_set` entirely, independent of `regen_flag`.
 
 return function(h)
     local function stuck_state()
@@ -120,6 +139,34 @@ return function(h)
             h.assert_true(st.phase2_latch, "stays latched while notch is actively applied, tick " .. tick)
             h.assert_true(st.regen_latch, "field-control stays latched while notch is actively applied, tick " .. tick)
         end
+    end
+
+    -- --- DESIGN_LOG.md #26 regression: idle release with DB-auto (regen_flag)
+    -- ON, but no actual brake demand, must NOT spuriously SET Series (the
+    -- confirmed-in-game "cam creeps forward with notch off" bug). ---
+    do
+        local state = stuck_state()
+        local idle_db_auto_inputs = h.encode_stateless_in({
+            speed = 15, catenary_voltage_sw = 1500, notch_pos = 0,
+            direction = 1, brake_pressure_sw = 5, sap_pressure_sw = 1.0, -- no demand
+            regen_flag = true, -- DB-auto left on, a common standing driving mode
+        })
+        local saw_bogus_series_set = false
+        local released_tick = nil
+        for tick = 1, 150 do
+            local stateless_out, new_state = core_tick(idle_db_auto_inputs, state)
+            state = new_state
+            local st = h.decode_state(state)
+            if st.phase1_latch then saw_bogus_series_set = true end
+            if (not st.phase2_latch) and (not st.regen_latch) and not released_tick then
+                released_tick = tick
+            end
+        end
+        h.assert_false(saw_bogus_series_set,
+            "DESIGN_LOG.md #26: idle release under DB-auto must never SET Series")
+        h.assert_true(released_tick ~= nil, "still releases to neutral under DB-auto with no brake demand")
+        local st = h.decode_state(state)
+        h.assert_eq(st.position_counter, 0, "cam untouched (no creeping forward) under DB-auto idle release")
     end
 
     -- --- negative case: must NOT release while there is an active brake demand.
