@@ -299,14 +299,6 @@
       }
     },
     {
-      "id": "n10",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -11,
-        "y": -3.25
-      }
-    },
-    {
       "id": "n11",
       "type": "PULSE",
       "position": {
@@ -379,14 +371,6 @@
       }
     },
     {
-      "id": "n29",
-      "type": "THRESHOLD",
-      "position": {
-        "x": -8.5,
-        "y": -2.5
-      }
-    },
-    {
       "id": "n30",
       "type": "BOOL_FUNC_4",
       "position": {
@@ -398,16 +382,16 @@
       "id": "n31",
       "type": "AND",
       "position": {
-        "x": -9.75,
-        "y": -3
+        "x": -7.25,
+        "y": -2.5
       }
     },
     {
       "id": "n32",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": -11,
-        "y": -2.75
+        "x": -8.5,
+        "y": -2.5
       }
     },
     {
@@ -512,14 +496,6 @@
       "position": {
         "x": -3.5,
         "y": 1
-      }
-    },
-    {
-      "id": "n62",
-      "type": "AND",
-      "position": {
-        "x": -7.25,
-        "y": -2.5
       }
     },
     {
@@ -1900,6 +1876,6 @@
     }
   ],
   "warnings": [
-    "Imported 262 nodes, 390 links, and 1 submodules from XML."
+    "Imported 259 nodes, 384 links, and 1 submodules from XML."
   ]
 }

@@ -6,109 +6,109 @@ module main
   port out Output : video
   port out "Monitor Beep" : boolean
 
-  inst COMPOSITE_WRITE_NUMBER physics_pack (count=5, offset=1) : in1=phys_speed, in2=phys_db, in3=notch, in4=mon_reverser, in5=mon_memreg -> out=physics_pack_out
-  inst COMPOSITE_READ_NUMBER phys_speed_read (channel=1) : composite="Physics Input" -> out=phys_speed
-  inst COMPOSITE_READ_NUMBER phys_db_read (channel=3) : composite="Physics Input" -> out=phys_db
-  inst FUNC_NUM_8 notch_calc (expression="x*z+(y/60)*a+w") : x=notch, y=phys_accel, z=spd_correction_num, w=spd_correction_w, a=direction -> out=notch
-  inst COMPOSITE_READ_NUMBER ds_dist_ch31_read (channel=31) : composite=lua_drive_support_composite -> out=ds_dist31
-  inst COMPOSITE_READ_NUMBER ds_dist_ch32_read (channel=32) : composite=lua_drive_support_composite -> out=ds_dist32
-  inst NUM_SWITCHBOX direction_switch : a=dir_neg1, b=dir_pos1, switch=mon_direction -> out=direction
-  inst CONST const_neg1 (value=-1) : -> value=dir_neg1
-  inst CONST const_pos1 (value=1) : -> value=dir_pos1
-  inst LUA lua_drive_support (script_ref="scripts/n61.lua") : composite=ds_input_pack_out -> composite=lua_drive_support_composite
-  inst COMPOSITE_WRITE_BOOLEAN ds_input_pack (count=4, offset=1) : in1=door_a_active, in2=door_a_rise, in3=arrival_latch_q, in4=arrival_flash, inc=physics_pack_out -> out=ds_input_pack_out
-  inst THRESHOLD door_a_thr (min=1, max=1) : value=mon_door_a -> out=door_a_active
-  inst COMPOSITE_READ_NUMBER mon_door_a_read (channel=12) : composite="Monitor Status" -> out=mon_door_a
-  inst PULSE door_a_pulse (mode="rise") : a=door_a_active -> out=door_a_rise
-  inst SR_LATCH approach_latch : r=stop_cond, s=approach_set -> q=approach_latch_q
-  inst OR approach_set_or : a=door_open_any, b=door_a_rise -> out=approach_set
-  inst THRESHOLD speed_zero_thr (min=-1.5, max=1.5) : value=phys_accel -> out=speed_zero
-  inst COMPOSITE_READ_BOOLEAN ds_reset_ap_read (channel=4) : composite=lua_drive_support_composite -> out=ds_reset_ap
-  inst NOT not_door_open : a=door_open_any -> out=door_closed
-  inst COMPOSITE_READ_BOOLEAN ds_doorcut_read (channel=3) : composite=lua_drive_support_composite -> out=ds_doorcut
-  inst PULSE depart_pulse (mode="fall") : a=approach_latch_q -> out=depart_pulse
-  inst COMPOSITE_READ_NUMBER mon_memreg_read (channel=6) : composite="Monitor Status" -> out=mon_memreg
-  inst OR approach_reset_or : a=ds_approach_rst, b=depart_pulse -> out=approach_reset
-  inst COMPOSITE_READ_BOOLEAN ds_approach_rst_read (channel=5) : composite=lua_drive_support_composite -> out=ds_approach_rst
-  inst NOT not_speed_zero : a=speed_zero -> out=not_speed_zero
-  inst AND stop_and : a=door_closed, b=not_speed_zero -> out=stop_cond
-  inst SR_LATCH arrival_latch : r=approach_reset, s=ds_reset_ap -> q=arrival_latch_q
-  inst TOOLTIP_NUMBER dir_tooltip (label="value") : value=ds_dir ->
-  inst COMPOSITE_READ_NUMBER ds_dir_read (channel=4) : composite=lua_drive_support_composite -> out=ds_dir
-  inst CAPACITOR arrival_flash_cap (charge_time=0.5, discharge_time=0.5) : enable=approach_latch_q -> out=arrival_flash
-  inst COMPOSITE_READ_BOOLEAN mon_direction_read (channel=16) : composite="Monitor Status" -> out=mon_direction
-  inst LUA lua_touch_ui (script_ref="scripts/n105.lua") : composite=ui_display_pack_out -> composite=lua_touch_ui_composite
-  inst LUA lua_display_gen (script_ref="scripts/n106.lua") : composite=ui_display_pack_out -> composite=lua_display_gen_composite
-  inst LUA lua_draw_bg (script_ref="scripts/n107.lua") : composite=lua_display_gen_composite -> video=draw_bg_video
-  inst COMPOSITE_READ_BOOLEAN ui_opid_set_read (channel=32) : composite=lua_touch_ui_composite -> out=ui_opid_set
-  inst COMPOSITE_READ_NUMBER ui_opid_val_read (channel=32) : composite=lua_touch_ui_composite -> out=ui_opid_val
-  inst MEMORY_REGISTER ui_opid_reg (reset_value=0) : set=ui_opid_set_pulse, value=ui_opid_buf2 -> out=ui_opid
-  inst PULSE ui_opid_set_pulse (mode="fall") : a=ui_opid_set -> out=ui_opid_set_pulse
-  inst FUNC_NUM_1 ui_opid_buf1 (expression="x") : x=ui_opid_val -> out=ui_opid_buf1
-  inst FUNC_NUM_1 ui_opid_buf2 (expression="x") : x=ui_opid_buf1 -> out=ui_opid_buf2
-  inst COMPOSITE_WRITE_NUMBER ui_display_pack (count=26, offset=7) : in1=mon_operation_num, in2=mon_arc, in3=mon_op_type, in4=mon_op_dep, in5=mon_op_dest, in6=mon_disp_type, in7=mon_disp_dest, in8=mon_pos_bound, in9=mon_pos_type, in10=mon_pos_station, in11=ui_page, in12=speed_hundreds, in13=speed_tens, in26=ui_opid, inc="Drive Support Monitor Touch" -> out=ui_display_pack_out
-  inst LUA lua_draw_fg (script_ref="scripts/n115.lua") : composite=lua_display_gen_composite, video=draw_bg_video -> video=draw_fg_video
-  inst MEMORY_REGISTER ui_page_reg (reset_value=0) : reset=ui_page_dn_pulse, set=ui_page_up_pulse, value=ui_page_next -> out=ui_page
-  inst COMPOSITE_READ_BOOLEAN ui_page_up_read (channel=8) : composite=lua_touch_ui_composite -> out=ui_page_up
-  inst COMPOSITE_READ_BOOLEAN ui_page_dn_read (channel=9) : composite=lua_touch_ui_composite -> out=ui_page_dn
-  inst FUNC_NUM_3 ui_page_calc (expression="(x*10+y)%10000") : x=ui_page, y=ui_page_val_buf -> out=ui_page_next
-  inst COMPOSITE_READ_NUMBER ui_page_val_read (channel=8) : composite=lua_touch_ui_composite -> out=ui_page_val
-  inst PULSE ui_page_up_pulse (mode="fall") : a=ui_page_up -> out=ui_page_up_pulse
-  inst PULSE ui_page_dn_pulse (mode="fall") : a=ui_page_dn -> out=ui_page_dn_pulse
-  inst FUNC_NUM_1 ui_page_val_buf (expression="x") : x=ui_page_val -> out=ui_page_val_buf
-  inst COMPOSITE_WRITE_BOOLEAN ui_beep_pack (count=1, offset=32) : in1=beep_signal, inc=lua_touch_ui_composite -> out=ui_beep_pack_out
-  inst BOOL_FUNC_4 ui_touch_any_or (expression="x|y|z") : x=ui_touch_any_read, y=ui_page_up, z=ui_page_dn -> out=ui_touch_any
-  inst COMPOSITE_READ_BOOLEAN ui_touch_any_read (channel=32) : composite=lua_touch_ui_composite -> out=ui_touch_any_read
-  inst LUA lua_draw_out (script_ref="scripts/n127.lua") : composite=ui_display_pack_out, video=draw_fg_video -> video="Output"
-  inst PULSE ui_touch_pulse (mode="rise") : a=ui_touch_any -> out=ui_touch_pulse
-  inst NOT ui_beep_not : a=ui_touch_pulse -> out=beep_signal, out="Monitor Beep"
-  inst LUA lua_monitor_decode (script_ref="scripts/n130.lua") : composite="Monitor Status" -> composite=lua_monitor_decode_composite
-  inst COMPOSITE_READ_NUMBER mon_ch7_read (channel=7) : composite=lua_monitor_decode_composite -> out=mon_operation_num
-  inst COMPOSITE_READ_NUMBER mon_ch8_read (channel=8) : composite=lua_monitor_decode_composite -> out=mon_arc
-  inst COMPOSITE_READ_NUMBER mon_ch9_read (channel=9) : composite=lua_monitor_decode_composite -> out=mon_op_type
-  inst COMPOSITE_READ_NUMBER mon_ch10_read (channel=10) : composite=lua_monitor_decode_composite -> out=mon_op_dep
-  inst COMPOSITE_READ_NUMBER mon_ch11_read (channel=11) : composite=lua_monitor_decode_composite -> out=mon_op_dest
-  inst COMPOSITE_READ_NUMBER mon_ch12_read (channel=12) : composite=lua_monitor_decode_composite -> out=mon_disp_type
-  inst COMPOSITE_READ_NUMBER mon_ch13_read (channel=13) : composite=lua_monitor_decode_composite -> out=mon_disp_dest
-  inst COMPOSITE_READ_NUMBER mon_ch14_read (channel=14) : composite=lua_monitor_decode_composite -> out=mon_pos_bound
-  inst COMPOSITE_READ_NUMBER mon_ch15_read (channel=15) : composite=lua_monitor_decode_composite -> out=mon_pos_type
-  inst COMPOSITE_READ_NUMBER mon_ch16_read (channel=16) : composite=lua_monitor_decode_composite -> out=mon_pos_station
-  inst LUA lua_drive_support_out (script_ref="scripts/n141.lua") : composite=ds_out -> composite="Drive Support"
-  inst COMPOSITE_READ_NUMBER phys_accel_read (channel=9) : composite="Physics Input" -> out=phys_accel
-  inst MEMORY_REGISTER ui_memreg1_reg (reset_value=0) : set=ui_memreg1_set, value=ui_memreg1_val -> out=ui_memreg1
-  inst COMPOSITE_READ_BOOLEAN ui_memreg1_set_read (channel=1) : composite=lua_touch_ui_composite -> out=ui_memreg1_set
-  inst COMPOSITE_READ_NUMBER ui_memreg1_val_read (channel=1) : composite=lua_touch_ui_composite -> out=ui_memreg1_val
-  inst MEMORY_REGISTER ui_memreg2_reg (reset_value=0) : set=ui_memreg2_set, value=ui_memreg2_val -> out=ui_memreg2
-  inst COMPOSITE_READ_BOOLEAN ui_memreg2_set_read (channel=2) : composite=lua_touch_ui_composite -> out=ui_memreg2_set
-  inst COMPOSITE_READ_NUMBER ui_memreg2_val_read (channel=2) : composite=lua_touch_ui_composite -> out=ui_memreg2_val
-  inst MEMORY_REGISTER ui_memreg3_reg (reset_value=0) : set=ui_memreg3_set, value=ui_memreg3_val -> out=ui_memreg3
-  inst COMPOSITE_READ_BOOLEAN ui_memreg3_set_read (channel=3) : composite=lua_touch_ui_composite -> out=ui_memreg3_set
-  inst COMPOSITE_READ_NUMBER ui_memreg3_val_read (channel=3) : composite=lua_touch_ui_composite -> out=ui_memreg3_val
-  inst MEMORY_REGISTER ui_memreg4_reg (reset_value=0) : set=ui_memreg4_set, value=ui_memreg4_val -> out=ui_memreg4
-  inst COMPOSITE_READ_BOOLEAN ui_memreg4_set_read (channel=4) : composite=lua_touch_ui_composite -> out=ui_memreg4_set
-  inst COMPOSITE_READ_NUMBER ui_memreg4_val_read (channel=4) : composite=lua_touch_ui_composite -> out=ui_memreg4_val
-  inst MEMORY_REGISTER ui_memreg5_reg (reset_value=0) : set=ui_memreg5_set, value=ui_memreg5_val -> out=ui_memreg5
-  inst COMPOSITE_READ_BOOLEAN ui_memreg5_set_read (channel=5) : composite=lua_touch_ui_composite -> out=ui_memreg5_set
-  inst COMPOSITE_READ_NUMBER ui_memreg5_val_read (channel=5) : composite=lua_touch_ui_composite -> out=ui_memreg5_val
-  inst MEMORY_REGISTER ui_memreg6_reg (reset_value=0) : set=ui_memreg6_set, value=ui_memreg6_val -> out=ui_memreg6
-  inst COMPOSITE_READ_BOOLEAN ui_memreg6_set_read (channel=6) : composite=lua_touch_ui_composite -> out=ui_memreg6_set
-  inst COMPOSITE_READ_NUMBER ui_memreg6_val_read (channel=6) : composite=lua_touch_ui_composite -> out=ui_memreg6_val
-  inst COMPOSITE_READ_BOOLEAN ui_memreg7_set_read (channel=7) : composite=lua_touch_ui_composite -> out=ui_memreg7_set
-  inst COMPOSITE_READ_NUMBER ui_memreg7_val_read (channel=7) : composite=lua_touch_ui_composite -> out=ui_memreg7_val
-  inst COMPOSITE_WRITE_NUMBER ds_out_pack (count=14, offset=1) : in1=ui_memreg1, in2=ui_memreg2, in3=ui_memreg3, in4=ui_memreg4, in5=ui_memreg5, in6=ui_memreg6, in8=ui_page, in11=ds_num1, in12=ds_num2, in13=ds_num3, in14=ds_num4, inc=ds_out_bool -> out=ds_out
-  inst FUNC_NUM_1 speed_hundreds (expression="floor(abs(x)/1000)") : x=notch -> out=speed_hundreds
-  inst FUNC_NUM_1 speed_tens (expression="floor(abs(x)/10)%100") : x=notch -> out=speed_tens
-  inst NUM_SWITCHBOX spd_correction_num : a=zero, b=ds_dist31, switch=ui_memreg7_set -> out=spd_correction_num
-  inst NUM_SWITCHBOX spd_correction_w : a=ui_memreg7_val, b=ds_dist32, switch=ui_memreg7_set -> out=spd_correction_w
-  inst CONST const_zero (value=0) : -> value=zero
-  inst COMPOSITE_READ_NUMBER ds_num1_read (channel=1) : composite=lua_drive_support_composite -> out=ds_num1
-  inst COMPOSITE_READ_NUMBER ds_num2_read (channel=2) : composite=lua_drive_support_composite -> out=ds_num2
-  inst COMPOSITE_READ_NUMBER ds_num3_read (channel=3) : composite=lua_drive_support_composite -> out=ds_num3
-  inst COMPOSITE_READ_NUMBER ds_num4_read (channel=4) : composite=lua_drive_support_composite -> out=ds_num4
-  inst COMPOSITE_WRITE_BOOLEAN ds_out_bool_pack (count=4, offset=11) : in1=ds_bool1, in3=ds_doorcut, in4=mon_direction, inc=ui_beep_pack_out -> out=ds_out_bool
-  inst COMPOSITE_READ_BOOLEAN ds_bool1_read (channel=1) : composite=lua_drive_support_composite -> out=ds_bool1
-  inst COMPOSITE_READ_NUMBER mon_reverser_read (channel=3) : composite="Monitor Status" -> out=mon_reverser
-  inst COMPOSITE_READ_BOOLEAN mon_door_a_stat_read (channel=12) : composite="Monitor Status" -> out=mon_door_a_stat
-  inst COMPOSITE_READ_BOOLEAN mon_door_b_stat_read (channel=13) : composite="Monitor Status" -> out=mon_door_b_stat
-  inst OR door_open_or : a=mon_door_a_stat, b=mon_door_b_stat -> out=door_open_any
+  inst COMPOSITE_WRITE_NUMBER physics_input_composite (count=5, offset=1) : in1=physics_accel_read_out, in2=physics_speed_read_out, in3=position_integral_out, in4=monitor_ch3_num_read_out, in5=monitor_speed_ref_read_out -> out=physics_input_composite_out
+  inst COMPOSITE_READ_NUMBER physics_accel_read (channel=1) : composite="Physics Input" -> out=physics_accel_read_out
+  inst COMPOSITE_READ_NUMBER physics_speed_read (channel=3) : composite="Physics Input" -> out=physics_speed_read_out
+  inst FUNC_NUM_8 position_integral (expression="x*z+(y/60)*a+w") : x=position_integral_out, y=physics_delta_read_out, z=pos_speed_factor_sw_out, w=pos_base_speed_sw_out, a=direction_sign_sw_out -> out=position_integral_out
+  inst COMPOSITE_READ_NUMBER ext_speed_factor_read (channel=31) : composite=atc_status_lua_composite -> out=ext_speed_factor_read_out
+  inst COMPOSITE_READ_NUMBER ext_base_speed_read (channel=32) : composite=atc_status_lua_composite -> out=ext_base_speed_read_out
+  inst NUM_SWITCHBOX direction_sign_sw : a=const_reverse_dir_value, b=const_forward_dir_value, switch=direction_flag_read_out -> out=direction_sign_sw_out
+  inst CONST const_reverse_dir (value=-1) : -> value=const_reverse_dir_value
+  inst CONST const_forward_dir (value=1) : -> value=const_forward_dir_value
+  inst LUA atc_status_lua (script_ref="scripts/n61.lua") : composite=atc_input_composite_out -> composite=atc_status_lua_composite
+  inst COMPOSITE_WRITE_BOOLEAN atc_input_composite (count=4, offset=1) : in1=atc_signal_active_out, in2=atc_signal_rise_pulse_out, in3=eb_active_latch_q, in4=alert_blinker_cap_out, inc=physics_input_composite_out -> out=atc_input_composite_out
+  inst THRESHOLD atc_signal_active (min=1, max=1) : value=atc_signal_code_read_out -> out=atc_signal_active_out
+  inst COMPOSITE_READ_NUMBER atc_signal_code_read (channel=12) : composite="Monitor Status" -> out=atc_signal_code_read_out
+  inst PULSE atc_signal_rise_pulse (mode="rise") : a=atc_signal_active_out -> out=atc_signal_rise_pulse_out
+  inst SR_LATCH atc_alert_latch : r=alert_reset_cond_out, s=alert_set_trigger_out -> q=atc_alert_latch_q
+  inst OR alert_set_trigger : a=monitor_abnormal_flag_out, b=atc_signal_rise_pulse_out -> out=alert_set_trigger_out
+  inst THRESHOLD speed_near_zero (min=-1.5, max=1.5) : value=physics_delta_read_out -> out=speed_near_zero_out
+  inst COMPOSITE_READ_BOOLEAN atc_eb_reset_flag (channel=4) : composite=atc_status_lua_composite -> out=atc_eb_reset_flag_out
+  inst NOT monitor_normal_flag : a=monitor_abnormal_flag_out -> out=monitor_normal_flag_out
+  inst COMPOSITE_READ_BOOLEAN atc_ch3_flag_read (channel=3) : composite=atc_status_lua_composite -> out=atc_ch3_flag_read_out
+  inst PULSE alert_fall_pulse (mode="fall") : a=atc_alert_latch_q -> out=alert_fall_pulse_out
+  inst COMPOSITE_READ_NUMBER monitor_speed_ref_read (channel=6) : composite="Monitor Status" -> out=monitor_speed_ref_read_out
+  inst OR eb_set_or_alert_fall : a=atc_eb_set_flag_out, b=alert_fall_pulse_out -> out=eb_set_or_alert_fall_out
+  inst COMPOSITE_READ_BOOLEAN atc_eb_set_flag (channel=5) : composite=atc_status_lua_composite -> out=atc_eb_set_flag_out
+  inst NOT speed_nonzero : a=speed_near_zero_out -> out=speed_nonzero_out
+  inst AND alert_reset_cond : a=monitor_normal_flag_out, b=speed_nonzero_out -> out=alert_reset_cond_out
+  inst SR_LATCH eb_active_latch : r=eb_set_or_alert_fall_out, s=atc_eb_reset_flag_out -> q=eb_active_latch_q
+  inst TOOLTIP_NUMBER position_tooltip (label="value") : value=position_display_read_out ->
+  inst COMPOSITE_READ_NUMBER position_display_read (channel=4) : composite=atc_status_lua_composite -> out=position_display_read_out
+  inst CAPACITOR alert_blinker_cap (charge_time=0.5, discharge_time=0.5) : enable=atc_alert_latch_q -> out=alert_blinker_cap_out
+  inst COMPOSITE_READ_BOOLEAN direction_flag_read (channel=16) : composite="Monitor Status" -> out=direction_flag_read_out
+  inst LUA drive_support_monitor_lua (script_ref="scripts/n105.lua") : composite=display_support_composite_out -> composite=drive_support_monitor_lua_composite
+  inst LUA drive_support_data_lua (script_ref="scripts/n106.lua") : composite=display_support_composite_out -> composite=drive_support_data_lua_composite
+  inst LUA drive_support_bg_lua (script_ref="scripts/n107.lua") : composite=drive_support_data_lua_composite -> video=drive_support_bg_lua_video
+  inst COMPOSITE_READ_BOOLEAN key_state_bool_read (channel=32) : composite=drive_support_monitor_lua_composite -> out=key_state_bool_read_out
+  inst COMPOSITE_READ_NUMBER key_position_num_read (channel=32) : composite=drive_support_monitor_lua_composite -> out=key_position_num_read_out
+  inst MEMORY_REGISTER key_position_memory (reset_value=0) : set=key_position_store_pulse_out, value=key_position_delayed_out -> out=key_position_memory_out
+  inst PULSE key_position_store_pulse (mode="fall") : a=key_state_bool_read_out -> out=key_position_store_pulse_out
+  inst FUNC_NUM_1 key_position_raw (expression="x") : x=key_position_num_read_out -> out=key_position_raw_out
+  inst FUNC_NUM_1 key_position_delayed (expression="x") : x=key_position_raw_out -> out=key_position_delayed_out
+  inst COMPOSITE_WRITE_NUMBER display_support_composite (count=26, offset=7) : in1=monitor_decoded_ch7_read_out, in2=monitor_decoded_ch8_read_out, in3=monitor_decoded_ch9_read_out, in4=monitor_decoded_ch10_read_out, in5=monitor_decoded_ch11_read_out, in6=monitor_decoded_ch12_read_out, in7=monitor_decoded_ch13_read_out, in8=monitor_decoded_ch14_read_out, in9=monitor_decoded_ch15_read_out, in10=monitor_decoded_ch16_read_out, in11=destination_code_memory_out, in12=position_thousands_out, in13=position_tens_hundreds_out, in26=key_position_memory_out, inc="Drive Support Monitor Touch" -> out=display_support_composite_out
+  inst LUA drive_support_overlay_lua (script_ref="scripts/n115.lua") : composite=drive_support_data_lua_composite, video=drive_support_bg_lua_video -> video=drive_support_overlay_lua_video
+  inst MEMORY_REGISTER destination_code_memory (reset_value=0) : reset=dest_digit_dn_pulse_out, set=dest_digit_up_pulse_out, value=destination_code_shifted_out -> out=destination_code_memory_out
+  inst COMPOSITE_READ_BOOLEAN dest_digit_up_btn_read (channel=8) : composite=drive_support_monitor_lua_composite -> out=dest_digit_up_btn_read_out
+  inst COMPOSITE_READ_BOOLEAN dest_digit_dn_btn_read (channel=9) : composite=drive_support_monitor_lua_composite -> out=dest_digit_dn_btn_read_out
+  inst FUNC_NUM_3 destination_code_shifted (expression="(x*10+y)%10000") : x=destination_code_memory_out, y=dest_digit_passthrough_out -> out=destination_code_shifted_out
+  inst COMPOSITE_READ_NUMBER dest_digit_value_read (channel=8) : composite=drive_support_monitor_lua_composite -> out=dest_digit_value_read_out
+  inst PULSE dest_digit_up_pulse (mode="fall") : a=dest_digit_up_btn_read_out -> out=dest_digit_up_pulse_out
+  inst PULSE dest_digit_dn_pulse (mode="fall") : a=dest_digit_dn_btn_read_out -> out=dest_digit_dn_pulse_out
+  inst FUNC_NUM_1 dest_digit_passthrough (expression="x") : x=dest_digit_value_read_out -> out=dest_digit_passthrough_out
+  inst COMPOSITE_WRITE_BOOLEAN key_bool_composite (count=1, offset=32) : in1=monitor_beep_not_out, inc=drive_support_monitor_lua_composite -> out=key_bool_composite_out
+  inst BOOL_FUNC_4 any_key_active_or (expression="x|y|z") : x=key_active_flag_read_out, y=dest_digit_up_btn_read_out, z=dest_digit_dn_btn_read_out -> out=any_key_active_or_out
+  inst COMPOSITE_READ_BOOLEAN key_active_flag_read (channel=32) : composite=drive_support_monitor_lua_composite -> out=key_active_flag_read_out
+  inst LUA drive_support_output_video_lua (script_ref="scripts/n127.lua") : composite=display_support_composite_out, video=drive_support_overlay_lua_video -> video="Output"
+  inst PULSE key_active_rise_pulse (mode="rise") : a=any_key_active_or_out -> out=key_active_rise_pulse_out
+  inst NOT monitor_beep_not : a=key_active_rise_pulse_out -> out=monitor_beep_not_out, out="Monitor Beep"
+  inst LUA monitor_status_decoder_lua (script_ref="scripts/n130.lua") : composite="Monitor Status" -> composite=monitor_status_decoder_lua_composite
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch7_read (channel=7) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch7_read_out
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch8_read (channel=8) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch8_read_out
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch9_read (channel=9) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch9_read_out
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch10_read (channel=10) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch10_read_out
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch11_read (channel=11) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch11_read_out
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch12_read (channel=12) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch12_read_out
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch13_read (channel=13) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch13_read_out
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch14_read (channel=14) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch14_read_out
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch15_read (channel=15) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch15_read_out
+  inst COMPOSITE_READ_NUMBER monitor_decoded_ch16_read (channel=16) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch16_read_out
+  inst LUA drive_support_output_lua (script_ref="scripts/n141.lua") : composite=drive_support_num_composite_out -> composite="Drive Support"
+  inst COMPOSITE_READ_NUMBER physics_delta_read (channel=9) : composite="Physics Input" -> out=physics_delta_read_out
+  inst MEMORY_REGISTER drive_data_1_memory (reset_value=0) : set=drive_data_1_flag_read_out, value=drive_data_1_value_read_out -> out=drive_data_1_memory_out
+  inst COMPOSITE_READ_BOOLEAN drive_data_1_flag_read (channel=1) : composite=drive_support_monitor_lua_composite -> out=drive_data_1_flag_read_out
+  inst COMPOSITE_READ_NUMBER drive_data_1_value_read (channel=1) : composite=drive_support_monitor_lua_composite -> out=drive_data_1_value_read_out
+  inst MEMORY_REGISTER drive_data_2_memory (reset_value=0) : set=drive_data_2_flag_read_out, value=drive_data_2_value_read_out -> out=drive_data_2_memory_out
+  inst COMPOSITE_READ_BOOLEAN drive_data_2_flag_read (channel=2) : composite=drive_support_monitor_lua_composite -> out=drive_data_2_flag_read_out
+  inst COMPOSITE_READ_NUMBER drive_data_2_value_read (channel=2) : composite=drive_support_monitor_lua_composite -> out=drive_data_2_value_read_out
+  inst MEMORY_REGISTER drive_data_3_memory (reset_value=0) : set=drive_data_3_flag_read_out, value=drive_data_3_value_read_out -> out=drive_data_3_memory_out
+  inst COMPOSITE_READ_BOOLEAN drive_data_3_flag_read (channel=3) : composite=drive_support_monitor_lua_composite -> out=drive_data_3_flag_read_out
+  inst COMPOSITE_READ_NUMBER drive_data_3_value_read (channel=3) : composite=drive_support_monitor_lua_composite -> out=drive_data_3_value_read_out
+  inst MEMORY_REGISTER drive_data_4_memory (reset_value=0) : set=drive_data_4_flag_read_out, value=drive_data_4_value_read_out -> out=drive_data_4_memory_out
+  inst COMPOSITE_READ_BOOLEAN drive_data_4_flag_read (channel=4) : composite=drive_support_monitor_lua_composite -> out=drive_data_4_flag_read_out
+  inst COMPOSITE_READ_NUMBER drive_data_4_value_read (channel=4) : composite=drive_support_monitor_lua_composite -> out=drive_data_4_value_read_out
+  inst MEMORY_REGISTER drive_data_5_memory (reset_value=0) : set=drive_data_5_flag_read_out, value=drive_data_5_value_read_out -> out=drive_data_5_memory_out
+  inst COMPOSITE_READ_BOOLEAN drive_data_5_flag_read (channel=5) : composite=drive_support_monitor_lua_composite -> out=drive_data_5_flag_read_out
+  inst COMPOSITE_READ_NUMBER drive_data_5_value_read (channel=5) : composite=drive_support_monitor_lua_composite -> out=drive_data_5_value_read_out
+  inst MEMORY_REGISTER drive_data_6_memory (reset_value=0) : set=drive_data_6_flag_read_out, value=drive_data_6_value_read_out -> out=drive_data_6_memory_out
+  inst COMPOSITE_READ_BOOLEAN drive_data_6_flag_read (channel=6) : composite=drive_support_monitor_lua_composite -> out=drive_data_6_flag_read_out
+  inst COMPOSITE_READ_NUMBER drive_data_6_value_read (channel=6) : composite=drive_support_monitor_lua_composite -> out=drive_data_6_value_read_out
+  inst COMPOSITE_READ_BOOLEAN use_ext_pos_calc_read (channel=7) : composite=drive_support_monitor_lua_composite -> out=use_ext_pos_calc_read_out
+  inst COMPOSITE_READ_NUMBER ds_base_speed_read (channel=7) : composite=drive_support_monitor_lua_composite -> out=ds_base_speed_read_out
+  inst COMPOSITE_WRITE_NUMBER drive_support_num_composite (count=14, offset=1) : in1=drive_data_1_memory_out, in2=drive_data_2_memory_out, in3=drive_data_3_memory_out, in4=drive_data_4_memory_out, in5=drive_data_5_memory_out, in6=drive_data_6_memory_out, in8=destination_code_memory_out, in11=atc_reading_1_read_out, in12=atc_reading_2_read_out, in13=atc_reading_3_read_out, in14=atc_reading_4_read_out, inc=drive_support_bool_composite_out -> out=drive_support_num_composite_out
+  inst FUNC_NUM_1 position_thousands (expression="floor(abs(x)/1000)") : x=position_integral_out -> out=position_thousands_out
+  inst FUNC_NUM_1 position_tens_hundreds (expression="floor(abs(x)/10)%100") : x=position_integral_out -> out=position_tens_hundreds_out
+  inst NUM_SWITCHBOX pos_speed_factor_sw : a=const_zero_value, b=ext_speed_factor_read_out, switch=use_ext_pos_calc_read_out -> out=pos_speed_factor_sw_out
+  inst NUM_SWITCHBOX pos_base_speed_sw : a=ext_base_speed_read_out, b=ds_base_speed_read_out, switch=use_ext_pos_calc_read_out -> out=pos_base_speed_sw_out
+  inst CONST const_zero (value=0) : -> value=const_zero_value
+  inst COMPOSITE_READ_NUMBER atc_reading_1_read (channel=1) : composite=atc_status_lua_composite -> out=atc_reading_1_read_out
+  inst COMPOSITE_READ_NUMBER atc_reading_2_read (channel=2) : composite=atc_status_lua_composite -> out=atc_reading_2_read_out
+  inst COMPOSITE_READ_NUMBER atc_reading_3_read (channel=3) : composite=atc_status_lua_composite -> out=atc_reading_3_read_out
+  inst COMPOSITE_READ_NUMBER atc_reading_4_read (channel=4) : composite=atc_status_lua_composite -> out=atc_reading_4_read_out
+  inst COMPOSITE_WRITE_BOOLEAN drive_support_bool_composite (count=4, offset=11) : in1=atc_status_flag_read_out, in3=atc_ch3_flag_read_out, in4=direction_flag_read_out, inc=key_bool_composite_out -> out=drive_support_bool_composite_out
+  inst COMPOSITE_READ_BOOLEAN atc_status_flag_read (channel=1) : composite=atc_status_lua_composite -> out=atc_status_flag_read_out
+  inst COMPOSITE_READ_NUMBER monitor_ch3_num_read (channel=3) : composite="Monitor Status" -> out=monitor_ch3_num_read_out
+  inst COMPOSITE_READ_BOOLEAN monitor_abnormal_1_read (channel=12) : composite="Monitor Status" -> out=monitor_abnormal_1_read_out
+  inst COMPOSITE_READ_BOOLEAN monitor_abnormal_2_read (channel=13) : composite="Monitor Status" -> out=monitor_abnormal_2_read_out
+  inst OR monitor_abnormal_flag : a=monitor_abnormal_1_read_out, b=monitor_abnormal_2_read_out -> out=monitor_abnormal_flag_out
 end

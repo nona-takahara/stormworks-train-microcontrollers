@@ -1,4 +1,4 @@
-C=10
+C=11
 function onTick()
 local arc=math.floor(input.getNumber(2))
 output.setNumber(7,math.floor(input.getNumber(1))) -- operation.number

@@ -1,0 +1,2852 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor name="CHUSO Series 2000 Driver Assistance" description="v0.6.1" width="1" length="4" id_counter="204" id_counter_node="16">
+	<nodes>
+		<n id="4" component_id="20">
+			<node label="Monitor Status" mode="1" type="5" description="The input signal to be processed.">
+				<position z="1"/>
+			</node>
+		</n>
+		<n id="5" component_id="28">
+			<node label="Drive Support" type="5" description="The input signal to be processed.">
+				<position z="3"/>
+			</node>
+		</n>
+		<n id="10" component_id="49">
+			<node label="Physics Input" mode="1" type="5" description="The input signal to be processed.">
+				<position z="2"/>
+			</node>
+		</n>
+		<n id="13" component_id="145">
+			<node label="Drive Support Monitor Touch" mode="1" type="5" description="The input signal to be processed."/>
+		</n>
+		<n id="14" component_id="148">
+			<node label="Output" type="6" description="The input signal to be processed."/>
+		</n>
+		<n id="16" component_id="200">
+			<node label="Monitor Beep" description="The input signal to be processed.">
+				<position z="1"/>
+			</node>
+		</n>
+	</nodes>
+	<group>
+		<data type="574451311">
+			<inputs/>
+			<outputs/>
+		</data>
+		<components>
+			<c type="40">
+				<object id="50" count="5">
+					<pos x="-1" y="-3.5"/>
+					<in1 component_id="51"/>
+					<in2 component_id="52"/>
+					<in3 component_id="55"/>
+					<in4 component_id="198"/>
+					<in5 component_id="87"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="51">
+					<pos x="-2.25" y="-2.5"/>
+					<in1 component_id="49"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="52" i="2">
+					<pos x="-2.25" y="-2.75"/>
+					<in1 component_id="49"/>
+				</object>
+			</c>
+			<c type="36">
+				<object id="55" e="x*z+(y/60)*a+w">
+					<pos x="-2.25" y="-5"/>
+					<in1 component_id="55"/>
+					<in2 component_id="143"/>
+					<in3 component_id="182"/>
+					<in4 component_id="183"/>
+					<in5 component_id="58"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="56" i="30">
+					<pos x="-4.75" y="-4.25"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="57" i="31">
+					<pos x="-4.75" y="-5.25"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="58">
+					<pos x="-6" y="-5.25"/>
+					<in1 component_id="59"/>
+					<in2 component_id="60"/>
+					<in3 component_id="104"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="59">
+					<pos x="-7.25" y="-4.5"/>
+					<n text="-1" value="-1"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="60">
+					<pos x="-7.25" y="-5"/>
+					<n text="1" value="1"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="61" script="-- Chuso 2000 Series Driving Support System
+link_tbl={nil,{2},{1},{3},{2},{5,6},nil,{5,6},{3,4},nil,{3,4},{7},{6},{8,9},{7},nil,{7},{10},{9},{11},{10},{12},{11},{13,14},{12},nil,{12},{15,16},{14},nil,{14}}
+stop_type_tbl={{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,10,11},{5,6,7,11},{5,6,7,11},{5,6,10,11},{5},{5,6,9},{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,10,11},{5,6,7,10,11},{5,6,7,10,11}}
+coord_tbl={{1168,-4430},{303,-4819},{1355,-3762},{1355,-3751},{1656,-3770},{2976,-3930},{3743,-4888},{3768,-5270},{4362,-5935},{5390,-6653},{6584,-8240},{6991,-9184},{6915,-9346},{5910,-9310},{4330,-8210},{4330,-8210}}
+meterage={-1670,-1610,0,0,300,1635,2925,3500,4190,5570,7810,9030,9220,10370,12320,12320}
+not4srv={[1]=1,[5]=1,[8]=1,[13]=1}
+doorcut_tbl={[6]={{i=6,m=6},{m=6,o=0}},[10]={{i=6,m=6},{m=6,o=0}},[14]={{i=6,m=6},{m=6,o=0}}}
+
+function b2i(f) return f and 1 or 0 end
+
+function find_rte(from, to, inb)
+	if not link_tbl[from * 2 - b2i(inb)] then return end
+	tr, q = { [from] = from }, { from }
+	for _ = 1, 100 do
+		for _, v in ipairs(link_tbl[q[1] * 2 - b2i(inb)] or {}) do
+			if not tr[v] then
+				table.insert(q, v)
+				tr[v] = q[1]
+			end
+		end
+		table.remove(q, 1)
+		if #q == 0 then break end
+	end
+	if tr[to] then
+		rte = { to, inb = inb, outb = not inb }
+		for _ = 1, 100 do
+			if to == from then break end
+			table.insert(rte, 1, tr[to])
+			to = tr[to]
+		end
+		return rte
+	end
+end
+
+function get_rte(origin, dest)
+	rte_in, rte_out = find_rte(origin, dest, true), find_rte(origin, dest)
+	if rte_in and rte_out then return #rte_in &lt; #rte_out and rte_in or rte_out end
+	return rte_in or rte_out or {}
+end
+
+function is_stop(id, rte, ttype)
+	if rte[1] == id or rte[#rte] == id then return true end
+	for _, v in ipairs(stop_type_tbl[id] or {}) do
+		if v == ttype then return true end
+	end
+end
+
+function len(x1, y1, x2, y2)
+	return math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+end
+
+function find_nearest_sta(px, py, l)
+	local b = nil
+	for i, s in pairs(coord_tbl) do
+		if s and len(s[1], s[2], px, py) &lt; l then
+			l = len(s[1], s[2], px, py)
+			b = i
+		end
+	end
+	return b
+end
+
+ROUTE = nil
+OLD_CODE_A = nil
+function onTick()
+	local px, py, kp, codeA, dr, en, dop, isap, start_ctrl, dop_start, upkp
+	px = input.getNumber(1)              -- GPS X
+	py = input.getNumber(2)              -- GPS Y
+	kp = input.getNumber(3)              -- meterage
+	codeA = math.floor(input.getNumber(4)) -- code A (Memreg2[N3])
+	local frm,dest,ttype = (codeA &gt;&gt; 6) &amp; 63, codeA &amp; 63, (codeA &gt;&gt; 12) &amp; 15
+	en = input.getBool(1)                -- Enable
+	start_ctrl = input.getBool(2)
+	isap = input.getBool(3)              -- Approaching and not departure latch
+	dop = input.getBool(4)               -- Door Open
+	dop_start = input.getBool(5)
+	upkp = false
+
+	-- Reset meterage
+	if dop or start_ctrl then
+		local ix = find_nearest_sta(px, py, 100)
+		if ix and meterage[ix] then
+			kp = meterage[ix]
+			if dop_start or start_ctrl then
+				upkp = true
+			end
+		end
+	end
+
+	if OLD_CODE_A ~= codeA then
+		ROUTE = get_rte(frm, dest)
+	end
+	if ROUTE and ROUTE.inb then dr = -1 else dr = 1 end
+	OLD_CODE_A = codeA
+
+	local res = stops(kp, ttype, dr, en, dop, isap)
+
+	if res.mode == 1 or res.mode == 3 then
+		output.setNumber(1, res.ns_sid)
+		output.setNumber(2, res.nns_sid)
+	else
+		output.setNumber(1, res.n_sid)
+		output.setNumber(2, res.ns_sid)
+	end
+	output.setNumber(3, res.mode)
+	output.setNumber(4, res.dir)
+
+	output.setNumber(9, kp) -- for debug
+
+	if upkp then
+		output.setNumber(31, 0)
+		output.setNumber(32, kp)
+	else
+		output.setNumber(31, 1)
+		output.setNumber(32, 0)
+	end
+
+	output.setBool(1, en)
+	output.setBool(2, start_ctrl)
+	output.setBool(3, doorcut_tbl[res.n_sid] ~= nil)
+	output.setBool(4, res.set_ap)
+	output.setBool(5, res.reset_ap)
+end
+
+function stops(kp, ttype, dr, en, dop, isap)
+	local n_sid, ns_sid, nns_sid, mode = 0, 0, 0, 0
+	local dir3000 = 0
+	local set_ap, reset_ap = false, false
+
+	if en and ROUTE then
+		local pix = 0
+		local ltstg = 0
+		if dop or isap then ltstg = -300 end
+		for i = 1, #ROUTE do
+			local lts = ((meterage[ROUTE[i]] or math.huge) - kp) * dr
+			if lts &lt; ltstg then pix = i end
+		end
+
+		if pix ~= #ROUTE then
+			n_sid = ROUTE[pix + 1]
+		end
+		for i = pix + 1, #ROUTE do
+			if is_stop(ROUTE[i], ROUTE, ttype) then
+				local s_sid = ROUTE[i]
+				if ns_sid == 0 then
+					ns_sid = s_sid
+				else
+					nns_sid = s_sid
+					break
+				end
+			end
+		end
+
+		if ns_sid ~= 0 then
+			local lts = ((meterage[ns_sid] or math.huge) - kp) * dr
+			if lts &lt; 520 and lts &gt;= 400 then
+				isap = true; set_ap = true
+			end
+			if lts &gt; 520 then
+				isap = false; reset_ap = true
+			end
+			mode = 2
+			if isap then mode = 3 end
+			if dop and lts &lt; 520 then mode = 1 end
+		end
+	end
+	if dr == -1 then dir3000 = 2 end
+	if dr == 1 then dir3000 = 1 end
+	return { mode = mode, n_sid = n_sid, ns_sid = ns_sid, nns_sid = nns_sid, dir = dir3000, set_ap = set_ap, reset_ap =
+	reset_ap }
+end
+">
+					<pos x="1.5" y="-2.5"/>
+					<in1 component_id="62"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="62" count="4">
+					<pos x="0.25" y="-3.25"/>
+					<inc component_id="50"/>
+					<in1 component_id="63"/>
+					<in2 component_id="66"/>
+					<in3 component_id="98"/>
+					<in4 component_id="101"/>
+				</object>
+			</c>
+			<c type="12">
+				<object id="63">
+					<pos x="-1" y="-1"/>
+					<in1 component_id="64"/>
+					<min text="1" value="1"/>
+					<max text="1" value="1"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="64" i="11">
+					<pos x="-2.25" y="-1"/>
+					<in1 component_id="20"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="66">
+					<pos x="-1" y="-1.5"/>
+					<in1 component_id="63"/>
+				</object>
+			</c>
+			<c type="24">
+				<object id="67">
+					<pos x="2.75" y="-6.25"/>
+					<in1 component_id="69"/>
+					<in2 component_id="95"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="69">
+					<pos x="1.5" y="-6.25"/>
+					<in1 component_id="204"/>
+					<in2 component_id="66"/>
+				</object>
+			</c>
+			<c type="12">
+				<object id="74">
+					<pos x="-1" y="-7.25"/>
+					<in1 component_id="143"/>
+					<min text="-1.5" value="-1.5"/>
+					<max text="1.5" value="1.5"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="75" i="3">
+					<pos x="1.5" y="-4.25"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c>
+				<object id="76">
+					<pos x="0.25" y="-6.75"/>
+					<in1 component_id="204"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="83" i="2">
+					<pos x="5.25" y="-10.25"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="86" m="0">
+					<pos x="0.25" y="-5"/>
+					<in1 component_id="67"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="87" i="5">
+					<pos x="-1" y="-4.5"/>
+					<in1 component_id="20"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="88">
+					<pos x="1.5" y="-5"/>
+					<in1 component_id="89"/>
+					<in2 component_id="86"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="89" i="4">
+					<pos x="0.25" y="-4.5"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c>
+				<object id="94">
+					<pos x="0.25" y="-7.25"/>
+					<in1 component_id="74"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="95">
+					<pos x="1.5" y="-7.25"/>
+					<in1 component_id="76"/>
+					<in2 component_id="94"/>
+				</object>
+			</c>
+			<c type="24">
+				<object id="98">
+					<pos x="2.75" y="-4.5"/>
+					<in1 component_id="75"/>
+					<in2 component_id="88"/>
+				</object>
+			</c>
+			<c type="43">
+				<object id="99" l="value">
+					<pos x="3.25" y="-1.25"/>
+					<in1 component_id="100"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="100" i="3">
+					<pos x="2" y="-1"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="26">
+				<object id="101" ct="0.5" dt="0.5">
+					<pos x="4" y="-6"/>
+					<in1 component_id="67"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="104" i="15">
+					<pos x="-7.25" y="-5.5"/>
+					<in1 component_id="20"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="105" script="I,O=input,output
+B=I.getBool
+function N(c)return math.floor(I.getNumber(c))end
+function onTick()function T(x,y,w,h)for i=1,2 do
+x,y=N(1+2*i)-x,N(2+2*i)-y
+if B(i)and 0&lt;=x and x&lt;w and 0&lt;=y and y&lt;h then
+return 1
+end
+end
+end
+i=N(32)o={}function n(c,v,f,g)if f then
+o[c]=v
+if not g then
+b(c,1)end
+end
+end
+function b(c,f)if f then
+o[c+32]=1
+end
+end
+a=11
+c=32
+d=21
+e=12
+f=16
+g=T(38,d,25,9)h=T(e,a,25,9)j=T(38,a,25,9)k=T(e,d,25,9)l=T(1,26,9,5)m=T(1,a,9,5)p=100
+q=300
+r=15
+s=400t=1100
+u=3000
+v=T(e,a,f,9)w=T(29,a,f,9)x=T(46,a,f,9)y=T(e,d,f,9)z=T(1,1,7,9)A=1000
+C=200
+D=2000
+E=1001
+F=1102
+G=T(47,1,r,9)H=T(29,d,f,9)J=301
+K=302
+L=i==s
+M=1101
+P=3100
+Q=3101
+R=3102
+S=i==D
+U=i==2001
+V=i==C
+W=i==201
+X=i==E
+Y=i==A
+Z=i==401
+a0=i==t
+a1=i==F
+a2=i==1103
+a3=i==4000
+a4=T(46,d,f,9)a5=L or Z or i==402 or i==403
+a6=i==3103
+a7=T(53,d,9,9)if i==0then n(c,u,T(47,9,r,9))n(c,p,T(1,19,31,a))n(c,4000,T(34,19,13,a))n(c,D,T(49,19,13,a))end
+if a3 or S or U or i==p or i==u then n(c,0,z)end
+if i==p then n(c,A,T(47,22,r,9))n(c,C,G)end
+if V or W or X or Y then n(c,p,z)end
+if V then n(c,201,l)n(1,1,v)n(1,2,w)n(1,3,x)n(1,4,y)end
+if V or W then n(c,q,v)n(c,q,w)n(c,q,x)n(c,q,y)end
+if W then n(c,C,m)n(1,5,v)n(1,6,w)n(1,a,x)n(1,7,y)n(c,q,H)n(1,8,H)n(c,q,a4)n(1,9,a4)end
+if i==q or i==J or i==K or i==303then n(c,C,z)n(c,s,h)n(c,s,j)n(c,s,k)n(c,s,g)end
+if i==q then n(c,J,l)n(2,1,h)n(2,2,j)n(2,3,k)n(2,4,g)end
+if i==J then n(c,q,m)n(c,K,l)n(2,5,h)n(2,6,j)n(2,7,k)n(2,8,g)end
+if i==K then n(c,J,m)n(c,303,l)n(2,9,h)n(2,10,j)n(2,a,k)n(2,e,g)end
+if i==303then n(c,K,m)n(2,13,h)n(2,14,j)n(2,r,k)n(2,f,g)end
+if a5 then n(c,q,z)end
+if L then n(c,401,l)n(3,1,h)n(3,2,j)n(3,3,k)n(3,4,g)end
+if a5 or L or a0 or i==M or a1 or a2 then n(c,p,h)n(c,p,j)n(c,p,k)n(c,p,g)end
+if Z then n(c,s,m)n(c,402,l)n(3,5,h)n(3,6,j)n(3,7,k)n(3,8,g)end
+if i==402then n(c,401,m)n(c,403,l)n(3,9,h)n(3,10,j)n(3,a,k)n(3,e,g)end
+if i==403then n(c,402,m)n(3,13,h)n(3,14,j)n(3,r,k)n(3,f,g)end
+if Y then n(c,E,l)n(c,p,v)n(4,1,v)n(5,0,v)n(c,p,w)n(4,2,w)n(5,0,w)n(c,p,x)n(4,3,x)n(5,0,x)n(c,p,y)n(4,4,y)n(5,0,y)end
+if Y or X then n(c,p,G)n(4,0,G)n(5,0,G)end
+if X then n(c,A,m)n(c,t,v)n(4,5,v)n(c,t,w)n(4,6,w)n(c,t,x)n(4,a,x)n(c,t,y)n(4,7,y)n(c,t,H)n(4,8,H)end
+if a0 or a1 or a2 then n(c,E,z)end
+if a0 then n(c,M,l)n(5,1,h)n(5,2,j)n(5,3,k)n(5,4,g)end
+if i==M then n(c,A,z)n(c,t,m)n(c,F,l)n(5,5,h)n(5,6,j)n(5,7,k)n(5,8,g)end
+if a1 then n(c,M,m)n(c,1103,l)n(5,9,h)n(5,10,j)n(5,a,k)n(5,e,g)end
+if a2 then n(c,F,m)n(5,13,h)n(5,14,j)n(5,r,k)n(5,f,g)end
+if S then n(c,2001,l)n(6,1,h)n(6,2,j)n(6,3,k)n(6,4,g)end
+if S or U then n(c,0,h)n(c,0,j)n(c,0,k)n(c,0,g)end
+if U then n(c,D,m)n(6,5,h)n(6,6,j)n(6,7,k)n(6,8,g)end
+if i==u then n(c,P,g)end
+if i==P or i==Q or i==R or a6 then n(c,u,z)n(c,u,h)n(c,u,j)n(c,u,k)n(c,u,g)end
+if i==P then n(c,Q,l)n(7,-1000,h)n(7,-1000,j)n(7,0,k)n(7,0,g)end
+if i==Q then n(c,P,m)n(c,R,l)n(7,q,h)n(7,1635,j)n(7,2925,k)n(7,3500,g)end
+if i==R then n(c,Q,m)n(c,3103,l)n(7,4190,h)n(7,5570,j)n(7,7810,k)n(7,9030,g)end
+if a6 then n(c,R,m)n(7,9220,h)n(7,10000,j)n(7,10000,k)n(7,10000,g)end
+if a3 then n(9,0,T(53,a,9,9))n(c,0,a7)n(10,0,a7)n(8,0,T(2,a,9,9))n(8,1,T(e,a,9,9))n(8,2,T(22,a,9,9))n(8,3,T(c,a,9,9))n(8,4,T(42,a,9,9))n(8,5,T(2,d,9,9))n(8,6,T(e,d,9,9))n(8,7,T(22,d,9,9))n(8,8,T(c,d,9,9))n(8,9,T(42,d,9,9))end
+for i=1,32 do
+O.setNumber(i,o[i]or 0)O.setBool(i,(o[i+32]or 0)~=0)end
+end">
+					<pos x="-3.75" y="-12"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="106" script="I=input
+function N(c)return math.floor(I.getNumber(c))end
+function onTick()function T(x,y,w,h)for i=1,2 do
+x,y=N(1+2*i)-x,N(2+2*i)-y
+if I.getBool(i)and 0&lt;=x and x&lt;w and 0&lt;=y and y&lt;h then
+return 1
+end
+end
+return 0
+end
+a=26
+b=11
+c=25
+d=21
+e=12
+f=38
+g=16
+h=18989572
+i=6340633
+j=37814313
+k=19294872
+l=19289648
+m=19289752
+n=19294768
+p=42058241
+q=10646532
+r=56672313
+s=10638852t=25215049
+u=47
+v=29
+w=15
+x=46
+y=19
+z=35668097
+A=35668225
+C=22
+D=42057985
+E=138559509
+F=N(9)+1
+G=19142192
+H=19142260
+J=19142328
+K=19147312
+L=138559541
+M=25477189
+O=25854997
+P=46350421
+Q=46776421
+R=25378933
+S=25904213
+U=46350469
+V=46776469
+W=35668353
+X=25429125
+Y=25904277
+Z=46400677
+a0=46826677
+a1=35668481
+a2=25378981
+a3=25804981
+a4=46350533
+a5=46776533
+a6=138559717
+a7=138559733
+a8=({2,2,2,2,2,4,5,6,3,3,7,8})a9=({5,3,3,3,3,0,0,0,0,0,0,1})aa=19120828
+ab=N(14)+u
+ac=N(9)+51
+ad=N(10)+63
+ae=N(b)+63
+af=138559877
+ag=138559893
+ah=138559925
+o=({[0]={19087388|a8[F]&lt;&lt;a,19124924|T(u,9,w,9)&lt;&lt;a,23586308|T(1,y,31,b)&lt;&lt;a,23291528|T(34,y,13,b)&lt;&lt;a,23291588|T(49,y,13,b)&lt;&lt;a,136331269|ab&lt;&lt;4,2228229|ac&lt;&lt;4|a9[F]&lt;&lt;a,2441221|ad&lt;&lt;4,271171621,2834437|ae&lt;&lt;4,289439749|N(w)+80&lt;&lt;4,21413893|N(g)+63&lt;&lt;4,21774597|T(u,9,w,9)&lt;&lt;a,44073269|T(1,y,31,b)&lt;&lt;a,44613957|T(34,y,13,b)&lt;&lt;a,44859733|T(49,y,13,b)&lt;&lt;a},[100]={h|T(1,1,7,9)&lt;&lt;a,19093020|a8[F]&lt;&lt;a,19098680|a8[N(e)+1]&lt;&lt;a,19131580|T(u,C,w,9)&lt;&lt;a,aa|T(u,1,w,9)&lt;&lt;a,138559797,159399941|ab&lt;&lt;4,25296901|ac&lt;&lt;4|a9[F]&lt;&lt;a,25509893|ad&lt;&lt;4,294240293,25903109|ae&lt;&lt;4,48251237,48480261|N(e)+51&lt;&lt;4|a9[N(e)+1]&lt;&lt;a,48693253|N(13)+63&lt;&lt;4,49037669|T(u,C,w,9)&lt;&lt;a,4997493|T(u,1,w,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a},[200]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,G|T(e,b,g,9)&lt;&lt;a,H|T(v,b,g,9)&lt;&lt;a,J|T(x,b,g,9)&lt;&lt;a,K|T(e,d,g,9)&lt;&lt;a,z,D,af,25396037|T(e,b,g,9)&lt;&lt;a,25674581|T(v,b,g,9)&lt;&lt;a,25953125|T(x,b,g,9)&lt;&lt;a,46367605|T(e,d,g,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[201]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,G|T(e,b,g,9)&lt;&lt;a,H|T(v,b,g,9)&lt;&lt;a,J|T(x,b,g,9)&lt;&lt;a,K|T(e,d,g,9)&lt;&lt;a,19147380|T(v,d,g,9)&lt;&lt;a,19147448|T(x,d,g,9)&lt;&lt;a,A,D,af,25396101|T(e,b,g,9)&lt;&lt;a,25674645|T(v,b,g,9)&lt;&lt;a,25953253|T(x,b,g,9)&lt;&lt;a,46367653|T(e,d,g,9)&lt;&lt;a,46646197|T(v,d,g,9)&lt;&lt;a,46924741|T(x,d,g,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[300]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,p,L,M|T(e,b,c,9)&lt;&lt;a,O|T(f,b,c,9)&lt;&lt;a,P|T(e,d,c,9)&lt;&lt;a,Q|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[301]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,p,L,R|T(e,b,c,9)&lt;&lt;a,S|T(f,b,c,9)&lt;&lt;a,U|T(e,d,c,9)&lt;&lt;a,V|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[302]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,W,p,L,X|T(e,b,c,9)&lt;&lt;a,Y|T(f,b,c,9)&lt;&lt;a,Z|T(e,d,c,9)&lt;&lt;a,a0|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[303]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,a1,p,L,a2|T(e,b,c,9)&lt;&lt;a,a3|T(f,b,c,9)&lt;&lt;a,a4|T(e,d,c,9)&lt;&lt;a,a5|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[400]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,p,a6,M|T(e,b,c,9)&lt;&lt;a,O|T(f,b,c,9)&lt;&lt;a,P|T(e,d,c,9)&lt;&lt;a,Q|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[401]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,p,a6,R|T(e,b,c,9)&lt;&lt;a,S|T(f,b,c,9)&lt;&lt;a,U|T(e,d,c,9)&lt;&lt;a,V|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[402]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,W,p,a6,X|T(e,b,c,9)&lt;&lt;a,Y|T(f,b,c,9)&lt;&lt;a,Z|T(e,d,c,9)&lt;&lt;a,a0|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[403]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,a1,p,a6,a2|T(e,b,c,9)&lt;&lt;a,a3|T(f,b,c,9)&lt;&lt;a,a4|T(e,d,c,9)&lt;&lt;a,a5|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[1000]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,aa|T(u,1,w,9)&lt;&lt;a,G|T(e,b,g,9)&lt;&lt;a,H|T(v,b,g,9)&lt;&lt;a,J|T(x,b,g,9)&lt;&lt;a,K|T(e,d,g,9)&lt;&lt;a,z,D,ag,4997541|T(u,1,w,9)&lt;&lt;a,25396037|T(e,b,g,9)&lt;&lt;a,25674581|T(v,b,g,9)&lt;&lt;a,25953125|T(x,b,g,9)&lt;&lt;a,46367605|T(e,d,g,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[1001]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,aa|T(u,1,w,9)&lt;&lt;a,G|T(e,b,g,9)&lt;&lt;a,H|T(v,b,g,9)&lt;&lt;a,J|T(x,b,g,9)&lt;&lt;a,K|T(e,d,g,9)&lt;&lt;a,19147380|T(v,d,g,9)&lt;&lt;a,A,D,ag,4997541|T(u,1,w,9)&lt;&lt;a,25396101|T(e,b,g,9)&lt;&lt;a,25674645|T(v,b,g,9)&lt;&lt;a,25953253|T(x,b,g,9)&lt;&lt;a,46367653|T(e,d,g,9)&lt;&lt;a,46646197|T(v,d,g,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[1100]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,p,a7,M|T(e,b,c,9)&lt;&lt;a,O|T(f,b,c,9)&lt;&lt;a,P|T(e,d,c,9)&lt;&lt;a,Q|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[1101]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,p,a7,R|T(e,b,c,9)&lt;&lt;a,S|T(f,b,c,9)&lt;&lt;a,U|T(e,d,c,9)&lt;&lt;a,V|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[1102]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,W,p,a7,X|T(e,b,c,9)&lt;&lt;a,Y|T(f,b,c,9)&lt;&lt;a,Z|T(e,d,c,9)&lt;&lt;a,a0|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[1103]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,a1,p,a7,a2|T(e,b,c,9)&lt;&lt;a,a3|T(f,b,c,9)&lt;&lt;a,a4|T(e,d,c,9)&lt;&lt;a,a5|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[2000]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,D,ah,25379269|T(e,b,c,9)&lt;&lt;a,25805269|T(f,b,c,9)&lt;&lt;a,46350821|T(e,d,c,9)&lt;&lt;a,46776821|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[2001]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,D,ah,25379333|T(e,b,c,9)&lt;&lt;a,25805333|T(f,b,c,9)&lt;&lt;a,46350885|T(e,d,c,9)&lt;&lt;a,46776885|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[3000]={h|T(1,1,7,9)&lt;&lt;a,618829436,618829484,618714788,673210532,k|T(f,d,c,9)&lt;&lt;a,25690129|N(18)&lt;&lt;7,25886801|N(y)&lt;&lt;7,E,23183941,46776341|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a},[3100]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,p,E,M|T(e,b,c,9)&lt;&lt;a,O|T(f,b,c,9)&lt;&lt;a,P|T(e,d,c,9)&lt;&lt;a,Q|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[3101]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,p,E,R|T(e,b,c,9)&lt;&lt;a,S|T(f,b,c,9)&lt;&lt;a,U|T(e,d,c,9)&lt;&lt;a,V|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[3102]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,W,p,E,X|T(e,b,c,9)&lt;&lt;a,Y|T(f,b,c,9)&lt;&lt;a,Z|T(e,d,c,9)&lt;&lt;a,a0|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[3103]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,a1,p,E,a2|T(e,b,c,9)&lt;&lt;a,a3|T(f,b,c,9)&lt;&lt;a,a4|T(e,d,c,9)&lt;&lt;a,a5|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[4000]={h|T(1,1,7,9)&lt;&lt;a,19027668|T(53,b,9,9)&lt;&lt;a,19032788|T(53,d,9,9)&lt;&lt;a,19027464|T(2,b,9,9)&lt;&lt;a,19027504|T(e,b,9,9)&lt;&lt;a,19027544|T(C,b,9,9)&lt;&lt;a,19027584|T(32,b,9,9)&lt;&lt;a,19027624|T(42,b,9,9)&lt;&lt;a,19032584|T(2,d,9,9)&lt;&lt;a,19032624|T(e,d,9,9)&lt;&lt;a,19032664|T(C,d,9,9)&lt;&lt;a,19032704|T(32,d,9,9)&lt;&lt;a,19032744|T(42,d,9,9)&lt;&lt;a,138559813,273285157,26067541|T(53,b,9,9)&lt;&lt;a,47039077|T(53,d,9,9)&lt;&lt;a,25231989|T(2,b,9,9)&lt;&lt;a,25395845|T(e,b,9,9)&lt;&lt;a,25559701|T(C,b,9,9)&lt;&lt;a,25723157|T(32,b,9,9)&lt;&lt;a,25887013|T(42,b,9,9)&lt;&lt;a,46203557|T(2,d,9,9)&lt;&lt;a,46367413|T(e,d,9,9)&lt;&lt;a,46531269|T(C,d,9,9)&lt;&lt;a,46695125|T(32,d,9,9)&lt;&lt;a,46858981|T(42,d,9,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a}})[N(32)]or{}for i=1,30 do
+n=o[i]n=n and('f'):unpack(('I3B'):pack(n&amp;16777215,66+128*(n&gt;&gt;29&amp;1)+(n&gt;&gt;24&amp;31)))or 0
+output.setNumber(i,n)end
+end">
+					<pos x="-3.75" y="-13"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="107" script="d={}function onTick()d={}for i=1,30 do
+b,a=('I3B'):unpack(('f'):pack(input.getNumber(i)))d[i]=(66&lt;=a and a&lt;=126 or 194&lt;=a and a&lt;=254)and(a-66&gt;&gt;2&amp;32|a-66&amp;31)&lt;&lt;24|b or nil
+end
+end
+e=19
+f=12
+g=18
+h=13
+k=171
+l=15
+o=21
+p=10
+q=122
+z=20
+A=24
+B={k,k,k}E={0,0,0}F={e,e,e}G={q,4,4}r={{9,16,27},{135,59,5},nil,{q,33,4},F,{4,36,2},G,{4,e,q},{q,q,4},E,B}s={B,E}t={B,E,{25,126,49},G,F,nil}n={B}S=screen
+function C(c)c=c or{0,0,0,0}S.setColor(c[1],c[2],c[3],c[4]or 255)end
+u,v=0,0
+function R(x,y,w,h)S.drawRectF(x+u,y+v,w,h)end
+function H(x,y,w)R(x,y,w,1)end
+function V(x,y,h)R(x,y,1,h)end
+function D(x,y)H(x,y,1)end
+function Y(i,x,y)u,v=x,y
+if i==1then H(0,2,3)R(1,1,2,3)V(2,0,5)end
+if i==2then V(0,4,2)V(1,2,2)V(2,0,2)end
+if i==3then H(0,0,5)R(1,0,3,2)V(2,0,3)end
+if i==4then H(0,2,5)R(1,1,3,2)V(2,0,3)end
+end
+function T(i,x,y)u,v=x,y
+if i==14then H(g,1,5)H(g,3,5)H(g,5,4)V(e,0,2)R(e,3,3,4)V(z,1,6)V(o,0,2)end
+if i==l then D(A,2)H(A,4,5)V(25,0,2)H(25,0,3)V(25,3,4)H(25,6,4)D(26,2)V(27,0,2)V(28,4,3)end
+if i==e then D(f,5)D(h,4)D(14,3)D(l,2)D(16,1)V(g,1,2)H(g,1,5)H(g,4,5)D(g,6)V(e,3,3)R(e,4,3,2)V(z,0,3)V(z,4,3)V(o,3,3)V(22,1,2)D(22,6)V(A,1,6)H(A,1,5)H(A,4,2)V(26,0,4)H(27,4,2)H(27,6,2)V(28,1,6)end
+if i==z then H(6,0,5)H(6,2,5)D(6,4)V(7,0,4)R(7,2,3,2)R(7,5,3,2)V(8,2,5)V(9,0,4)D(p,4)end
+if i==o then H(0,1,5)V(0,5,2)V(1,0,5)R(1,3,4,2)V(2,3,4)R(2,3,2,3)V(3,0,6)R(3,1,2,4)D(4,6)end
+if i==26then V(0,1,6)H(0,1,5)H(0,3,3)H(0,6,5)V(2,0,2)V(2,3,2)H(2,4,3)V(4,1,6)H(6,0,2)R(6,2,2,3)H(6,6,3)V(7,0,7)H(7,1,4)R(7,5,2,2)V(9,0,5)R(9,1,2,4)V(p,1,6)end
+if i==28then V(0,0,7)R(0,0,2,6)H(0,0,3)R(0,2,3,2)H(0,2,5)D(2,6)V(3,1,2)V(3,4,2)D(4,0)V(4,2,2)D(4,6)V(6,1,2)H(6,2,5)V(6,4,3)H(6,6,5)V(8,0,7)V(p,1,2)V(p,4,3)end
+if i==29then D(6,2)D(7,1)V(7,4,3)H(7,4,3)H(7,6,3)D(8,0)H(8,2,3)V(9,1,2)V(9,4,3)H(f,1,2)H(f,4,2)V(h,0,7)H(h,2,2)D(l,1)D(l,6)V(16,2,4)H(g,2,5)V(e,0,6)H(z,6,3)V(o,0,5)end
+if i==30then H(6,0,2)R(6,2,2,2)H(6,2,5)H(6,5,3)V(7,0,7)R(7,5,2,2)H(7,6,4)H(9,0,2)V(9,2,3)V(p,5,2)H(f,0,5)H(f,4,5)V(h,2,5)R(h,2,3,3)V(14,0,5)V(l,2,5)V(g,0,7)R(g,0,2,2)R(g,3,2,3)R(g,3,5,2)R(o,0,2,2)R(o,3,2,3)V(22,0,7)end
+if i==31then H(f,0,5)V(f,2,2)H(f,2,5)H(f,6,2)V(h,0,3)H(h,4,3)V(14,4,2)V(l,0,3)H(l,6,2)V(16,2,2)end
+if i==32then H(g,2,5)V(e,0,5)H(e,0,3)H(e,4,3)H(z,6,2)V(o,0,3)V(o,4,3)end
+if i==33then R(0,2,2,2)H(0,3,3)V(1,0,7)H(1,1,4)R(1,3,2,2)H(1,6,4)V(3,0,2)V(3,5,2)V(4,1,4)R(6,0,5,2)H(6,3,5)V(6,5,2)H(6,6,5)V(8,0,7)R(8,3,2,4)end
+if i==34then H(6,0,5)V(6,2,5)H(6,2,5)R(6,4,5,2)V(8,0,6)V(p,2,5)H(g,1,3)R(g,3,5,2)V(e,0,7)H(e,6,2)D(o,0)V(o,3,3)D(22,1)D(22,6)end
+if i==35then H(0,2,2)H(0,4,2)D(0,6)V(1,1,5)H(1,1,4)H(1,3,4)H(1,5,4)V(2,5,2)V(3,0,2)V(3,3,3)V(4,5,2)D(6,6)V(7,4,2)V(8,0,4)V(9,4,2)D(p,6)H(f,1,5)H(f,3,2)H(f,5,2)V(h,0,7)H(h,4,4)H(h,6,2)V(l,0,6)R(l,1,2,4)D(16,6)end
+if i==36then H(0,1,5)H(0,4,5)V(2,0,7)V(6,1,6)H(6,1,5)H(6,6,5)V(p,1,6)H(f,0,2)H(f,2,5)R(f,4,2,2)H(f,4,5)V(h,0,7)H(h,6,4)V(l,0,7)R(l,0,2,3)end
+if i==37then V(0,1,5)H(1,0,3)H(1,6,3)D(4,1)D(4,5)end
+if i==38then V(0,1,2)D(0,5)H(1,0,3)H(1,3,3)H(1,6,3)D(4,1)V(4,4,2)end
+if i==39then V(0,1,5)H(0,4,2)H(1,0,3)H(1,6,3)D(2,3)H(3,2,2)V(4,1,5)end
+if i==40then H(1,1,2)H(1,6,3)V(2,0,7)end
+if i==41then D(0,1)H(0,6,5)H(1,0,3)V(1,5,2)D(2,4)D(3,3)V(4,1,2)end
+if i==42then V(0,0,4)H(0,0,5)H(0,2,4)D(0,5)H(1,6,3)V(4,3,3)end
+if i==43then V(0,2,4)H(0,3,4)D(1,1)H(1,6,3)H(2,0,2)V(4,4,2)end
+if i==44then H(0,0,5)V(2,3,4)D(3,2)V(4,0,2)end
+if i==45then V(0,1,2)V(0,4,2)H(1,0,3)H(1,3,3)H(1,6,3)V(4,1,2)V(4,4,2)end
+if i==46then V(0,1,2)H(1,0,3)H(1,3,4)H(1,6,2)D(3,5)V(4,1,4)end
+if i==48then H(0,0,5)V(2,0,7)H(2,2,2)D(4,3)end
+if i==49then H(0,6,5)V(2,0,7)H(2,2,2)end
+if i==50then D(0,2)D(0,4)H(1,3,3)V(2,1,5)D(4,2)D(4,4)end
+if i==27then D(0,6)H(1,2,2)D(1,5)D(2,4)D(3,3)V(4,0,3)V(4,4,2)H(6,6,5)H(7,1,3)H(f,6,5)H(h,3,3)V(l,3,4)D(g,2)H(e,3,4)T(o,x+A,y)end
+end
+function onDraw(p,j,x,y,l)C({5,6,7})S.drawClear()for i=1,30 do
+p=d[i]if p then
+j=p&gt;&gt;4&amp;255
+x,y=p&gt;&gt;14&amp;127,p&gt;&gt;21&amp;31
+l=(p&gt;&gt;26&amp;15)+1
+if p&amp;3==0then
+u,v=0,0
+C(r[l])R(p&gt;&gt;2&amp;127,p&gt;&gt;9&amp;31,x,y)end
+if p&amp;15==5then
+C(t[l])T(j,x,y)end
+if p&amp;15==9then
+C(s[l])Y(j,x,y)end
+if p&amp;15==1then
+C(n[l])w=(p&gt;&gt;4&amp;3)+1
+m=w&gt;2 and(d[i+1]or 0)&gt;&gt;4&amp;16383 or p&gt;&gt;7&amp;127
+u,v=x+4*w-4,y
+for j=1,w do
+c=m%10
+if m~=0 or j==1 or p&gt;&gt;6&amp;1~=0then
+if c==0 or 3&lt;c and c~=7then V(0,0,3)end
+if c%2==0 and c~=4then V(0,2,3)end
+if c~=1 and c~=4then H(0,0,3)end
+if 1&lt;c and c~=7then H(0,2,3)end
+if c~=1 and c~=4 and c~=7then H(0,4,3)end
+if c~=5 and c~=6then V(2,0,3)end
+if c~=2then V(2,2,3)end
+end
+m=m//10
+u=u-4
+end
+end
+end
+end
+end">
+					<pos x="-2.5" y="-13.25"/>
+					<in1 component_id="106"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="108" i="31">
+					<pos x="-9" y="-18.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="109" i="31">
+					<pos x="-9" y="-18.75"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="110">
+					<pos x="-6.25" y="-18.75"/>
+					<in1 component_id="111"/>
+					<in3 component_id="113"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="111" m="0">
+					<pos x="-7.75" y="-18.25"/>
+					<in1 component_id="108"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="112" e="x">
+					<pos x="-7.75" y="-18.75"/>
+					<in1 component_id="109"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="113" e="x">
+					<pos x="-7.5" y="-18.75"/>
+					<in1 component_id="112"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="114" count="26" offset="6">
+					<pos x="-5" y="-18.25"/>
+					<inc component_id="145"/>
+					<in1 component_id="131"/>
+					<in2 component_id="132"/>
+					<in3 component_id="133"/>
+					<in4 component_id="134"/>
+					<in5 component_id="135"/>
+					<in6 component_id="136"/>
+					<in7 component_id="137"/>
+					<in8 component_id="138"/>
+					<in9 component_id="139"/>
+					<in10 component_id="140"/>
+					<in11 component_id="116"/>
+					<in12 component_id="180"/>
+					<in13 component_id="181"/>
+					<in14/>
+					<in15/>
+					<in16/>
+					<in17/>
+					<in18/>
+					<in19/>
+					<in20/>
+					<in21/>
+					<in22/>
+					<in23/>
+					<in24/>
+					<in25/>
+					<in26 component_id="110"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="115" script="d={}function onTick()d={}for i=1,30 do
+b,a=('I3B'):unpack(('f'):pack(input.getNumber(i)))d[i]=(66&lt;=a and a&lt;=126 or 194&lt;=a and a&lt;=254)and(a-66&gt;&gt;2&amp;32|a-66&amp;31)&lt;&lt;24|b or nil
+end
+end
+c=12
+e=18
+f=10
+g=19
+h=14
+j=24
+k=21
+l=13
+m=16
+n=25
+o=15
+p=-1
+q=22t={{171,171,171},{0,0,0},{n,126,49},{122,4,4},{g,g,g},nil}S=screen
+function C(c)c=c or{0,0,0,0}S.setColor(c[1],c[2],c[3],c[4]or 255)end
+u,v=0,0
+function R(x,y,w,h)S.drawRectF(x+u,y+v,w,h)end
+function H(x,y,w)R(x,y,w,1)end
+function V(x,y,h)R(x,y,1,h)end
+function D(x,y)H(x,y,1)end
+function T(i,x,y)u,v=x,y
+if i==-29then H(6,0,2)H(6,2,2)R(6,4,2,2)H(6,4,5)V(7,0,7)H(7,1,3)R(7,3,4,2)H(7,6,4)V(9,1,6)D(f,0)V(c,0,3)H(c,0,3)H(c,2,3)D(c,6)V(l,2,4)R(l,4,2,2)V(h,0,3)V(h,4,3)V(m,0,7)end
+if i==-28then D(0,6)R(1,3,3,2)V(2,0,5)H(2,1,3)D(2,6)D(4,6)end
+if i==-27then V(0,0,2)H(0,1,5)D(0,3)R(0,5,2,2)H(0,6,3)V(2,0,5)R(2,1,2,3)H(2,3,3)D(3,5)V(4,0,2)V(4,3,2)D(4,6)end
+if i==-26then R(0,2,2,2)V(1,0,7)H(1,1,4)V(3,0,2)H(3,3,2)R(3,5,2,2)end
+if i==-25then H(0,6,5)V(1,2,5)V(3,0,7)H(3,2,2)end
+if i==-24 or i==31then V(0,0,7)R(0,0,2,2)H(0,1,5)R(0,3,2,2)V(2,5,2)V(3,0,5)R(3,3,2,2)V(4,3,4)end
+if i==-23 or i==n or i==o then D(6,2)D(6,6)V(7,0,2)H(7,1,3)H(7,3,4)D(7,5)R(8,1,2,4)V(9,0,7)end
+if i==82 or i==-21 or i==84then D(0,0)V(0,4,3)D(1,2)V(2,0,2)H(2,1,3)D(2,6)V(3,1,5)R(3,1,2,2)D(4,6)V(6,0,7)H(6,5,2)H(8,1,3)H(8,4,2)H(8,6,2)V(9,0,7)H(9,5,2)end
+if i==83 or i==-20then H(0,1,5)H(0,3,5)R(0,5,3,2)H(0,5,4)V(2,0,7)D(4,6)end
+if i==-19then H(0,3,5)V(1,2,3)D(2,1)D(2,5)end
+if i==f or i==75 or i==76 or i==-18then H(0,0,5)H(0,2,5)V(0,4,3)H(0,5,3)R(1,2,2,2)V(2,0,7)H(2,4,3)V(4,0,7)V(6,0,7)H(6,0,5)R(6,4,3,2)H(6,5,5)V(8,2,4)H(8,3,3)V(f,0,7)end
+if i==-17then H(0,1,3)V(0,4,3)V(1,0,4)D(2,6)V(3,2,4)H(3,3,2)D(4,1)end
+if i==-16 or i==29then V(0,0,5)H(0,0,5)H(0,2,5)H(0,4,5)D(0,6)V(1,4,2)V(3,4,3)H(3,6,2)V(4,0,5)end
+if i==-15then R(0,0,2,6)H(0,1,5)H(2,6,2)V(3,1,6)end
+if i==-14 or i==61then D(0,0)V(0,3,4)H(0,6,5)H(2,0,2)V(2,2,3)R(2,2,3,2)V(3,0,4)V(4,2,3)end
+if i==59 or i==-13 or i==60then R(0,0,2,3)H(0,1,5)H(0,4,2)V(1,0,7)H(1,3,4)H(1,5,2)V(3,0,4)H(3,6,2)V(4,3,4)end
+if i==57 or i==-12then D(0,0)D(0,2)V(0,4,2)H(0,5,5)V(2,0,7)R(2,1,2,3)H(2,1,3)H(2,3,3)V(4,0,2)end
+if i==-11then D(0,0)V(0,3,4)H(0,6,5)H(1,1,4)V(2,0,2)H(2,3,3)V(2,5,2)V(3,1,4)V(4,0,2)V(4,5,2)end
+if i==-9then V(0,0,4)H(0,0,2)H(0,2,2)H(0,5,2)V(1,4,3)H(1,6,2)V(3,0,6)R(3,0,2,4)D(4,6)end
+if i==-8 or i==j or i==3 or i==h then V(6,0,7)H(6,0,5)H(6,2,5)H(6,4,5)V(8,0,7)V(f,0,7)end
+if i==32 or i==-7then R(0,2,3,2)H(0,3,5)V(1,0,7)R(1,1,2,3)H(1,1,4)H(1,6,3)V(3,0,2)V(3,3,4)R(3,3,2,2)V(4,1,4)end
+if i==-23 or i==n or i==o or i==34 or i==q or i==-6then H(0,1,5)H(0,5,5)R(1,1,3,5)V(2,0,7)end
+if i==-5 or i==-22 or i==11 or i==c or i==l or i==78 or i==79then H(0,1,5)V(0,3,4)H(0,3,2)H(0,5,5)V(2,0,3)V(2,4,3)H(3,3,2)V(4,3,4)D(6,0)D(6,2)V(6,4,3)H(8,1,3)H(8,6,3)V(9,1,6)end
+if i==66 or i==67 or i==68 or i==5 or i==6 or i==7 or i==-10 or i==-4then H(0,2,2)H(0,5,2)V(1,0,7)V(3,0,7)H(3,2,2)H(3,6,2)D(6,0)D(6,2)V(6,4,3)H(6,5,2)H(7,1,4)H(7,3,3)V(8,0,5)V(9,5,2)H(9,6,2)V(f,0,3)D(f,4)end
+if i==58 or i==-3then H(0,1,2)V(0,5,2)H(0,5,2)V(1,1,2)H(1,2,3)V(1,4,2)H(1,4,3)H(2,0,2)H(2,6,3)V(3,0,5)V(4,5,2)end
+if i==-8 or i==j or i==3 or i==h or i==g or i==20 or i==30 or i==23 or i==-2then D(0,0)V(0,3,4)H(0,6,5)V(2,0,2)H(2,0,3)R(2,3,3,2)V(3,2,5)V(4,0,2)end
+if i==p then R(0,2,5,3)R(1,1,3,5)end
+if i==2then H(0,3,5)D(2,1)D(2,5)V(3,2,3)end
+if i==4then D(6,1)H(7,0,3)D(8,4)D(8,6)D(9,3)V(f,1,2)end
+if i==m then R(0,2,2,2)H(0,3,3)V(1,0,7)R(1,0,2,2)H(1,1,4)V(3,1,2)D(3,4)D(3,6)D(4,3)D(4,5)H(6,0,5)H(6,6,5)V(7,3,4)V(9,0,7)H(9,3,2)end
+if i==17then D(0,1)D(0,5)H(1,0,3)H(1,6,3)H(2,3,2)V(4,1,2)V(4,4,2)end
+if i==e then V(0,3,2)H(0,4,5)D(1,2)H(2,1,2)V(3,0,7)end
+if i==q then D(6,2)D(6,6)V(7,0,2)H(7,1,3)H(7,3,4)D(7,5)R(8,1,2,4)V(9,0,7)end
+if i==g or i==23then V(6,0,7)H(6,0,5)H(6,2,5)H(6,4,5)V(8,0,7)V(f,0,7)end
+if i==j then H(e,0,2)H(e,2,2)R(e,4,2,2)H(e,4,5)V(g,0,7)H(g,1,3)R(g,3,4,2)H(g,6,4)V(k,1,6)D(q,0)V(j,0,3)H(j,0,3)H(j,2,3)D(j,6)V(n,2,4)R(n,4,2,2)V(26,0,3)V(26,4,3)V(28,0,7)end
+if i==n then H(e,0,2)H(e,2,2)R(e,4,2,2)H(e,4,5)V(g,0,7)H(g,1,3)R(g,3,4,2)H(g,6,4)V(k,1,6)D(q,0)V(j,0,3)H(j,0,3)H(j,2,3)D(j,6)V(n,2,4)R(n,4,2,2)V(26,0,3)V(26,4,3)V(28,0,7)end
+if i==54then V(0,0,7)R(0,0,2,3)H(0,0,4)H(0,2,5)R(0,4,2,3)H(0,4,3)H(0,6,5)V(2,2,3)R(2,2,3,2)V(3,0,4)R(3,1,2,3)R(3,5,2,2)R(6,1,2,5)H(6,1,5)H(6,3,5)H(6,5,3)V(9,0,4)H(9,6,2)V(f,3,4)end
+if i==55then V(0,0,7)H(0,0,5)H(0,2,5)H(0,4,2)H(0,6,5)R(2,5,3,2)R(3,0,2,7)R(6,2,2,2)H(6,3,3)V(7,0,7)H(7,1,4)H(7,5,4)V(9,0,3)V(9,4,3)D(f,3)end
+if i==58then D(6,1)H(6,3,2)D(7,0)V(7,2,5)H(7,2,4)H(9,0,2)H(9,6,2)V(f,2,5)end
+if i==60then V(6,0,7)H(6,0,4)H(6,3,4)H(6,6,4)V(f,1,2)V(f,4,2)end
+if i==4 or i==64then D(0,0)D(0,2)V(0,4,3)R(0,4,2,2)H(0,5,5)H(1,1,4)V(1,3,3)H(1,3,4)R(2,0,3,4)R(3,0,2,7)end
+if i==69then H(0,3,5)H(0,5,2)H(1,1,3)V(1,3,4)V(2,0,4)V(3,3,4)H(3,5,2)H(6,6,5)H(7,2,3)V(8,0,7)end
+if i==8 or i==9 or i==70 or i==71then H(0,1,5)V(0,4,3)H(0,4,5)V(1,1,4)R(1,3,3,2)V(2,0,2)D(2,6)V(3,1,4)V(4,4,3)end
+if i==72then V(0,0,7)R(0,0,5,2)H(0,3,3)H(0,5,3)V(2,3,4)H(2,4,3)H(2,6,3)V(3,0,3)H(6,1,3)R(6,3,3,2)R(7,0,2,7)H(7,0,4)H(7,2,4)H(7,5,3)V(f,0,3)D(f,4)D(f,6)V(c,1,3)H(c,1,2)H(c,3,3)R(l,5,3,2)H(h,0,3)R(o,0,2,3)V(m,0,4)end
+if i==73then H(0,2,5)D(0,6)D(1,5)V(2,0,5)D(3,5)D(4,6)V(6,1,4)R(6,2,2,3)D(6,6)D(7,0)D(8,6)V(9,0,2)H(9,1,2)V(9,3,2)H(9,4,2)D(f,6)end
+if i==f or i==75then D(c,0)D(c,2)V(c,4,3)H(c,4,5)R(h,1,2,4)H(h,2,3)D(h,6)D(m,0)D(m,6)end
+if i==77then D(0,1)H(0,3,5)D(1,0)V(1,2,5)H(1,5,4)H(2,1,2)V(3,0,6)H(3,0,2)R(3,2,2,4)V(4,2,5)D(6,0)V(6,3,4)H(6,6,5)H(7,1,4)V(8,0,2)V(8,3,4)H(8,4,3)V(9,1,2)V(f,0,2)V(f,3,4)end
+if i==83then H(6,1,4)H(6,3,4)V(7,1,5)V(8,0,2)H(8,6,2)V(f,4,2)H(c,1,2)D(c,3)V(l,0,3)D(l,5)H(h,4,2)H(h,6,2)V(o,1,6)H(o,1,2)H(o,5,2)D(e,3)H(g,2,2)H(g,4,2)V(k,0,2)V(k,5,2)end
+if i==1then H(0,2,5)H(0,5,3)R(1,0,2,6)V(2,0,7)H(2,6,3)V(4,1,4)T(-28,x+6,y)T(m,x+c,y)end
+if i==3then H(e,0,3)D(e,2)H(e,4,5)D(e,6)V(g,0,2)V(g,3,3)R(g,3,3,2)D(k,1)V(k,3,4)H(k,6,2)D(q,0)D(q,2)T(-9,x+j,y)end
+if i==8then H(e,6,5)V(g,1,6)H(g,1,2)H(g,3,4)D(k,0)V(k,3,4)T(-17,x+c,y)end
+if i==52then V(0,0,7)H(0,0,5)R(0,2,2,3)H(0,2,5)H(0,4,5)H(0,6,5)R(3,2,2,3)V(4,0,7)T(-11,x+6,y)end
+if i==53then H(0,1,2)H(0,3,2)R(0,5,3,2)H(0,5,4)V(1,0,2)H(2,2,3)V(2,4,3)R(2,4,2,2)V(3,0,6)H(3,0,2)D(4,6)T(-2,x+6,y)end
+if i==56then H(0,4,5)D(1,1)V(1,3,4)H(1,6,3)H(2,0,2)D(2,2)V(3,0,2)V(3,3,4)T(-7,x+6,y)end
+if i==62then V(0,0,7)H(0,0,5)H(0,6,5)D(2,2)D(2,4)D(3,3)D(4,2)D(4,4)T(-3,x+6,y)end
+if i==65then H(0,1,2)H(0,4,2)H(0,6,5)V(1,0,7)H(1,0,4)R(1,2,4,2)V(3,2,5)R(3,5,2,2)V(4,0,4)H(6,0,5)D(6,6)V(7,2,4)H(7,2,4)H(7,4,4)V(f,2,3)T(-15,x+c,y)end
+if i==74then V(0,1,2)H(0,2,3)H(0,4,4)H(0,6,2)D(1,0)V(1,2,5)R(1,2,2,4)R(1,3,3,3)H(1,3,4)V(2,1,5)H(2,1,3)V(3,0,2)V(3,3,4)H(3,6,2)V(4,1,3)D(c,0)D(c,2)V(c,4,3)H(l,3,2)V(h,0,7)H(h,2,3)H(h,6,3)V(m,1,4)T(-17,x+6,y)end
+if i==81then H(0,1,3)V(0,4,3)V(1,0,4)D(2,5)H(3,2,2)D(3,4)H(3,6,2)H(6,1,3)V(6,4,3)V(7,0,4)D(8,5)H(9,2,2)D(9,4)H(9,6,2)D(f,0)V(c,1,5)D(l,6)D(h,5)D(o,1)V(m,2,3)T(-20,x+e,y)end
+if i==82then D(e,0)V(e,3,4)R(e,4,2,3)H(e,6,5)V(20,0,4)H(20,0,3)H(20,3,3)R(k,5,2,2)V(q,0,7)T(-14,x+c,y)end
+if i==-30then T(p,x+6,y)end
+if i==-22 or i==c or i==l then T(-15,x+c,y)end
+if i==5then T(17,x+e,y)end
+if i==6then T(e,x+e,y)end
+if i==7then T(p,x+e,y)end
+if i==9then T(p,x+e,y)end
+if i==f then T(p,x+e,y)end
+if i==11then T(77,x+c,y)end
+if i==c then T(-19,x+e,y)end
+if i==l then T(2,x+e,y)end
+if i==h then T(-9,x+j,y)end
+if i==o then T(-9,x+e,y)end
+if i==k then T(-11,x+6,y)end
+if i==27then T(k,x+j,y)end
+if i==28then T(-24,x+c,y)T(-25,x+e,y)end
+if i==31then T(-27,x+6,y)T(-26,x+e,y)end
+if i==32then T(-25,x+6,y)T(-26,x+c,y)end
+if i==33then T(m,x+c,y)end
+if i==34then T(-28,x+c,y)end
+if i==35then T(-27,x+e,y)end
+if i==57then T(-3,x+6,y)end
+if i==59then T(-3,x+6,y)end
+if i==61then T(-12,x+6,y)end
+if i==66then T(17,x+c,y)end
+if i==67then T(e,x+c,y)end
+if i==68then T(p,x+c,y)end
+if i==8 or i==9 or i==70 or i==71then T(-16,x+6,y)end
+if i==71then T(p,x+c,y)end
+if i==76then T(p,x+c,y)end
+if i==78then T(-19,x+c,y)end
+if i==79then T(2,x+c,y)end
+if i==84then T(-7,x+c,y)T(-6,x+e,y)end
+end
+function onDraw(p,j,x,y,l)for i=1,30 do
+p=d[i]if p then
+j=p&gt;&gt;4&amp;255
+x,y=p&gt;&gt;14&amp;127,p&gt;&gt;21&amp;31
+l=(p&gt;&gt;26&amp;15)+1
+if p&amp;15==5then
+C(t[l])T(j,x,y)end
+end
+end
+end">
+					<pos x="-1.25" y="-13.25"/>
+					<in1 component_id="106"/>
+					<in2 component_id="107" node_index="1"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="116">
+					<pos y="-15.5"/>
+					<in1 component_id="121"/>
+					<in2 component_id="122"/>
+					<in3 component_id="119"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="117" i="7">
+					<pos x="-2.5" y="-15"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="118" i="8">
+					<pos x="-2.5" y="-15.5"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="10">
+				<object id="119" e="(x*10+y)%10000">
+					<pos x="-1.25" y="-16.5"/>
+					<in1 component_id="116"/>
+					<in2 component_id="123"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="120" i="7">
+					<pos x="-3.75" y="-16.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="121" m="0">
+					<pos x="-1.25" y="-15"/>
+					<in1 component_id="117"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="122" m="0">
+					<pos x="-1.25" y="-15.5"/>
+					<in1 component_id="118"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="123" e="x">
+					<pos x="-2.5" y="-16.25"/>
+					<in1 component_id="120"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="124" count="1" offset="31">
+					<pos x="3.75" y="-11"/>
+					<inc component_id="105"/>
+					<in1 component_id="129"/>
+				</object>
+			</c>
+			<c type="46">
+				<object id="125" e="x|y|z">
+					<pos x="-1.25" y="-12"/>
+					<in1 component_id="126"/>
+					<in2 component_id="117"/>
+					<in3 component_id="118"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="126" i="31">
+					<pos x="-2.5" y="-11.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="127" script="P=0
+I1=0
+I2=0
+r=screen.drawRectF
+
+function dgt3(x,y,n)
+if n==0 or 4&lt;=n and n~=7 then r(x,y,1,3) end
+if n%2==0 and n~=4 then r(x,y+2,1,3) end
+if n~=1 and n~=4 then r(x,y,3,1) end
+if 2&lt;=n and n~=7 then r(x,y+2,3,1) end
+if n~=1 and n~=4 and n~=7 then r(x,y+4,3,1) end
+if n~=5 and n~=6 then r(x+2,y,1,3) end
+if n~=2 then r(x+2,y+2,1,3) end
+end
+
+function onTick()
+P=input.getNumber(32)
+I1=input.getNumber(7)
+I2=input.getNumber(17)
+end
+
+function onDraw()
+	if P==4000 then
+		screen.setColor(0,0,0)
+		r(22,2,17,7)
+		r(46,2,17,7)
+		screen.setColor(240,240,240)
+		dgt3(23,3,(I1//1000)%10)
+		dgt3(27,3,(I1//100)%10)
+		dgt3(31,3,(I1//10)%10)
+		dgt3(35,3,(I1//1)%10)
+
+		dgt3(47,3,(I2//1000)%10)
+		dgt3(51,3,(I2//100)%10)
+		dgt3(55,3,(I2//10)%10)
+		dgt3(59,3,(I2//1)%10)
+	end
+end
+">
+					<pos y="-13.25"/>
+					<in1 component_id="114"/>
+					<in2 component_id="115" node_index="1"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="128">
+					<pos y="-11.25"/>
+					<in1 component_id="125"/>
+				</object>
+			</c>
+			<c>
+				<object id="129">
+					<pos y="-11.75"/>
+					<in1 component_id="128"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="130" script="C=11
+function onTick()
+local arc=math.floor(input.getNumber(2))
+output.setNumber(7,math.floor(input.getNumber(1))) -- operation.number
+output.setNumber(8,arc) -- ARC
+
+output.setNumber( 9,math.min((math.floor(input.getNumber(3))&gt;&gt;12)&amp;15,C)) -- operation.type
+output.setNumber(10,(math.floor(input.getNumber(3))&gt;&gt;6)&amp;63)  -- operation.dep.
+output.setNumber(11,(math.floor(input.getNumber(3)))&amp;63)     -- operation.dest.
+
+if input.getNumber(5)==0 then
+	output.setNumber(12,math.min((math.floor(input.getNumber(3))&gt;&gt;12)&amp;15,C)) -- operation.type
+	output.setNumber(13,(math.floor(input.getNumber(3)))&amp;63)     -- operation.dest.
+else
+	output.setNumber(12,math.min((math.floor(input.getNumber(5))&gt;&gt;12)&amp;15,C)) -- operation.type
+	output.setNumber(13,(math.floor(input.getNumber(5)))&amp;63)     -- operation.dest.
+end
+
+local statbound=(math.floor(input.getNumber(6))&gt;&gt;14)&amp;3
+local arcbound=arc//10000
+if arcbound~=0 then if arcbound%2==0 then arcbound=1 else arcbound=2 end end
+if statbound==0 then statbound=arcbound elseif arcbound~=statbound then statbound=3 end
+output.setNumber(14,statbound) -- position.bound
+local t= (math.floor(input.getNumber(6))&gt;&gt;12)&amp;3
+local s1=(math.floor(input.getNumber(6))&gt;&gt;6)&amp;63
+local s2=(math.floor(input.getNumber(6)))&amp;63
+if t==2 and s1==s2 then
+output.setNumber(15,4) -- position.type
+else
+output.setNumber(15,t) -- position.type
+end
+output.setNumber(16,s1) -- position.station
+end
+
+">
+					<pos x="-7.5" y="-12.25"/>
+					<in1 component_id="20"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="131" i="6">
+					<pos x="-6.25" y="-12"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="132" i="7">
+					<pos x="-6.25" y="-12.25"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="133" i="8">
+					<pos x="-6.25" y="-12.5"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="134" i="9">
+					<pos x="-6.25" y="-12.75"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="135" i="10">
+					<pos x="-6.25" y="-13"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="136" i="11">
+					<pos x="-6.25" y="-13.25"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="137" i="12">
+					<pos x="-6.25" y="-13.5"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="138" i="13">
+					<pos x="-6.25" y="-13.75"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="139" i="14">
+					<pos x="-6.25" y="-14"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="140" i="15">
+					<pos x="-6.25" y="-14.25"/>
+					<in1 component_id="130"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="141" script="link_tbl={nil,{2},{1},{3},{2},{5,6},nil,{5,6},{3,4},nil,{3,4},{7},{6},{8,9},{7},nil,{7},{10},{9},{11},{10},{12},{11},{13,14},{12},nil,{12},{15,16},{14},nil,{14}}
+arc_type_tbl={{3},{1},{2},nil,{min=10,max=19},{min=30,max=39},{min=50,max=59},{min=70,max=79},{min=70,max=79},{min=20,max=29},{min=40,max=49}}
+arc_trk_tbl={{29},{min=20,max=28},{33},{34},{39},nil,{min=40,max=48},{49},nil,nil,nil,{min=50,max=58},{59},nil,{61},{63}}
+
+function gI(i)
+    return toint(input.getNumber(i))
+end
+
+function gN(i)
+    return input.getNumber(i)
+end
+
+function gB(i)
+    return input.getBool(i)
+end
+
+function toint(v)
+    local _=math.modf(v)
+	return _
+end
+
+function pk(intv)
+	local r = ('f'):unpack(('I4'):pack(intv))
+	return r
+end
+
+function b2i(f) return f and 1 or 0 end
+
+function find_rte(from, to, inb)
+	if not link_tbl[from * 2 - b2i(inb)] then return end
+	tr, q = { [from] = from }, { from }
+	for _ = 1, 100 do
+		for _, v in ipairs(link_tbl[q[1] * 2 - b2i(inb)] or {}) do
+			if not tr[v] then
+				table.insert(q, v)
+				tr[v] = q[1]
+			end
+		end
+		table.remove(q, 1)
+		if #q == 0 then break end
+	end
+	if tr[to] then
+		rte = { to, inb = inb, outb = not inb }
+		for _ = 1, 100 do
+			if to == from then break end
+			table.insert(rte, 1, tr[to])
+			to = tr[to]
+		end
+		return rte
+	end
+end
+
+function get_rte(origin, dest)
+	rte_in, rte_out = find_rte(origin, dest, true), find_rte(origin, dest)
+	if rte_in and rte_out then return #rte_in &lt; #rte_out and rte_in or rte_out end
+	return rte_in or rte_out or {}
+end
+
+local old_stat=0
+local pending_info={}
+function onTick()
+    -- from drive-support.lua
+    local id1,id2,mode,dir=gI(11),gI(12),gI(13),gI(14)
+    local stat=5&lt;&lt;20 | (dir&amp;3)&lt;&lt;14 | (mode&amp;3)&lt;&lt;12 | (id1&amp;63)&lt;&lt;6 | (id2&amp;63)
+    local en=gB(11)
+    local start_ctrl=gB(12)
+    local doorcut=gB(13)
+    local forward=gB(14)
+
+    -- from GUI
+    local ttype,frm,dest=gI(1),gI(2),gI(3)
+    local arc_teinishi=(ttype&amp;15)&lt;&lt;12 | (frm&amp;63)&lt;&lt;6 | (dest&amp;63)
+    local up_arc=gB(3)
+
+    -- from GUI
+    local idp_ttype,idp_togo=gI(4),gI(5)
+    local idp_arc_teinishi=(idp_ttype&amp;15)&lt;&lt;12 | (idp_togo&amp;63)
+    local idp_up_arc=gB(5)
+
+    --- from GUI
+    local menu=gI(6)
+    local up_menu=gB(6)
+
+    --- from GUI
+    local opid=gI(8)
+    local up_opid=gB(10)
+
+    if en and ((stat ~= old_stat) or start_ctrl) then
+        table.insert(pending_info, stat)
+        old_stat = stat
+    end
+
+    if up_arc then
+        local ROUTE = get_rte(frm, dest)
+        local arc = 0
+    	if ROUTE and ROUTE.inb then arc = 10000 elseif ROUTE and ROUTE.outb then arc = 20000 end
+    	arc = arc + (arc_type_tbl[ttype] and (arc_type_tbl[ttype][1] or arc_type_tbl[ttype].min) or 0) * 100
+    	arc = arc + (arc_trk_tbl[dest] and (arc_trk_tbl[dest][1] or arc_trk_tbl[dest].min) or 0)
+
+        table.insert(pending_info,math.floor(arc)|(1&lt;&lt;20))
+        table.insert(pending_info,arc_teinishi|(2&lt;&lt;20))
+    end
+
+    if idp_up_arc then
+        table.insert(pending_info,idp_arc_teinishi|(4&lt;&lt;20))
+    end
+
+    if up_opid then
+        table.insert(pending_info,opid)
+    end
+
+    if up_menu then
+        table.insert(pending_info,menu|(6&lt;&lt;20))
+    end
+
+    if #pending_info ~= 0 then
+        output.setNumber(1,pk(pending_info[1]))
+        table.remove(pending_info,1)
+    else
+        output.setNumber(1,pk(1&lt;&lt;24))
+    end
+    output.setNumber(2, #pending_info)
+
+    output.setBool(2, (not forward) and doorcut) -- Doorcut A
+    output.setBool(3, forward and doorcut) -- Doorcut B
+    output.setBool(4, mode==3) -- Nearby station
+end
+">
+					<pos x="9" y="-11.75"/>
+					<in1 component_id="177"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="143" i="8">
+					<pos x="-3.5" y="-3.5"/>
+					<in1 component_id="49"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="151">
+					<pos x="5" y="-12.25"/>
+					<in1 component_id="152"/>
+					<in3 component_id="153"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="152">
+					<pos x="3.75" y="-11.75"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="153">
+					<pos x="3.75" y="-12.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="155">
+					<pos x="5" y="-13.25"/>
+					<in1 component_id="156"/>
+					<in3 component_id="157"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="156" i="1">
+					<pos x="3.75" y="-12.75"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="157" i="1">
+					<pos x="3.75" y="-13.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="158">
+					<pos x="5" y="-14.25"/>
+					<in1 component_id="159"/>
+					<in3 component_id="160"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="159" i="2">
+					<pos x="3.75" y="-13.75"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="160" i="2">
+					<pos x="3.75" y="-14.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="161">
+					<pos x="5" y="-15.25"/>
+					<in1 component_id="162"/>
+					<in3 component_id="163"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="162" i="3">
+					<pos x="3.75" y="-14.75"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="163" i="3">
+					<pos x="3.75" y="-15.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="164">
+					<pos x="5" y="-16.25"/>
+					<in1 component_id="165"/>
+					<in3 component_id="166"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="165" i="4">
+					<pos x="3.75" y="-15.75"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="166" i="4">
+					<pos x="3.75" y="-16.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="13">
+				<object id="167">
+					<pos x="5" y="-17.25"/>
+					<in1 component_id="168"/>
+					<in3 component_id="169"/>
+					<r text="0"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="168" i="5">
+					<pos x="3.75" y="-16.75"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="169" i="5">
+					<pos x="3.75" y="-17.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="171" i="6">
+					<pos x="3.75" y="-17.75"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="172" i="6">
+					<pos x="3.75" y="-18.25"/>
+					<in1 component_id="105"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="177" count="14">
+					<pos x="7.75" y="-14.25"/>
+					<inc component_id="196"/>
+					<in1 component_id="151"/>
+					<in2 component_id="155"/>
+					<in3 component_id="158"/>
+					<in4 component_id="161"/>
+					<in5 component_id="164"/>
+					<in6 component_id="167"/>
+					<in7/>
+					<in8 component_id="116"/>
+					<in9/>
+					<in10/>
+					<in11 component_id="191"/>
+					<in12 component_id="192"/>
+					<in13 component_id="193"/>
+					<in14 component_id="194"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="180" e="floor(abs(x)/1000)">
+					<pos x="-6.25" y="-14.75"/>
+					<in1 component_id="55"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="181" e="floor(abs(x)/10)%100">
+					<pos x="-6.25" y="-15"/>
+					<in1 component_id="55"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="182">
+					<pos x="-3.5" y="-4.5"/>
+					<in1 component_id="184"/>
+					<in2 component_id="56"/>
+					<in3 component_id="171"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="183">
+					<pos x="-3.5" y="-5.5"/>
+					<in1 component_id="172"/>
+					<in2 component_id="57"/>
+					<in3 component_id="171"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="184">
+					<pos x="-4.75" y="-3.75"/>
+					<n text="0"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="191">
+					<pos x="6.5" y="-13.5"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="192" i="1">
+					<pos x="6.5" y="-14"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="193" i="2">
+					<pos x="6.5" y="-14.5"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="194" i="3">
+					<pos x="6.5" y="-15"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="196" count="4" offset="10">
+					<pos x="6.5" y="-10.5"/>
+					<inc component_id="124"/>
+					<in1 component_id="197"/>
+					<in2/>
+					<in3 component_id="83"/>
+					<in4 component_id="104"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="197">
+					<pos x="5.25" y="-9.75"/>
+					<in1 component_id="61"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="198" i="2">
+					<pos x="-1" y="-4"/>
+					<in1 component_id="20"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="201" i="11">
+					<pos x="-1" y="-6"/>
+					<in1 component_id="20"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="202" i="12">
+					<pos x="-1" y="-6.5"/>
+					<in1 component_id="20"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="204">
+					<pos x="0.25" y="-6.25"/>
+					<in1 component_id="201"/>
+					<in2 component_id="202"/>
+				</object>
+			</c>
+		</components>
+		<components_bridge>
+			<c type="4">
+				<object id="20">
+					<pos x="-3.5" y="-1"/>
+				</object>
+			</c>
+			<c type="5">
+				<object id="28">
+					<pos x="10.25" y="-11.5"/>
+					<in1 component_id="141"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="49">
+					<pos x="-3.5" y="-2.5"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="145">
+					<pos x="-5" y="-11.25"/>
+				</object>
+			</c>
+			<c type="7">
+				<object id="148">
+					<pos x="1.25" y="-13.25"/>
+					<in1 component_id="127" node_index="1"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="200">
+					<pos x="2.5" y="-11"/>
+					<in1 component_id="129"/>
+				</object>
+			</c>
+		</components_bridge>
+		<groups/>
+		<component_states>
+			<c0 id="50" count="5">
+				<pos x="-1" y="-3.5"/>
+				<in1 component_id="51"/>
+				<in2 component_id="52"/>
+				<in3 component_id="55"/>
+				<in4 component_id="198"/>
+				<in5 component_id="87"/>
+			</c0>
+			<c1 id="51">
+				<pos x="-2.25" y="-2.5"/>
+				<in1 component_id="49"/>
+			</c1>
+			<c2 id="52" i="2">
+				<pos x="-2.25" y="-2.75"/>
+				<in1 component_id="49"/>
+			</c2>
+			<c3 id="55" e="x*z+(y/60)*a+w">
+				<pos x="-2.25" y="-5"/>
+				<in1 component_id="55"/>
+				<in2 component_id="143"/>
+				<in3 component_id="182"/>
+				<in4 component_id="183"/>
+				<in5 component_id="58"/>
+			</c3>
+			<c4 id="56" i="30">
+				<pos x="-4.75" y="-4.25"/>
+				<in1 component_id="61"/>
+			</c4>
+			<c5 id="57" i="31">
+				<pos x="-4.75" y="-5.25"/>
+				<in1 component_id="61"/>
+			</c5>
+			<c6 id="58">
+				<pos x="-6" y="-5.25"/>
+				<in1 component_id="59"/>
+				<in2 component_id="60"/>
+				<in3 component_id="104"/>
+			</c6>
+			<c7 id="59">
+				<pos x="-7.25" y="-4.5"/>
+				<n text="-1" value="-1"/>
+			</c7>
+			<c8 id="60">
+				<pos x="-7.25" y="-5"/>
+				<n text="1" value="1"/>
+			</c8>
+			<c9 id="61" script="-- Chuso 2000 Series Driving Support System
+link_tbl={nil,{2},{1},{3},{2},{5,6},nil,{5,6},{3,4},nil,{3,4},{7},{6},{8,9},{7},nil,{7},{10},{9},{11},{10},{12},{11},{13,14},{12},nil,{12},{15,16},{14},nil,{14}}
+stop_type_tbl={{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,10,11},{5,6,7,11},{5,6,7,11},{5,6,10,11},{5},{5,6,9},{5,6,7,8,9,10,11},{5,6,7,8,9,10,11},{5,10,11},{5,6,7,10,11},{5,6,7,10,11}}
+coord_tbl={{1168,-4430},{303,-4819},{1355,-3762},{1355,-3751},{1656,-3770},{2976,-3930},{3743,-4888},{3768,-5270},{4362,-5935},{5390,-6653},{6584,-8240},{6991,-9184},{6915,-9346},{5910,-9310},{4330,-8210},{4330,-8210}}
+meterage={-1670,-1610,0,0,300,1635,2925,3500,4190,5570,7810,9030,9220,10370,12320,12320}
+not4srv={[1]=1,[5]=1,[8]=1,[13]=1}
+doorcut_tbl={[6]={{i=6,m=6},{m=6,o=0}},[10]={{i=6,m=6},{m=6,o=0}},[14]={{i=6,m=6},{m=6,o=0}}}
+
+function b2i(f) return f and 1 or 0 end
+
+function find_rte(from, to, inb)
+	if not link_tbl[from * 2 - b2i(inb)] then return end
+	tr, q = { [from] = from }, { from }
+	for _ = 1, 100 do
+		for _, v in ipairs(link_tbl[q[1] * 2 - b2i(inb)] or {}) do
+			if not tr[v] then
+				table.insert(q, v)
+				tr[v] = q[1]
+			end
+		end
+		table.remove(q, 1)
+		if #q == 0 then break end
+	end
+	if tr[to] then
+		rte = { to, inb = inb, outb = not inb }
+		for _ = 1, 100 do
+			if to == from then break end
+			table.insert(rte, 1, tr[to])
+			to = tr[to]
+		end
+		return rte
+	end
+end
+
+function get_rte(origin, dest)
+	rte_in, rte_out = find_rte(origin, dest, true), find_rte(origin, dest)
+	if rte_in and rte_out then return #rte_in &lt; #rte_out and rte_in or rte_out end
+	return rte_in or rte_out or {}
+end
+
+function is_stop(id, rte, ttype)
+	if rte[1] == id or rte[#rte] == id then return true end
+	for _, v in ipairs(stop_type_tbl[id] or {}) do
+		if v == ttype then return true end
+	end
+end
+
+function len(x1, y1, x2, y2)
+	return math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+end
+
+function find_nearest_sta(px, py, l)
+	local b = nil
+	for i, s in pairs(coord_tbl) do
+		if s and len(s[1], s[2], px, py) &lt; l then
+			l = len(s[1], s[2], px, py)
+			b = i
+		end
+	end
+	return b
+end
+
+ROUTE = nil
+OLD_CODE_A = nil
+function onTick()
+	local px, py, kp, codeA, dr, en, dop, isap, start_ctrl, dop_start, upkp
+	px = input.getNumber(1)              -- GPS X
+	py = input.getNumber(2)              -- GPS Y
+	kp = input.getNumber(3)              -- meterage
+	codeA = math.floor(input.getNumber(4)) -- code A (Memreg2[N3])
+	local frm,dest,ttype = (codeA &gt;&gt; 6) &amp; 63, codeA &amp; 63, (codeA &gt;&gt; 12) &amp; 15
+	en = input.getBool(1)                -- Enable
+	start_ctrl = input.getBool(2)
+	isap = input.getBool(3)              -- Approaching and not departure latch
+	dop = input.getBool(4)               -- Door Open
+	dop_start = input.getBool(5)
+	upkp = false
+
+	-- Reset meterage
+	if dop or start_ctrl then
+		local ix = find_nearest_sta(px, py, 100)
+		if ix and meterage[ix] then
+			kp = meterage[ix]
+			if dop_start or start_ctrl then
+				upkp = true
+			end
+		end
+	end
+
+	if OLD_CODE_A ~= codeA then
+		ROUTE = get_rte(frm, dest)
+	end
+	if ROUTE and ROUTE.inb then dr = -1 else dr = 1 end
+	OLD_CODE_A = codeA
+
+	local res = stops(kp, ttype, dr, en, dop, isap)
+
+	if res.mode == 1 or res.mode == 3 then
+		output.setNumber(1, res.ns_sid)
+		output.setNumber(2, res.nns_sid)
+	else
+		output.setNumber(1, res.n_sid)
+		output.setNumber(2, res.ns_sid)
+	end
+	output.setNumber(3, res.mode)
+	output.setNumber(4, res.dir)
+
+	output.setNumber(9, kp) -- for debug
+
+	if upkp then
+		output.setNumber(31, 0)
+		output.setNumber(32, kp)
+	else
+		output.setNumber(31, 1)
+		output.setNumber(32, 0)
+	end
+
+	output.setBool(1, en)
+	output.setBool(2, start_ctrl)
+	output.setBool(3, doorcut_tbl[res.n_sid] ~= nil)
+	output.setBool(4, res.set_ap)
+	output.setBool(5, res.reset_ap)
+end
+
+function stops(kp, ttype, dr, en, dop, isap)
+	local n_sid, ns_sid, nns_sid, mode = 0, 0, 0, 0
+	local dir3000 = 0
+	local set_ap, reset_ap = false, false
+
+	if en and ROUTE then
+		local pix = 0
+		local ltstg = 0
+		if dop or isap then ltstg = -300 end
+		for i = 1, #ROUTE do
+			local lts = ((meterage[ROUTE[i]] or math.huge) - kp) * dr
+			if lts &lt; ltstg then pix = i end
+		end
+
+		if pix ~= #ROUTE then
+			n_sid = ROUTE[pix + 1]
+		end
+		for i = pix + 1, #ROUTE do
+			if is_stop(ROUTE[i], ROUTE, ttype) then
+				local s_sid = ROUTE[i]
+				if ns_sid == 0 then
+					ns_sid = s_sid
+				else
+					nns_sid = s_sid
+					break
+				end
+			end
+		end
+
+		if ns_sid ~= 0 then
+			local lts = ((meterage[ns_sid] or math.huge) - kp) * dr
+			if lts &lt; 520 and lts &gt;= 400 then
+				isap = true; set_ap = true
+			end
+			if lts &gt; 520 then
+				isap = false; reset_ap = true
+			end
+			mode = 2
+			if isap then mode = 3 end
+			if dop and lts &lt; 520 then mode = 1 end
+		end
+	end
+	if dr == -1 then dir3000 = 2 end
+	if dr == 1 then dir3000 = 1 end
+	return { mode = mode, n_sid = n_sid, ns_sid = ns_sid, nns_sid = nns_sid, dir = dir3000, set_ap = set_ap, reset_ap =
+	reset_ap }
+end
+">
+				<pos x="1.5" y="-2.5"/>
+				<in1 component_id="62"/>
+			</c9>
+			<c10 id="62" count="4">
+				<pos x="0.25" y="-3.25"/>
+				<inc component_id="50"/>
+				<in1 component_id="63"/>
+				<in2 component_id="66"/>
+				<in3 component_id="98"/>
+				<in4 component_id="101"/>
+			</c10>
+			<c11 id="63">
+				<pos x="-1" y="-1"/>
+				<in1 component_id="64"/>
+				<min text="1" value="1"/>
+				<max text="1" value="1"/>
+			</c11>
+			<c12 id="64" i="11">
+				<pos x="-2.25" y="-1"/>
+				<in1 component_id="20"/>
+			</c12>
+			<c13 id="66">
+				<pos x="-1" y="-1.5"/>
+				<in1 component_id="63"/>
+			</c13>
+			<c14 id="67">
+				<pos x="2.75" y="-6.25"/>
+				<in1 component_id="69"/>
+				<in2 component_id="95"/>
+			</c14>
+			<c15 id="69">
+				<pos x="1.5" y="-6.25"/>
+				<in1 component_id="204"/>
+				<in2 component_id="66"/>
+			</c15>
+			<c16 id="74">
+				<pos x="-1" y="-7.25"/>
+				<in1 component_id="143"/>
+				<min text="-1.5" value="-1.5"/>
+				<max text="1.5" value="1.5"/>
+			</c16>
+			<c17 id="75" i="3">
+				<pos x="1.5" y="-4.25"/>
+				<in1 component_id="61"/>
+			</c17>
+			<c18 id="76">
+				<pos x="0.25" y="-6.75"/>
+				<in1 component_id="204"/>
+			</c18>
+			<c19 id="83" i="2">
+				<pos x="5.25" y="-10.25"/>
+				<in1 component_id="61"/>
+			</c19>
+			<c20 id="86" m="0">
+				<pos x="0.25" y="-5"/>
+				<in1 component_id="67"/>
+			</c20>
+			<c21 id="87" i="5">
+				<pos x="-1" y="-4.5"/>
+				<in1 component_id="20"/>
+			</c21>
+			<c22 id="88">
+				<pos x="1.5" y="-5"/>
+				<in1 component_id="89"/>
+				<in2 component_id="86"/>
+			</c22>
+			<c23 id="89" i="4">
+				<pos x="0.25" y="-4.5"/>
+				<in1 component_id="61"/>
+			</c23>
+			<c24 id="94">
+				<pos x="0.25" y="-7.25"/>
+				<in1 component_id="74"/>
+			</c24>
+			<c25 id="95">
+				<pos x="1.5" y="-7.25"/>
+				<in1 component_id="76"/>
+				<in2 component_id="94"/>
+			</c25>
+			<c26 id="98">
+				<pos x="2.75" y="-4.5"/>
+				<in1 component_id="75"/>
+				<in2 component_id="88"/>
+			</c26>
+			<c27 id="99" l="value">
+				<pos x="3.25" y="-1.25"/>
+				<in1 component_id="100"/>
+			</c27>
+			<c28 id="100" i="3">
+				<pos x="2" y="-1"/>
+				<in1 component_id="61"/>
+			</c28>
+			<c29 id="101" ct="0.5" dt="0.5">
+				<pos x="4" y="-6"/>
+				<in1 component_id="67"/>
+			</c29>
+			<c30 id="104" i="15">
+				<pos x="-7.25" y="-5.5"/>
+				<in1 component_id="20"/>
+			</c30>
+			<c31 id="105" script="I,O=input,output
+B=I.getBool
+function N(c)return math.floor(I.getNumber(c))end
+function onTick()function T(x,y,w,h)for i=1,2 do
+x,y=N(1+2*i)-x,N(2+2*i)-y
+if B(i)and 0&lt;=x and x&lt;w and 0&lt;=y and y&lt;h then
+return 1
+end
+end
+end
+i=N(32)o={}function n(c,v,f,g)if f then
+o[c]=v
+if not g then
+b(c,1)end
+end
+end
+function b(c,f)if f then
+o[c+32]=1
+end
+end
+a=11
+c=32
+d=21
+e=12
+f=16
+g=T(38,d,25,9)h=T(e,a,25,9)j=T(38,a,25,9)k=T(e,d,25,9)l=T(1,26,9,5)m=T(1,a,9,5)p=100
+q=300
+r=15
+s=400t=1100
+u=3000
+v=T(e,a,f,9)w=T(29,a,f,9)x=T(46,a,f,9)y=T(e,d,f,9)z=T(1,1,7,9)A=1000
+C=200
+D=2000
+E=1001
+F=1102
+G=T(47,1,r,9)H=T(29,d,f,9)J=301
+K=302
+L=i==s
+M=1101
+P=3100
+Q=3101
+R=3102
+S=i==D
+U=i==2001
+V=i==C
+W=i==201
+X=i==E
+Y=i==A
+Z=i==401
+a0=i==t
+a1=i==F
+a2=i==1103
+a3=i==4000
+a4=T(46,d,f,9)a5=L or Z or i==402 or i==403
+a6=i==3103
+a7=T(53,d,9,9)if i==0then n(c,u,T(47,9,r,9))n(c,p,T(1,19,31,a))n(c,4000,T(34,19,13,a))n(c,D,T(49,19,13,a))end
+if a3 or S or U or i==p or i==u then n(c,0,z)end
+if i==p then n(c,A,T(47,22,r,9))n(c,C,G)end
+if V or W or X or Y then n(c,p,z)end
+if V then n(c,201,l)n(1,1,v)n(1,2,w)n(1,3,x)n(1,4,y)end
+if V or W then n(c,q,v)n(c,q,w)n(c,q,x)n(c,q,y)end
+if W then n(c,C,m)n(1,5,v)n(1,6,w)n(1,a,x)n(1,7,y)n(c,q,H)n(1,8,H)n(c,q,a4)n(1,9,a4)end
+if i==q or i==J or i==K or i==303then n(c,C,z)n(c,s,h)n(c,s,j)n(c,s,k)n(c,s,g)end
+if i==q then n(c,J,l)n(2,1,h)n(2,2,j)n(2,3,k)n(2,4,g)end
+if i==J then n(c,q,m)n(c,K,l)n(2,5,h)n(2,6,j)n(2,7,k)n(2,8,g)end
+if i==K then n(c,J,m)n(c,303,l)n(2,9,h)n(2,10,j)n(2,a,k)n(2,e,g)end
+if i==303then n(c,K,m)n(2,13,h)n(2,14,j)n(2,r,k)n(2,f,g)end
+if a5 then n(c,q,z)end
+if L then n(c,401,l)n(3,1,h)n(3,2,j)n(3,3,k)n(3,4,g)end
+if a5 or L or a0 or i==M or a1 or a2 then n(c,p,h)n(c,p,j)n(c,p,k)n(c,p,g)end
+if Z then n(c,s,m)n(c,402,l)n(3,5,h)n(3,6,j)n(3,7,k)n(3,8,g)end
+if i==402then n(c,401,m)n(c,403,l)n(3,9,h)n(3,10,j)n(3,a,k)n(3,e,g)end
+if i==403then n(c,402,m)n(3,13,h)n(3,14,j)n(3,r,k)n(3,f,g)end
+if Y then n(c,E,l)n(c,p,v)n(4,1,v)n(5,0,v)n(c,p,w)n(4,2,w)n(5,0,w)n(c,p,x)n(4,3,x)n(5,0,x)n(c,p,y)n(4,4,y)n(5,0,y)end
+if Y or X then n(c,p,G)n(4,0,G)n(5,0,G)end
+if X then n(c,A,m)n(c,t,v)n(4,5,v)n(c,t,w)n(4,6,w)n(c,t,x)n(4,a,x)n(c,t,y)n(4,7,y)n(c,t,H)n(4,8,H)end
+if a0 or a1 or a2 then n(c,E,z)end
+if a0 then n(c,M,l)n(5,1,h)n(5,2,j)n(5,3,k)n(5,4,g)end
+if i==M then n(c,A,z)n(c,t,m)n(c,F,l)n(5,5,h)n(5,6,j)n(5,7,k)n(5,8,g)end
+if a1 then n(c,M,m)n(c,1103,l)n(5,9,h)n(5,10,j)n(5,a,k)n(5,e,g)end
+if a2 then n(c,F,m)n(5,13,h)n(5,14,j)n(5,r,k)n(5,f,g)end
+if S then n(c,2001,l)n(6,1,h)n(6,2,j)n(6,3,k)n(6,4,g)end
+if S or U then n(c,0,h)n(c,0,j)n(c,0,k)n(c,0,g)end
+if U then n(c,D,m)n(6,5,h)n(6,6,j)n(6,7,k)n(6,8,g)end
+if i==u then n(c,P,g)end
+if i==P or i==Q or i==R or a6 then n(c,u,z)n(c,u,h)n(c,u,j)n(c,u,k)n(c,u,g)end
+if i==P then n(c,Q,l)n(7,-1000,h)n(7,-1000,j)n(7,0,k)n(7,0,g)end
+if i==Q then n(c,P,m)n(c,R,l)n(7,q,h)n(7,1635,j)n(7,2925,k)n(7,3500,g)end
+if i==R then n(c,Q,m)n(c,3103,l)n(7,4190,h)n(7,5570,j)n(7,7810,k)n(7,9030,g)end
+if a6 then n(c,R,m)n(7,9220,h)n(7,10000,j)n(7,10000,k)n(7,10000,g)end
+if a3 then n(9,0,T(53,a,9,9))n(c,0,a7)n(10,0,a7)n(8,0,T(2,a,9,9))n(8,1,T(e,a,9,9))n(8,2,T(22,a,9,9))n(8,3,T(c,a,9,9))n(8,4,T(42,a,9,9))n(8,5,T(2,d,9,9))n(8,6,T(e,d,9,9))n(8,7,T(22,d,9,9))n(8,8,T(c,d,9,9))n(8,9,T(42,d,9,9))end
+for i=1,32 do
+O.setNumber(i,o[i]or 0)O.setBool(i,(o[i+32]or 0)~=0)end
+end">
+				<pos x="-3.75" y="-12"/>
+				<in1 component_id="114"/>
+			</c31>
+			<c32 id="106" script="I=input
+function N(c)return math.floor(I.getNumber(c))end
+function onTick()function T(x,y,w,h)for i=1,2 do
+x,y=N(1+2*i)-x,N(2+2*i)-y
+if I.getBool(i)and 0&lt;=x and x&lt;w and 0&lt;=y and y&lt;h then
+return 1
+end
+end
+return 0
+end
+a=26
+b=11
+c=25
+d=21
+e=12
+f=38
+g=16
+h=18989572
+i=6340633
+j=37814313
+k=19294872
+l=19289648
+m=19289752
+n=19294768
+p=42058241
+q=10646532
+r=56672313
+s=10638852t=25215049
+u=47
+v=29
+w=15
+x=46
+y=19
+z=35668097
+A=35668225
+C=22
+D=42057985
+E=138559509
+F=N(9)+1
+G=19142192
+H=19142260
+J=19142328
+K=19147312
+L=138559541
+M=25477189
+O=25854997
+P=46350421
+Q=46776421
+R=25378933
+S=25904213
+U=46350469
+V=46776469
+W=35668353
+X=25429125
+Y=25904277
+Z=46400677
+a0=46826677
+a1=35668481
+a2=25378981
+a3=25804981
+a4=46350533
+a5=46776533
+a6=138559717
+a7=138559733
+a8=({2,2,2,2,2,4,5,6,3,3,7,8})a9=({5,3,3,3,3,0,0,0,0,0,0,1})aa=19120828
+ab=N(14)+u
+ac=N(9)+51
+ad=N(10)+63
+ae=N(b)+63
+af=138559877
+ag=138559893
+ah=138559925
+o=({[0]={19087388|a8[F]&lt;&lt;a,19124924|T(u,9,w,9)&lt;&lt;a,23586308|T(1,y,31,b)&lt;&lt;a,23291528|T(34,y,13,b)&lt;&lt;a,23291588|T(49,y,13,b)&lt;&lt;a,136331269|ab&lt;&lt;4,2228229|ac&lt;&lt;4|a9[F]&lt;&lt;a,2441221|ad&lt;&lt;4,271171621,2834437|ae&lt;&lt;4,289439749|N(w)+80&lt;&lt;4,21413893|N(g)+63&lt;&lt;4,21774597|T(u,9,w,9)&lt;&lt;a,44073269|T(1,y,31,b)&lt;&lt;a,44613957|T(34,y,13,b)&lt;&lt;a,44859733|T(49,y,13,b)&lt;&lt;a},[100]={h|T(1,1,7,9)&lt;&lt;a,19093020|a8[F]&lt;&lt;a,19098680|a8[N(e)+1]&lt;&lt;a,19131580|T(u,C,w,9)&lt;&lt;a,aa|T(u,1,w,9)&lt;&lt;a,138559797,159399941|ab&lt;&lt;4,25296901|ac&lt;&lt;4|a9[F]&lt;&lt;a,25509893|ad&lt;&lt;4,294240293,25903109|ae&lt;&lt;4,48251237,48480261|N(e)+51&lt;&lt;4|a9[N(e)+1]&lt;&lt;a,48693253|N(13)+63&lt;&lt;4,49037669|T(u,C,w,9)&lt;&lt;a,4997493|T(u,1,w,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a},[200]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,G|T(e,b,g,9)&lt;&lt;a,H|T(v,b,g,9)&lt;&lt;a,J|T(x,b,g,9)&lt;&lt;a,K|T(e,d,g,9)&lt;&lt;a,z,D,af,25396037|T(e,b,g,9)&lt;&lt;a,25674581|T(v,b,g,9)&lt;&lt;a,25953125|T(x,b,g,9)&lt;&lt;a,46367605|T(e,d,g,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[201]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,G|T(e,b,g,9)&lt;&lt;a,H|T(v,b,g,9)&lt;&lt;a,J|T(x,b,g,9)&lt;&lt;a,K|T(e,d,g,9)&lt;&lt;a,19147380|T(v,d,g,9)&lt;&lt;a,19147448|T(x,d,g,9)&lt;&lt;a,A,D,af,25396101|T(e,b,g,9)&lt;&lt;a,25674645|T(v,b,g,9)&lt;&lt;a,25953253|T(x,b,g,9)&lt;&lt;a,46367653|T(e,d,g,9)&lt;&lt;a,46646197|T(v,d,g,9)&lt;&lt;a,46924741|T(x,d,g,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[300]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,p,L,M|T(e,b,c,9)&lt;&lt;a,O|T(f,b,c,9)&lt;&lt;a,P|T(e,d,c,9)&lt;&lt;a,Q|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[301]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,p,L,R|T(e,b,c,9)&lt;&lt;a,S|T(f,b,c,9)&lt;&lt;a,U|T(e,d,c,9)&lt;&lt;a,V|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[302]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,W,p,L,X|T(e,b,c,9)&lt;&lt;a,Y|T(f,b,c,9)&lt;&lt;a,Z|T(e,d,c,9)&lt;&lt;a,a0|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[303]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,a1,p,L,a2|T(e,b,c,9)&lt;&lt;a,a3|T(f,b,c,9)&lt;&lt;a,a4|T(e,d,c,9)&lt;&lt;a,a5|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[400]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,p,a6,M|T(e,b,c,9)&lt;&lt;a,O|T(f,b,c,9)&lt;&lt;a,P|T(e,d,c,9)&lt;&lt;a,Q|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[401]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,p,a6,R|T(e,b,c,9)&lt;&lt;a,S|T(f,b,c,9)&lt;&lt;a,U|T(e,d,c,9)&lt;&lt;a,V|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[402]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,W,p,a6,X|T(e,b,c,9)&lt;&lt;a,Y|T(f,b,c,9)&lt;&lt;a,Z|T(e,d,c,9)&lt;&lt;a,a0|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[403]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,a1,p,a6,a2|T(e,b,c,9)&lt;&lt;a,a3|T(f,b,c,9)&lt;&lt;a,a4|T(e,d,c,9)&lt;&lt;a,a5|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[1000]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,aa|T(u,1,w,9)&lt;&lt;a,G|T(e,b,g,9)&lt;&lt;a,H|T(v,b,g,9)&lt;&lt;a,J|T(x,b,g,9)&lt;&lt;a,K|T(e,d,g,9)&lt;&lt;a,z,D,ag,4997541|T(u,1,w,9)&lt;&lt;a,25396037|T(e,b,g,9)&lt;&lt;a,25674581|T(v,b,g,9)&lt;&lt;a,25953125|T(x,b,g,9)&lt;&lt;a,46367605|T(e,d,g,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[1001]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,aa|T(u,1,w,9)&lt;&lt;a,G|T(e,b,g,9)&lt;&lt;a,H|T(v,b,g,9)&lt;&lt;a,J|T(x,b,g,9)&lt;&lt;a,K|T(e,d,g,9)&lt;&lt;a,19147380|T(v,d,g,9)&lt;&lt;a,A,D,ag,4997541|T(u,1,w,9)&lt;&lt;a,25396101|T(e,b,g,9)&lt;&lt;a,25674645|T(v,b,g,9)&lt;&lt;a,25953253|T(x,b,g,9)&lt;&lt;a,46367653|T(e,d,g,9)&lt;&lt;a,46646197|T(v,d,g,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[1100]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,p,a7,M|T(e,b,c,9)&lt;&lt;a,O|T(f,b,c,9)&lt;&lt;a,P|T(e,d,c,9)&lt;&lt;a,Q|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[1101]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,p,a7,R|T(e,b,c,9)&lt;&lt;a,S|T(f,b,c,9)&lt;&lt;a,U|T(e,d,c,9)&lt;&lt;a,V|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[1102]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,W,p,a7,X|T(e,b,c,9)&lt;&lt;a,Y|T(f,b,c,9)&lt;&lt;a,Z|T(e,d,c,9)&lt;&lt;a,a0|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[1103]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,a1,p,a7,a2|T(e,b,c,9)&lt;&lt;a,a3|T(f,b,c,9)&lt;&lt;a,a4|T(e,d,c,9)&lt;&lt;a,a5|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[2000]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,D,ah,25379269|T(e,b,c,9)&lt;&lt;a,25805269|T(f,b,c,9)&lt;&lt;a,46350821|T(e,d,c,9)&lt;&lt;a,46776821|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[2001]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,D,ah,25379333|T(e,b,c,9)&lt;&lt;a,25805333|T(f,b,c,9)&lt;&lt;a,46350885|T(e,d,c,9)&lt;&lt;a,46776885|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[3000]={h|T(1,1,7,9)&lt;&lt;a,618829436,618829484,618714788,673210532,k|T(f,d,c,9)&lt;&lt;a,25690129|N(18)&lt;&lt;7,25886801|N(y)&lt;&lt;7,E,23183941,46776341|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a},[3100]={h|T(1,1,7,9)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,z,p,E,M|T(e,b,c,9)&lt;&lt;a,O|T(f,b,c,9)&lt;&lt;a,P|T(e,d,c,9)&lt;&lt;a,Q|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,r|T(1,a,9,5)&lt;&lt;a},[3101]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,A,p,E,R|T(e,b,c,9)&lt;&lt;a,S|T(f,b,c,9)&lt;&lt;a,U|T(e,d,c,9)&lt;&lt;a,V|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[3102]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,q|T(1,a,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,W,p,E,X|T(e,b,c,9)&lt;&lt;a,Y|T(f,b,c,9)&lt;&lt;a,Z|T(e,d,c,9)&lt;&lt;a,a0|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a,r|T(1,a,9,5)&lt;&lt;a},[3103]={h|T(1,1,7,9)&lt;&lt;a,s|T(1,b,9,5)&lt;&lt;a,l|T(e,b,c,9)&lt;&lt;a,m|T(f,b,c,9)&lt;&lt;a,n|T(e,d,c,9)&lt;&lt;a,k|T(f,d,c,9)&lt;&lt;a,a1,p,E,a2|T(e,b,c,9)&lt;&lt;a,a3|T(f,b,c,9)&lt;&lt;a,a4|T(e,d,c,9)&lt;&lt;a,a5|T(f,d,c,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a,j,t|T(1,b,9,5)&lt;&lt;a},[4000]={h|T(1,1,7,9)&lt;&lt;a,19027668|T(53,b,9,9)&lt;&lt;a,19032788|T(53,d,9,9)&lt;&lt;a,19027464|T(2,b,9,9)&lt;&lt;a,19027504|T(e,b,9,9)&lt;&lt;a,19027544|T(C,b,9,9)&lt;&lt;a,19027584|T(32,b,9,9)&lt;&lt;a,19027624|T(42,b,9,9)&lt;&lt;a,19032584|T(2,d,9,9)&lt;&lt;a,19032624|T(e,d,9,9)&lt;&lt;a,19032664|T(C,d,9,9)&lt;&lt;a,19032704|T(32,d,9,9)&lt;&lt;a,19032744|T(42,d,9,9)&lt;&lt;a,138559813,273285157,26067541|T(53,b,9,9)&lt;&lt;a,47039077|T(53,d,9,9)&lt;&lt;a,25231989|T(2,b,9,9)&lt;&lt;a,25395845|T(e,b,9,9)&lt;&lt;a,25559701|T(C,b,9,9)&lt;&lt;a,25723157|T(32,b,9,9)&lt;&lt;a,25887013|T(42,b,9,9)&lt;&lt;a,46203557|T(2,d,9,9)&lt;&lt;a,46367413|T(e,d,9,9)&lt;&lt;a,46531269|T(C,d,9,9)&lt;&lt;a,46695125|T(32,d,9,9)&lt;&lt;a,46858981|T(42,d,9,9)&lt;&lt;a,i|T(1,1,7,9)&lt;&lt;a}})[N(32)]or{}for i=1,30 do
+n=o[i]n=n and('f'):unpack(('I3B'):pack(n&amp;16777215,66+128*(n&gt;&gt;29&amp;1)+(n&gt;&gt;24&amp;31)))or 0
+output.setNumber(i,n)end
+end">
+				<pos x="-3.75" y="-13"/>
+				<in1 component_id="114"/>
+			</c32>
+			<c33 id="107" script="d={}function onTick()d={}for i=1,30 do
+b,a=('I3B'):unpack(('f'):pack(input.getNumber(i)))d[i]=(66&lt;=a and a&lt;=126 or 194&lt;=a and a&lt;=254)and(a-66&gt;&gt;2&amp;32|a-66&amp;31)&lt;&lt;24|b or nil
+end
+end
+e=19
+f=12
+g=18
+h=13
+k=171
+l=15
+o=21
+p=10
+q=122
+z=20
+A=24
+B={k,k,k}E={0,0,0}F={e,e,e}G={q,4,4}r={{9,16,27},{135,59,5},nil,{q,33,4},F,{4,36,2},G,{4,e,q},{q,q,4},E,B}s={B,E}t={B,E,{25,126,49},G,F,nil}n={B}S=screen
+function C(c)c=c or{0,0,0,0}S.setColor(c[1],c[2],c[3],c[4]or 255)end
+u,v=0,0
+function R(x,y,w,h)S.drawRectF(x+u,y+v,w,h)end
+function H(x,y,w)R(x,y,w,1)end
+function V(x,y,h)R(x,y,1,h)end
+function D(x,y)H(x,y,1)end
+function Y(i,x,y)u,v=x,y
+if i==1then H(0,2,3)R(1,1,2,3)V(2,0,5)end
+if i==2then V(0,4,2)V(1,2,2)V(2,0,2)end
+if i==3then H(0,0,5)R(1,0,3,2)V(2,0,3)end
+if i==4then H(0,2,5)R(1,1,3,2)V(2,0,3)end
+end
+function T(i,x,y)u,v=x,y
+if i==14then H(g,1,5)H(g,3,5)H(g,5,4)V(e,0,2)R(e,3,3,4)V(z,1,6)V(o,0,2)end
+if i==l then D(A,2)H(A,4,5)V(25,0,2)H(25,0,3)V(25,3,4)H(25,6,4)D(26,2)V(27,0,2)V(28,4,3)end
+if i==e then D(f,5)D(h,4)D(14,3)D(l,2)D(16,1)V(g,1,2)H(g,1,5)H(g,4,5)D(g,6)V(e,3,3)R(e,4,3,2)V(z,0,3)V(z,4,3)V(o,3,3)V(22,1,2)D(22,6)V(A,1,6)H(A,1,5)H(A,4,2)V(26,0,4)H(27,4,2)H(27,6,2)V(28,1,6)end
+if i==z then H(6,0,5)H(6,2,5)D(6,4)V(7,0,4)R(7,2,3,2)R(7,5,3,2)V(8,2,5)V(9,0,4)D(p,4)end
+if i==o then H(0,1,5)V(0,5,2)V(1,0,5)R(1,3,4,2)V(2,3,4)R(2,3,2,3)V(3,0,6)R(3,1,2,4)D(4,6)end
+if i==26then V(0,1,6)H(0,1,5)H(0,3,3)H(0,6,5)V(2,0,2)V(2,3,2)H(2,4,3)V(4,1,6)H(6,0,2)R(6,2,2,3)H(6,6,3)V(7,0,7)H(7,1,4)R(7,5,2,2)V(9,0,5)R(9,1,2,4)V(p,1,6)end
+if i==28then V(0,0,7)R(0,0,2,6)H(0,0,3)R(0,2,3,2)H(0,2,5)D(2,6)V(3,1,2)V(3,4,2)D(4,0)V(4,2,2)D(4,6)V(6,1,2)H(6,2,5)V(6,4,3)H(6,6,5)V(8,0,7)V(p,1,2)V(p,4,3)end
+if i==29then D(6,2)D(7,1)V(7,4,3)H(7,4,3)H(7,6,3)D(8,0)H(8,2,3)V(9,1,2)V(9,4,3)H(f,1,2)H(f,4,2)V(h,0,7)H(h,2,2)D(l,1)D(l,6)V(16,2,4)H(g,2,5)V(e,0,6)H(z,6,3)V(o,0,5)end
+if i==30then H(6,0,2)R(6,2,2,2)H(6,2,5)H(6,5,3)V(7,0,7)R(7,5,2,2)H(7,6,4)H(9,0,2)V(9,2,3)V(p,5,2)H(f,0,5)H(f,4,5)V(h,2,5)R(h,2,3,3)V(14,0,5)V(l,2,5)V(g,0,7)R(g,0,2,2)R(g,3,2,3)R(g,3,5,2)R(o,0,2,2)R(o,3,2,3)V(22,0,7)end
+if i==31then H(f,0,5)V(f,2,2)H(f,2,5)H(f,6,2)V(h,0,3)H(h,4,3)V(14,4,2)V(l,0,3)H(l,6,2)V(16,2,2)end
+if i==32then H(g,2,5)V(e,0,5)H(e,0,3)H(e,4,3)H(z,6,2)V(o,0,3)V(o,4,3)end
+if i==33then R(0,2,2,2)H(0,3,3)V(1,0,7)H(1,1,4)R(1,3,2,2)H(1,6,4)V(3,0,2)V(3,5,2)V(4,1,4)R(6,0,5,2)H(6,3,5)V(6,5,2)H(6,6,5)V(8,0,7)R(8,3,2,4)end
+if i==34then H(6,0,5)V(6,2,5)H(6,2,5)R(6,4,5,2)V(8,0,6)V(p,2,5)H(g,1,3)R(g,3,5,2)V(e,0,7)H(e,6,2)D(o,0)V(o,3,3)D(22,1)D(22,6)end
+if i==35then H(0,2,2)H(0,4,2)D(0,6)V(1,1,5)H(1,1,4)H(1,3,4)H(1,5,4)V(2,5,2)V(3,0,2)V(3,3,3)V(4,5,2)D(6,6)V(7,4,2)V(8,0,4)V(9,4,2)D(p,6)H(f,1,5)H(f,3,2)H(f,5,2)V(h,0,7)H(h,4,4)H(h,6,2)V(l,0,6)R(l,1,2,4)D(16,6)end
+if i==36then H(0,1,5)H(0,4,5)V(2,0,7)V(6,1,6)H(6,1,5)H(6,6,5)V(p,1,6)H(f,0,2)H(f,2,5)R(f,4,2,2)H(f,4,5)V(h,0,7)H(h,6,4)V(l,0,7)R(l,0,2,3)end
+if i==37then V(0,1,5)H(1,0,3)H(1,6,3)D(4,1)D(4,5)end
+if i==38then V(0,1,2)D(0,5)H(1,0,3)H(1,3,3)H(1,6,3)D(4,1)V(4,4,2)end
+if i==39then V(0,1,5)H(0,4,2)H(1,0,3)H(1,6,3)D(2,3)H(3,2,2)V(4,1,5)end
+if i==40then H(1,1,2)H(1,6,3)V(2,0,7)end
+if i==41then D(0,1)H(0,6,5)H(1,0,3)V(1,5,2)D(2,4)D(3,3)V(4,1,2)end
+if i==42then V(0,0,4)H(0,0,5)H(0,2,4)D(0,5)H(1,6,3)V(4,3,3)end
+if i==43then V(0,2,4)H(0,3,4)D(1,1)H(1,6,3)H(2,0,2)V(4,4,2)end
+if i==44then H(0,0,5)V(2,3,4)D(3,2)V(4,0,2)end
+if i==45then V(0,1,2)V(0,4,2)H(1,0,3)H(1,3,3)H(1,6,3)V(4,1,2)V(4,4,2)end
+if i==46then V(0,1,2)H(1,0,3)H(1,3,4)H(1,6,2)D(3,5)V(4,1,4)end
+if i==48then H(0,0,5)V(2,0,7)H(2,2,2)D(4,3)end
+if i==49then H(0,6,5)V(2,0,7)H(2,2,2)end
+if i==50then D(0,2)D(0,4)H(1,3,3)V(2,1,5)D(4,2)D(4,4)end
+if i==27then D(0,6)H(1,2,2)D(1,5)D(2,4)D(3,3)V(4,0,3)V(4,4,2)H(6,6,5)H(7,1,3)H(f,6,5)H(h,3,3)V(l,3,4)D(g,2)H(e,3,4)T(o,x+A,y)end
+end
+function onDraw(p,j,x,y,l)C({5,6,7})S.drawClear()for i=1,30 do
+p=d[i]if p then
+j=p&gt;&gt;4&amp;255
+x,y=p&gt;&gt;14&amp;127,p&gt;&gt;21&amp;31
+l=(p&gt;&gt;26&amp;15)+1
+if p&amp;3==0then
+u,v=0,0
+C(r[l])R(p&gt;&gt;2&amp;127,p&gt;&gt;9&amp;31,x,y)end
+if p&amp;15==5then
+C(t[l])T(j,x,y)end
+if p&amp;15==9then
+C(s[l])Y(j,x,y)end
+if p&amp;15==1then
+C(n[l])w=(p&gt;&gt;4&amp;3)+1
+m=w&gt;2 and(d[i+1]or 0)&gt;&gt;4&amp;16383 or p&gt;&gt;7&amp;127
+u,v=x+4*w-4,y
+for j=1,w do
+c=m%10
+if m~=0 or j==1 or p&gt;&gt;6&amp;1~=0then
+if c==0 or 3&lt;c and c~=7then V(0,0,3)end
+if c%2==0 and c~=4then V(0,2,3)end
+if c~=1 and c~=4then H(0,0,3)end
+if 1&lt;c and c~=7then H(0,2,3)end
+if c~=1 and c~=4 and c~=7then H(0,4,3)end
+if c~=5 and c~=6then V(2,0,3)end
+if c~=2then V(2,2,3)end
+end
+m=m//10
+u=u-4
+end
+end
+end
+end
+end">
+				<pos x="-2.5" y="-13.25"/>
+				<in1 component_id="106"/>
+			</c33>
+			<c34 id="108" i="31">
+				<pos x="-9" y="-18.25"/>
+				<in1 component_id="105"/>
+			</c34>
+			<c35 id="109" i="31">
+				<pos x="-9" y="-18.75"/>
+				<in1 component_id="105"/>
+			</c35>
+			<c36 id="110">
+				<pos x="-6.25" y="-18.75"/>
+				<in1 component_id="111"/>
+				<in3 component_id="113"/>
+				<r text="0"/>
+			</c36>
+			<c37 id="111" m="0">
+				<pos x="-7.75" y="-18.25"/>
+				<in1 component_id="108"/>
+			</c37>
+			<c38 id="112" e="x">
+				<pos x="-7.75" y="-18.75"/>
+				<in1 component_id="109"/>
+			</c38>
+			<c39 id="113" e="x">
+				<pos x="-7.5" y="-18.75"/>
+				<in1 component_id="112"/>
+			</c39>
+			<c40 id="114" count="26" offset="6">
+				<pos x="-5" y="-18.25"/>
+				<inc component_id="145"/>
+				<in1 component_id="131"/>
+				<in2 component_id="132"/>
+				<in3 component_id="133"/>
+				<in4 component_id="134"/>
+				<in5 component_id="135"/>
+				<in6 component_id="136"/>
+				<in7 component_id="137"/>
+				<in8 component_id="138"/>
+				<in9 component_id="139"/>
+				<in10 component_id="140"/>
+				<in11 component_id="116"/>
+				<in12 component_id="180"/>
+				<in13 component_id="181"/>
+				<in14/>
+				<in15/>
+				<in16/>
+				<in17/>
+				<in18/>
+				<in19/>
+				<in20/>
+				<in21/>
+				<in22/>
+				<in23/>
+				<in24/>
+				<in25/>
+				<in26 component_id="110"/>
+			</c40>
+			<c41 id="115" script="d={}function onTick()d={}for i=1,30 do
+b,a=('I3B'):unpack(('f'):pack(input.getNumber(i)))d[i]=(66&lt;=a and a&lt;=126 or 194&lt;=a and a&lt;=254)and(a-66&gt;&gt;2&amp;32|a-66&amp;31)&lt;&lt;24|b or nil
+end
+end
+c=12
+e=18
+f=10
+g=19
+h=14
+j=24
+k=21
+l=13
+m=16
+n=25
+o=15
+p=-1
+q=22t={{171,171,171},{0,0,0},{n,126,49},{122,4,4},{g,g,g},nil}S=screen
+function C(c)c=c or{0,0,0,0}S.setColor(c[1],c[2],c[3],c[4]or 255)end
+u,v=0,0
+function R(x,y,w,h)S.drawRectF(x+u,y+v,w,h)end
+function H(x,y,w)R(x,y,w,1)end
+function V(x,y,h)R(x,y,1,h)end
+function D(x,y)H(x,y,1)end
+function T(i,x,y)u,v=x,y
+if i==-29then H(6,0,2)H(6,2,2)R(6,4,2,2)H(6,4,5)V(7,0,7)H(7,1,3)R(7,3,4,2)H(7,6,4)V(9,1,6)D(f,0)V(c,0,3)H(c,0,3)H(c,2,3)D(c,6)V(l,2,4)R(l,4,2,2)V(h,0,3)V(h,4,3)V(m,0,7)end
+if i==-28then D(0,6)R(1,3,3,2)V(2,0,5)H(2,1,3)D(2,6)D(4,6)end
+if i==-27then V(0,0,2)H(0,1,5)D(0,3)R(0,5,2,2)H(0,6,3)V(2,0,5)R(2,1,2,3)H(2,3,3)D(3,5)V(4,0,2)V(4,3,2)D(4,6)end
+if i==-26then R(0,2,2,2)V(1,0,7)H(1,1,4)V(3,0,2)H(3,3,2)R(3,5,2,2)end
+if i==-25then H(0,6,5)V(1,2,5)V(3,0,7)H(3,2,2)end
+if i==-24 or i==31then V(0,0,7)R(0,0,2,2)H(0,1,5)R(0,3,2,2)V(2,5,2)V(3,0,5)R(3,3,2,2)V(4,3,4)end
+if i==-23 or i==n or i==o then D(6,2)D(6,6)V(7,0,2)H(7,1,3)H(7,3,4)D(7,5)R(8,1,2,4)V(9,0,7)end
+if i==82 or i==-21 or i==84then D(0,0)V(0,4,3)D(1,2)V(2,0,2)H(2,1,3)D(2,6)V(3,1,5)R(3,1,2,2)D(4,6)V(6,0,7)H(6,5,2)H(8,1,3)H(8,4,2)H(8,6,2)V(9,0,7)H(9,5,2)end
+if i==83 or i==-20then H(0,1,5)H(0,3,5)R(0,5,3,2)H(0,5,4)V(2,0,7)D(4,6)end
+if i==-19then H(0,3,5)V(1,2,3)D(2,1)D(2,5)end
+if i==f or i==75 or i==76 or i==-18then H(0,0,5)H(0,2,5)V(0,4,3)H(0,5,3)R(1,2,2,2)V(2,0,7)H(2,4,3)V(4,0,7)V(6,0,7)H(6,0,5)R(6,4,3,2)H(6,5,5)V(8,2,4)H(8,3,3)V(f,0,7)end
+if i==-17then H(0,1,3)V(0,4,3)V(1,0,4)D(2,6)V(3,2,4)H(3,3,2)D(4,1)end
+if i==-16 or i==29then V(0,0,5)H(0,0,5)H(0,2,5)H(0,4,5)D(0,6)V(1,4,2)V(3,4,3)H(3,6,2)V(4,0,5)end
+if i==-15then R(0,0,2,6)H(0,1,5)H(2,6,2)V(3,1,6)end
+if i==-14 or i==61then D(0,0)V(0,3,4)H(0,6,5)H(2,0,2)V(2,2,3)R(2,2,3,2)V(3,0,4)V(4,2,3)end
+if i==59 or i==-13 or i==60then R(0,0,2,3)H(0,1,5)H(0,4,2)V(1,0,7)H(1,3,4)H(1,5,2)V(3,0,4)H(3,6,2)V(4,3,4)end
+if i==57 or i==-12then D(0,0)D(0,2)V(0,4,2)H(0,5,5)V(2,0,7)R(2,1,2,3)H(2,1,3)H(2,3,3)V(4,0,2)end
+if i==-11then D(0,0)V(0,3,4)H(0,6,5)H(1,1,4)V(2,0,2)H(2,3,3)V(2,5,2)V(3,1,4)V(4,0,2)V(4,5,2)end
+if i==-9then V(0,0,4)H(0,0,2)H(0,2,2)H(0,5,2)V(1,4,3)H(1,6,2)V(3,0,6)R(3,0,2,4)D(4,6)end
+if i==-8 or i==j or i==3 or i==h then V(6,0,7)H(6,0,5)H(6,2,5)H(6,4,5)V(8,0,7)V(f,0,7)end
+if i==32 or i==-7then R(0,2,3,2)H(0,3,5)V(1,0,7)R(1,1,2,3)H(1,1,4)H(1,6,3)V(3,0,2)V(3,3,4)R(3,3,2,2)V(4,1,4)end
+if i==-23 or i==n or i==o or i==34 or i==q or i==-6then H(0,1,5)H(0,5,5)R(1,1,3,5)V(2,0,7)end
+if i==-5 or i==-22 or i==11 or i==c or i==l or i==78 or i==79then H(0,1,5)V(0,3,4)H(0,3,2)H(0,5,5)V(2,0,3)V(2,4,3)H(3,3,2)V(4,3,4)D(6,0)D(6,2)V(6,4,3)H(8,1,3)H(8,6,3)V(9,1,6)end
+if i==66 or i==67 or i==68 or i==5 or i==6 or i==7 or i==-10 or i==-4then H(0,2,2)H(0,5,2)V(1,0,7)V(3,0,7)H(3,2,2)H(3,6,2)D(6,0)D(6,2)V(6,4,3)H(6,5,2)H(7,1,4)H(7,3,3)V(8,0,5)V(9,5,2)H(9,6,2)V(f,0,3)D(f,4)end
+if i==58 or i==-3then H(0,1,2)V(0,5,2)H(0,5,2)V(1,1,2)H(1,2,3)V(1,4,2)H(1,4,3)H(2,0,2)H(2,6,3)V(3,0,5)V(4,5,2)end
+if i==-8 or i==j or i==3 or i==h or i==g or i==20 or i==30 or i==23 or i==-2then D(0,0)V(0,3,4)H(0,6,5)V(2,0,2)H(2,0,3)R(2,3,3,2)V(3,2,5)V(4,0,2)end
+if i==p then R(0,2,5,3)R(1,1,3,5)end
+if i==2then H(0,3,5)D(2,1)D(2,5)V(3,2,3)end
+if i==4then D(6,1)H(7,0,3)D(8,4)D(8,6)D(9,3)V(f,1,2)end
+if i==m then R(0,2,2,2)H(0,3,3)V(1,0,7)R(1,0,2,2)H(1,1,4)V(3,1,2)D(3,4)D(3,6)D(4,3)D(4,5)H(6,0,5)H(6,6,5)V(7,3,4)V(9,0,7)H(9,3,2)end
+if i==17then D(0,1)D(0,5)H(1,0,3)H(1,6,3)H(2,3,2)V(4,1,2)V(4,4,2)end
+if i==e then V(0,3,2)H(0,4,5)D(1,2)H(2,1,2)V(3,0,7)end
+if i==q then D(6,2)D(6,6)V(7,0,2)H(7,1,3)H(7,3,4)D(7,5)R(8,1,2,4)V(9,0,7)end
+if i==g or i==23then V(6,0,7)H(6,0,5)H(6,2,5)H(6,4,5)V(8,0,7)V(f,0,7)end
+if i==j then H(e,0,2)H(e,2,2)R(e,4,2,2)H(e,4,5)V(g,0,7)H(g,1,3)R(g,3,4,2)H(g,6,4)V(k,1,6)D(q,0)V(j,0,3)H(j,0,3)H(j,2,3)D(j,6)V(n,2,4)R(n,4,2,2)V(26,0,3)V(26,4,3)V(28,0,7)end
+if i==n then H(e,0,2)H(e,2,2)R(e,4,2,2)H(e,4,5)V(g,0,7)H(g,1,3)R(g,3,4,2)H(g,6,4)V(k,1,6)D(q,0)V(j,0,3)H(j,0,3)H(j,2,3)D(j,6)V(n,2,4)R(n,4,2,2)V(26,0,3)V(26,4,3)V(28,0,7)end
+if i==54then V(0,0,7)R(0,0,2,3)H(0,0,4)H(0,2,5)R(0,4,2,3)H(0,4,3)H(0,6,5)V(2,2,3)R(2,2,3,2)V(3,0,4)R(3,1,2,3)R(3,5,2,2)R(6,1,2,5)H(6,1,5)H(6,3,5)H(6,5,3)V(9,0,4)H(9,6,2)V(f,3,4)end
+if i==55then V(0,0,7)H(0,0,5)H(0,2,5)H(0,4,2)H(0,6,5)R(2,5,3,2)R(3,0,2,7)R(6,2,2,2)H(6,3,3)V(7,0,7)H(7,1,4)H(7,5,4)V(9,0,3)V(9,4,3)D(f,3)end
+if i==58then D(6,1)H(6,3,2)D(7,0)V(7,2,5)H(7,2,4)H(9,0,2)H(9,6,2)V(f,2,5)end
+if i==60then V(6,0,7)H(6,0,4)H(6,3,4)H(6,6,4)V(f,1,2)V(f,4,2)end
+if i==4 or i==64then D(0,0)D(0,2)V(0,4,3)R(0,4,2,2)H(0,5,5)H(1,1,4)V(1,3,3)H(1,3,4)R(2,0,3,4)R(3,0,2,7)end
+if i==69then H(0,3,5)H(0,5,2)H(1,1,3)V(1,3,4)V(2,0,4)V(3,3,4)H(3,5,2)H(6,6,5)H(7,2,3)V(8,0,7)end
+if i==8 or i==9 or i==70 or i==71then H(0,1,5)V(0,4,3)H(0,4,5)V(1,1,4)R(1,3,3,2)V(2,0,2)D(2,6)V(3,1,4)V(4,4,3)end
+if i==72then V(0,0,7)R(0,0,5,2)H(0,3,3)H(0,5,3)V(2,3,4)H(2,4,3)H(2,6,3)V(3,0,3)H(6,1,3)R(6,3,3,2)R(7,0,2,7)H(7,0,4)H(7,2,4)H(7,5,3)V(f,0,3)D(f,4)D(f,6)V(c,1,3)H(c,1,2)H(c,3,3)R(l,5,3,2)H(h,0,3)R(o,0,2,3)V(m,0,4)end
+if i==73then H(0,2,5)D(0,6)D(1,5)V(2,0,5)D(3,5)D(4,6)V(6,1,4)R(6,2,2,3)D(6,6)D(7,0)D(8,6)V(9,0,2)H(9,1,2)V(9,3,2)H(9,4,2)D(f,6)end
+if i==f or i==75then D(c,0)D(c,2)V(c,4,3)H(c,4,5)R(h,1,2,4)H(h,2,3)D(h,6)D(m,0)D(m,6)end
+if i==77then D(0,1)H(0,3,5)D(1,0)V(1,2,5)H(1,5,4)H(2,1,2)V(3,0,6)H(3,0,2)R(3,2,2,4)V(4,2,5)D(6,0)V(6,3,4)H(6,6,5)H(7,1,4)V(8,0,2)V(8,3,4)H(8,4,3)V(9,1,2)V(f,0,2)V(f,3,4)end
+if i==83then H(6,1,4)H(6,3,4)V(7,1,5)V(8,0,2)H(8,6,2)V(f,4,2)H(c,1,2)D(c,3)V(l,0,3)D(l,5)H(h,4,2)H(h,6,2)V(o,1,6)H(o,1,2)H(o,5,2)D(e,3)H(g,2,2)H(g,4,2)V(k,0,2)V(k,5,2)end
+if i==1then H(0,2,5)H(0,5,3)R(1,0,2,6)V(2,0,7)H(2,6,3)V(4,1,4)T(-28,x+6,y)T(m,x+c,y)end
+if i==3then H(e,0,3)D(e,2)H(e,4,5)D(e,6)V(g,0,2)V(g,3,3)R(g,3,3,2)D(k,1)V(k,3,4)H(k,6,2)D(q,0)D(q,2)T(-9,x+j,y)end
+if i==8then H(e,6,5)V(g,1,6)H(g,1,2)H(g,3,4)D(k,0)V(k,3,4)T(-17,x+c,y)end
+if i==52then V(0,0,7)H(0,0,5)R(0,2,2,3)H(0,2,5)H(0,4,5)H(0,6,5)R(3,2,2,3)V(4,0,7)T(-11,x+6,y)end
+if i==53then H(0,1,2)H(0,3,2)R(0,5,3,2)H(0,5,4)V(1,0,2)H(2,2,3)V(2,4,3)R(2,4,2,2)V(3,0,6)H(3,0,2)D(4,6)T(-2,x+6,y)end
+if i==56then H(0,4,5)D(1,1)V(1,3,4)H(1,6,3)H(2,0,2)D(2,2)V(3,0,2)V(3,3,4)T(-7,x+6,y)end
+if i==62then V(0,0,7)H(0,0,5)H(0,6,5)D(2,2)D(2,4)D(3,3)D(4,2)D(4,4)T(-3,x+6,y)end
+if i==65then H(0,1,2)H(0,4,2)H(0,6,5)V(1,0,7)H(1,0,4)R(1,2,4,2)V(3,2,5)R(3,5,2,2)V(4,0,4)H(6,0,5)D(6,6)V(7,2,4)H(7,2,4)H(7,4,4)V(f,2,3)T(-15,x+c,y)end
+if i==74then V(0,1,2)H(0,2,3)H(0,4,4)H(0,6,2)D(1,0)V(1,2,5)R(1,2,2,4)R(1,3,3,3)H(1,3,4)V(2,1,5)H(2,1,3)V(3,0,2)V(3,3,4)H(3,6,2)V(4,1,3)D(c,0)D(c,2)V(c,4,3)H(l,3,2)V(h,0,7)H(h,2,3)H(h,6,3)V(m,1,4)T(-17,x+6,y)end
+if i==81then H(0,1,3)V(0,4,3)V(1,0,4)D(2,5)H(3,2,2)D(3,4)H(3,6,2)H(6,1,3)V(6,4,3)V(7,0,4)D(8,5)H(9,2,2)D(9,4)H(9,6,2)D(f,0)V(c,1,5)D(l,6)D(h,5)D(o,1)V(m,2,3)T(-20,x+e,y)end
+if i==82then D(e,0)V(e,3,4)R(e,4,2,3)H(e,6,5)V(20,0,4)H(20,0,3)H(20,3,3)R(k,5,2,2)V(q,0,7)T(-14,x+c,y)end
+if i==-30then T(p,x+6,y)end
+if i==-22 or i==c or i==l then T(-15,x+c,y)end
+if i==5then T(17,x+e,y)end
+if i==6then T(e,x+e,y)end
+if i==7then T(p,x+e,y)end
+if i==9then T(p,x+e,y)end
+if i==f then T(p,x+e,y)end
+if i==11then T(77,x+c,y)end
+if i==c then T(-19,x+e,y)end
+if i==l then T(2,x+e,y)end
+if i==h then T(-9,x+j,y)end
+if i==o then T(-9,x+e,y)end
+if i==k then T(-11,x+6,y)end
+if i==27then T(k,x+j,y)end
+if i==28then T(-24,x+c,y)T(-25,x+e,y)end
+if i==31then T(-27,x+6,y)T(-26,x+e,y)end
+if i==32then T(-25,x+6,y)T(-26,x+c,y)end
+if i==33then T(m,x+c,y)end
+if i==34then T(-28,x+c,y)end
+if i==35then T(-27,x+e,y)end
+if i==57then T(-3,x+6,y)end
+if i==59then T(-3,x+6,y)end
+if i==61then T(-12,x+6,y)end
+if i==66then T(17,x+c,y)end
+if i==67then T(e,x+c,y)end
+if i==68then T(p,x+c,y)end
+if i==8 or i==9 or i==70 or i==71then T(-16,x+6,y)end
+if i==71then T(p,x+c,y)end
+if i==76then T(p,x+c,y)end
+if i==78then T(-19,x+c,y)end
+if i==79then T(2,x+c,y)end
+if i==84then T(-7,x+c,y)T(-6,x+e,y)end
+end
+function onDraw(p,j,x,y,l)for i=1,30 do
+p=d[i]if p then
+j=p&gt;&gt;4&amp;255
+x,y=p&gt;&gt;14&amp;127,p&gt;&gt;21&amp;31
+l=(p&gt;&gt;26&amp;15)+1
+if p&amp;15==5then
+C(t[l])T(j,x,y)end
+end
+end
+end">
+				<pos x="-1.25" y="-13.25"/>
+				<in1 component_id="106"/>
+				<in2 component_id="107" node_index="1"/>
+			</c41>
+			<c42 id="116">
+				<pos y="-15.5"/>
+				<in1 component_id="121"/>
+				<in2 component_id="122"/>
+				<in3 component_id="119"/>
+				<r text="0"/>
+			</c42>
+			<c43 id="117" i="7">
+				<pos x="-2.5" y="-15"/>
+				<in1 component_id="105"/>
+			</c43>
+			<c44 id="118" i="8">
+				<pos x="-2.5" y="-15.5"/>
+				<in1 component_id="105"/>
+			</c44>
+			<c45 id="119" e="(x*10+y)%10000">
+				<pos x="-1.25" y="-16.5"/>
+				<in1 component_id="116"/>
+				<in2 component_id="123"/>
+			</c45>
+			<c46 id="120" i="7">
+				<pos x="-3.75" y="-16.25"/>
+				<in1 component_id="105"/>
+			</c46>
+			<c47 id="121" m="0">
+				<pos x="-1.25" y="-15"/>
+				<in1 component_id="117"/>
+			</c47>
+			<c48 id="122" m="0">
+				<pos x="-1.25" y="-15.5"/>
+				<in1 component_id="118"/>
+			</c48>
+			<c49 id="123" e="x">
+				<pos x="-2.5" y="-16.25"/>
+				<in1 component_id="120"/>
+			</c49>
+			<c50 id="124" count="1" offset="31">
+				<pos x="3.75" y="-11"/>
+				<inc component_id="105"/>
+				<in1 component_id="129"/>
+			</c50>
+			<c51 id="125" e="x|y|z">
+				<pos x="-1.25" y="-12"/>
+				<in1 component_id="126"/>
+				<in2 component_id="117"/>
+				<in3 component_id="118"/>
+			</c51>
+			<c52 id="126" i="31">
+				<pos x="-2.5" y="-11.25"/>
+				<in1 component_id="105"/>
+			</c52>
+			<c53 id="127" script="P=0
+I1=0
+I2=0
+r=screen.drawRectF
+
+function dgt3(x,y,n)
+if n==0 or 4&lt;=n and n~=7 then r(x,y,1,3) end
+if n%2==0 and n~=4 then r(x,y+2,1,3) end
+if n~=1 and n~=4 then r(x,y,3,1) end
+if 2&lt;=n and n~=7 then r(x,y+2,3,1) end
+if n~=1 and n~=4 and n~=7 then r(x,y+4,3,1) end
+if n~=5 and n~=6 then r(x+2,y,1,3) end
+if n~=2 then r(x+2,y+2,1,3) end
+end
+
+function onTick()
+P=input.getNumber(32)
+I1=input.getNumber(7)
+I2=input.getNumber(17)
+end
+
+function onDraw()
+	if P==4000 then
+		screen.setColor(0,0,0)
+		r(22,2,17,7)
+		r(46,2,17,7)
+		screen.setColor(240,240,240)
+		dgt3(23,3,(I1//1000)%10)
+		dgt3(27,3,(I1//100)%10)
+		dgt3(31,3,(I1//10)%10)
+		dgt3(35,3,(I1//1)%10)
+
+		dgt3(47,3,(I2//1000)%10)
+		dgt3(51,3,(I2//100)%10)
+		dgt3(55,3,(I2//10)%10)
+		dgt3(59,3,(I2//1)%10)
+	end
+end
+">
+				<pos y="-13.25"/>
+				<in1 component_id="114"/>
+				<in2 component_id="115" node_index="1"/>
+			</c53>
+			<c54 id="128">
+				<pos y="-11.25"/>
+				<in1 component_id="125"/>
+			</c54>
+			<c55 id="129">
+				<pos y="-11.75"/>
+				<in1 component_id="128"/>
+			</c55>
+			<c56 id="130" script="C=11
+function onTick()
+local arc=math.floor(input.getNumber(2))
+output.setNumber(7,math.floor(input.getNumber(1))) -- operation.number
+output.setNumber(8,arc) -- ARC
+
+output.setNumber( 9,math.min((math.floor(input.getNumber(3))&gt;&gt;12)&amp;15,C)) -- operation.type
+output.setNumber(10,(math.floor(input.getNumber(3))&gt;&gt;6)&amp;63)  -- operation.dep.
+output.setNumber(11,(math.floor(input.getNumber(3)))&amp;63)     -- operation.dest.
+
+if input.getNumber(5)==0 then
+	output.setNumber(12,math.min((math.floor(input.getNumber(3))&gt;&gt;12)&amp;15,C)) -- operation.type
+	output.setNumber(13,(math.floor(input.getNumber(3)))&amp;63)     -- operation.dest.
+else
+	output.setNumber(12,math.min((math.floor(input.getNumber(5))&gt;&gt;12)&amp;15,C)) -- operation.type
+	output.setNumber(13,(math.floor(input.getNumber(5)))&amp;63)     -- operation.dest.
+end
+
+local statbound=(math.floor(input.getNumber(6))&gt;&gt;14)&amp;3
+local arcbound=arc//10000
+if arcbound~=0 then if arcbound%2==0 then arcbound=1 else arcbound=2 end end
+if statbound==0 then statbound=arcbound elseif arcbound~=statbound then statbound=3 end
+output.setNumber(14,statbound) -- position.bound
+local t= (math.floor(input.getNumber(6))&gt;&gt;12)&amp;3
+local s1=(math.floor(input.getNumber(6))&gt;&gt;6)&amp;63
+local s2=(math.floor(input.getNumber(6)))&amp;63
+if t==2 and s1==s2 then
+output.setNumber(15,4) -- position.type
+else
+output.setNumber(15,t) -- position.type
+end
+output.setNumber(16,s1) -- position.station
+end
+
+">
+				<pos x="-7.5" y="-12.25"/>
+				<in1 component_id="20"/>
+			</c56>
+			<c57 id="131" i="6">
+				<pos x="-6.25" y="-12"/>
+				<in1 component_id="130"/>
+			</c57>
+			<c58 id="132" i="7">
+				<pos x="-6.25" y="-12.25"/>
+				<in1 component_id="130"/>
+			</c58>
+			<c59 id="133" i="8">
+				<pos x="-6.25" y="-12.5"/>
+				<in1 component_id="130"/>
+			</c59>
+			<c60 id="134" i="9">
+				<pos x="-6.25" y="-12.75"/>
+				<in1 component_id="130"/>
+			</c60>
+			<c61 id="135" i="10">
+				<pos x="-6.25" y="-13"/>
+				<in1 component_id="130"/>
+			</c61>
+			<c62 id="136" i="11">
+				<pos x="-6.25" y="-13.25"/>
+				<in1 component_id="130"/>
+			</c62>
+			<c63 id="137" i="12">
+				<pos x="-6.25" y="-13.5"/>
+				<in1 component_id="130"/>
+			</c63>
+			<c64 id="138" i="13">
+				<pos x="-6.25" y="-13.75"/>
+				<in1 component_id="130"/>
+			</c64>
+			<c65 id="139" i="14">
+				<pos x="-6.25" y="-14"/>
+				<in1 component_id="130"/>
+			</c65>
+			<c66 id="140" i="15">
+				<pos x="-6.25" y="-14.25"/>
+				<in1 component_id="130"/>
+			</c66>
+			<c67 id="141" script="link_tbl={nil,{2},{1},{3},{2},{5,6},nil,{5,6},{3,4},nil,{3,4},{7},{6},{8,9},{7},nil,{7},{10},{9},{11},{10},{12},{11},{13,14},{12},nil,{12},{15,16},{14},nil,{14}}
+arc_type_tbl={{3},{1},{2},nil,{min=10,max=19},{min=30,max=39},{min=50,max=59},{min=70,max=79},{min=70,max=79},{min=20,max=29},{min=40,max=49}}
+arc_trk_tbl={{29},{min=20,max=28},{33},{34},{39},nil,{min=40,max=48},{49},nil,nil,nil,{min=50,max=58},{59},nil,{61},{63}}
+
+function gI(i)
+    return toint(input.getNumber(i))
+end
+
+function gN(i)
+    return input.getNumber(i)
+end
+
+function gB(i)
+    return input.getBool(i)
+end
+
+function toint(v)
+    local _=math.modf(v)
+	return _
+end
+
+function pk(intv)
+	local r = ('f'):unpack(('I4'):pack(intv))
+	return r
+end
+
+function b2i(f) return f and 1 or 0 end
+
+function find_rte(from, to, inb)
+	if not link_tbl[from * 2 - b2i(inb)] then return end
+	tr, q = { [from] = from }, { from }
+	for _ = 1, 100 do
+		for _, v in ipairs(link_tbl[q[1] * 2 - b2i(inb)] or {}) do
+			if not tr[v] then
+				table.insert(q, v)
+				tr[v] = q[1]
+			end
+		end
+		table.remove(q, 1)
+		if #q == 0 then break end
+	end
+	if tr[to] then
+		rte = { to, inb = inb, outb = not inb }
+		for _ = 1, 100 do
+			if to == from then break end
+			table.insert(rte, 1, tr[to])
+			to = tr[to]
+		end
+		return rte
+	end
+end
+
+function get_rte(origin, dest)
+	rte_in, rte_out = find_rte(origin, dest, true), find_rte(origin, dest)
+	if rte_in and rte_out then return #rte_in &lt; #rte_out and rte_in or rte_out end
+	return rte_in or rte_out or {}
+end
+
+local old_stat=0
+local pending_info={}
+function onTick()
+    -- from drive-support.lua
+    local id1,id2,mode,dir=gI(11),gI(12),gI(13),gI(14)
+    local stat=5&lt;&lt;20 | (dir&amp;3)&lt;&lt;14 | (mode&amp;3)&lt;&lt;12 | (id1&amp;63)&lt;&lt;6 | (id2&amp;63)
+    local en=gB(11)
+    local start_ctrl=gB(12)
+    local doorcut=gB(13)
+    local forward=gB(14)
+
+    -- from GUI
+    local ttype,frm,dest=gI(1),gI(2),gI(3)
+    local arc_teinishi=(ttype&amp;15)&lt;&lt;12 | (frm&amp;63)&lt;&lt;6 | (dest&amp;63)
+    local up_arc=gB(3)
+
+    -- from GUI
+    local idp_ttype,idp_togo=gI(4),gI(5)
+    local idp_arc_teinishi=(idp_ttype&amp;15)&lt;&lt;12 | (idp_togo&amp;63)
+    local idp_up_arc=gB(5)
+
+    --- from GUI
+    local menu=gI(6)
+    local up_menu=gB(6)
+
+    --- from GUI
+    local opid=gI(8)
+    local up_opid=gB(10)
+
+    if en and ((stat ~= old_stat) or start_ctrl) then
+        table.insert(pending_info, stat)
+        old_stat = stat
+    end
+
+    if up_arc then
+        local ROUTE = get_rte(frm, dest)
+        local arc = 0
+    	if ROUTE and ROUTE.inb then arc = 10000 elseif ROUTE and ROUTE.outb then arc = 20000 end
+    	arc = arc + (arc_type_tbl[ttype] and (arc_type_tbl[ttype][1] or arc_type_tbl[ttype].min) or 0) * 100
+    	arc = arc + (arc_trk_tbl[dest] and (arc_trk_tbl[dest][1] or arc_trk_tbl[dest].min) or 0)
+
+        table.insert(pending_info,math.floor(arc)|(1&lt;&lt;20))
+        table.insert(pending_info,arc_teinishi|(2&lt;&lt;20))
+    end
+
+    if idp_up_arc then
+        table.insert(pending_info,idp_arc_teinishi|(4&lt;&lt;20))
+    end
+
+    if up_opid then
+        table.insert(pending_info,opid)
+    end
+
+    if up_menu then
+        table.insert(pending_info,menu|(6&lt;&lt;20))
+    end
+
+    if #pending_info ~= 0 then
+        output.setNumber(1,pk(pending_info[1]))
+        table.remove(pending_info,1)
+    else
+        output.setNumber(1,pk(1&lt;&lt;24))
+    end
+    output.setNumber(2, #pending_info)
+
+    output.setBool(2, (not forward) and doorcut) -- Doorcut A
+    output.setBool(3, forward and doorcut) -- Doorcut B
+    output.setBool(4, mode==3) -- Nearby station
+end
+">
+				<pos x="9" y="-11.75"/>
+				<in1 component_id="177"/>
+			</c67>
+			<c68 id="143" i="8">
+				<pos x="-3.5" y="-3.5"/>
+				<in1 component_id="49"/>
+			</c68>
+			<c69 id="151">
+				<pos x="5" y="-12.25"/>
+				<in1 component_id="152"/>
+				<in3 component_id="153"/>
+				<r text="0"/>
+			</c69>
+			<c70 id="152">
+				<pos x="3.75" y="-11.75"/>
+				<in1 component_id="105"/>
+			</c70>
+			<c71 id="153">
+				<pos x="3.75" y="-12.25"/>
+				<in1 component_id="105"/>
+			</c71>
+			<c72 id="155">
+				<pos x="5" y="-13.25"/>
+				<in1 component_id="156"/>
+				<in3 component_id="157"/>
+				<r text="0"/>
+			</c72>
+			<c73 id="156" i="1">
+				<pos x="3.75" y="-12.75"/>
+				<in1 component_id="105"/>
+			</c73>
+			<c74 id="157" i="1">
+				<pos x="3.75" y="-13.25"/>
+				<in1 component_id="105"/>
+			</c74>
+			<c75 id="158">
+				<pos x="5" y="-14.25"/>
+				<in1 component_id="159"/>
+				<in3 component_id="160"/>
+				<r text="0"/>
+			</c75>
+			<c76 id="159" i="2">
+				<pos x="3.75" y="-13.75"/>
+				<in1 component_id="105"/>
+			</c76>
+			<c77 id="160" i="2">
+				<pos x="3.75" y="-14.25"/>
+				<in1 component_id="105"/>
+			</c77>
+			<c78 id="161">
+				<pos x="5" y="-15.25"/>
+				<in1 component_id="162"/>
+				<in3 component_id="163"/>
+				<r text="0"/>
+			</c78>
+			<c79 id="162" i="3">
+				<pos x="3.75" y="-14.75"/>
+				<in1 component_id="105"/>
+			</c79>
+			<c80 id="163" i="3">
+				<pos x="3.75" y="-15.25"/>
+				<in1 component_id="105"/>
+			</c80>
+			<c81 id="164">
+				<pos x="5" y="-16.25"/>
+				<in1 component_id="165"/>
+				<in3 component_id="166"/>
+				<r text="0"/>
+			</c81>
+			<c82 id="165" i="4">
+				<pos x="3.75" y="-15.75"/>
+				<in1 component_id="105"/>
+			</c82>
+			<c83 id="166" i="4">
+				<pos x="3.75" y="-16.25"/>
+				<in1 component_id="105"/>
+			</c83>
+			<c84 id="167">
+				<pos x="5" y="-17.25"/>
+				<in1 component_id="168"/>
+				<in3 component_id="169"/>
+				<r text="0"/>
+			</c84>
+			<c85 id="168" i="5">
+				<pos x="3.75" y="-16.75"/>
+				<in1 component_id="105"/>
+			</c85>
+			<c86 id="169" i="5">
+				<pos x="3.75" y="-17.25"/>
+				<in1 component_id="105"/>
+			</c86>
+			<c87 id="171" i="6">
+				<pos x="3.75" y="-17.75"/>
+				<in1 component_id="105"/>
+			</c87>
+			<c88 id="172" i="6">
+				<pos x="3.75" y="-18.25"/>
+				<in1 component_id="105"/>
+			</c88>
+			<c89 id="177" count="14">
+				<pos x="7.75" y="-14.25"/>
+				<inc component_id="196"/>
+				<in1 component_id="151"/>
+				<in2 component_id="155"/>
+				<in3 component_id="158"/>
+				<in4 component_id="161"/>
+				<in5 component_id="164"/>
+				<in6 component_id="167"/>
+				<in7/>
+				<in8 component_id="116"/>
+				<in9/>
+				<in10/>
+				<in11 component_id="191"/>
+				<in12 component_id="192"/>
+				<in13 component_id="193"/>
+				<in14 component_id="194"/>
+			</c89>
+			<c90 id="180" e="floor(abs(x)/1000)">
+				<pos x="-6.25" y="-14.75"/>
+				<in1 component_id="55"/>
+			</c90>
+			<c91 id="181" e="floor(abs(x)/10)%100">
+				<pos x="-6.25" y="-15"/>
+				<in1 component_id="55"/>
+			</c91>
+			<c92 id="182">
+				<pos x="-3.5" y="-4.5"/>
+				<in1 component_id="184"/>
+				<in2 component_id="56"/>
+				<in3 component_id="171"/>
+			</c92>
+			<c93 id="183">
+				<pos x="-3.5" y="-5.5"/>
+				<in1 component_id="172"/>
+				<in2 component_id="57"/>
+				<in3 component_id="171"/>
+			</c93>
+			<c94 id="184">
+				<pos x="-4.75" y="-3.75"/>
+				<n text="0"/>
+			</c94>
+			<c95 id="191">
+				<pos x="6.5" y="-13.5"/>
+				<in1 component_id="61"/>
+			</c95>
+			<c96 id="192" i="1">
+				<pos x="6.5" y="-14"/>
+				<in1 component_id="61"/>
+			</c96>
+			<c97 id="193" i="2">
+				<pos x="6.5" y="-14.5"/>
+				<in1 component_id="61"/>
+			</c97>
+			<c98 id="194" i="3">
+				<pos x="6.5" y="-15"/>
+				<in1 component_id="61"/>
+			</c98>
+			<c99 id="196" count="4" offset="10">
+				<pos x="6.5" y="-10.5"/>
+				<inc component_id="124"/>
+				<in1 component_id="197"/>
+				<in2/>
+				<in3 component_id="83"/>
+				<in4 component_id="104"/>
+			</c99>
+			<c100 id="197">
+				<pos x="5.25" y="-9.75"/>
+				<in1 component_id="61"/>
+			</c100>
+			<c101 id="198" i="2">
+				<pos x="-1" y="-4"/>
+				<in1 component_id="20"/>
+			</c101>
+			<c102 id="201" i="11">
+				<pos x="-1" y="-6"/>
+				<in1 component_id="20"/>
+			</c102>
+			<c103 id="202" i="12">
+				<pos x="-1" y="-6.5"/>
+				<in1 component_id="20"/>
+			</c103>
+			<c104 id="204">
+				<pos x="0.25" y="-6.25"/>
+				<in1 component_id="201"/>
+				<in2 component_id="202"/>
+			</c104>
+		</component_states>
+		<component_bridge_states>
+			<c0 id="20">
+				<pos x="-3.5" y="-1"/>
+			</c0>
+			<c1 id="28">
+				<pos x="10.25" y="-11.5"/>
+				<in1 component_id="141"/>
+			</c1>
+			<c2 id="49">
+				<pos x="-3.5" y="-2.5"/>
+			</c2>
+			<c3 id="145">
+				<pos x="-5" y="-11.25"/>
+			</c3>
+			<c4 id="148">
+				<pos x="1.25" y="-13.25"/>
+				<in1 component_id="127" node_index="1"/>
+			</c4>
+			<c5 id="200">
+				<pos x="2.5" y="-11"/>
+				<in1 component_id="129"/>
+			</c5>
+		</component_bridge_states>
+		<group_states/>
+	</group>
+</microprocessor>
+

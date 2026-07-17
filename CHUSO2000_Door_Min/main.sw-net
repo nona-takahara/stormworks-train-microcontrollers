@@ -8,73 +8,55 @@ module main
   port in "NITS Ext. Input" : composite
   port out Input : number
 
-  # ================================================================
-  # 物理センサ読み取り (Phys. Input ch1-3 × 2センサ)
-  # ================================================================
+  # --- Configuration: door geometry and side properties ---
+  inst PROPERTY_NUMBER door_detect_length (value=1.25, n="Length") : -> out=door_detect_length_out
+  inst PROPERTY_NUMBER door_detect_width (value=0.1, n="Width") : -> out=door_detect_width_out
+  inst PROPERTY_DROPDOWN door_side_ch (items="[{\"l\":\"A Right\",\"value\":\"27\"},{\"l\":\"B Left\",\"value\":\"29\"}]", name="Door Side", v=16) : -> out=door_side_ch_out
 
-  inst COMPOSITE_READ_NUMBER sensor_a_ch1 (channel=1) : composite="Phys. Input" -> out=sensor_a_x
-  inst COMPOSITE_READ_NUMBER sensor_a_ch2 (channel=2) : composite="Phys. Input" -> out=sensor_a_y
-  inst COMPOSITE_READ_NUMBER sensor_a_ch3 (channel=3) : composite="Phys. Input" -> out=sensor_a_z
-  inst COMPOSITE_READ_NUMBER sensor_b_ch1 (channel=1) : composite="Phys. Input" -> out=sensor_b_x
-  inst COMPOSITE_READ_NUMBER sensor_b_ch2 (channel=2) : composite="Phys. Input" -> out=sensor_b_y
-  inst COMPOSITE_READ_NUMBER sensor_b_ch3 (channel=3) : composite="Phys. Input" -> out=sensor_b_z
+  # --- Physics-based door open detection ---
+  inst COMPOSITE_READ_NUMBER phys_a_pos_x (channel=1) : composite="Phys. Input" -> out=phys_a_pos_x_out
+  inst COMPOSITE_READ_NUMBER phys_a_pos_y (channel=2) : composite="Phys. Input" -> out=phys_a_pos_y_out
+  inst COMPOSITE_READ_NUMBER phys_a_pos_z (channel=3) : composite="Phys. Input" -> out=phys_a_pos_z_out
+  inst COMPOSITE_READ_NUMBER phys_b_pos_x (channel=1) : composite="Phys. Input" -> out=phys_b_pos_x_out
+  inst COMPOSITE_READ_NUMBER phys_b_pos_y (channel=2) : composite="Phys. Input" -> out=phys_b_pos_y_out
+  inst COMPOSITE_READ_NUMBER phys_b_pos_z (channel=3) : composite="Phys. Input" -> out=phys_b_pos_z_out
+  inst FUNC_NUM_8 sensor_dist_sq (expression="(x-a)^2+(y-b)^2+(z-c)^2") : x=phys_a_pos_x_out, y=phys_a_pos_y_out, z=phys_a_pos_z_out, a=phys_b_pos_x_out, b=phys_b_pos_y_out, c=phys_b_pos_z_out -> out=sensor_dist_sq_out
+  inst FUNC_NUM_3 closed_dist_min_sq (expression="(x-y)^2") : x=door_detect_length_out, y=door_detect_width_out -> out=closed_dist_min_sq_out
+  inst FUNC_NUM_3 closed_dist_max_sq (expression="(x+y)^2") : x=door_detect_length_out, y=door_detect_width_out -> out=closed_dist_max_sq_out
+  inst GREATER_THAN dist_above_closed_min : a=sensor_dist_sq_out, b=closed_dist_min_sq_out -> out=dist_above_closed_min_out
+  inst LESS_THAN dist_below_closed_max : a=sensor_dist_sq_out, b=closed_dist_max_sq_out -> out=dist_below_closed_max_out
+  inst NAND phys_door_open : a=dist_below_closed_max_out, b=dist_above_closed_min_out -> out=phys_door_open_out
 
-  # ================================================================
-  # ドア開閉エリア判定 (センサ間距離 vs 長さ/幅プロパティ)
-  # ================================================================
+  # --- NITS Ext. Input gate (enabled by Other Inputs ch10) ---
+  inst COMPOSITE_READ_BOOLEAN nits_ext_enable_read (channel=10) : composite="Other Inputs" -> out=nits_ext_enable_read_out
+  inst COMPOSITE_SWITCHBOX door_cmd_gate : b="NITS Ext. Input", switch=nits_ext_enable_read_out -> out=door_cmd_gate_out
 
-  inst PROPERTY_NUMBER prop_length (value=1.25, n="Length") : -> out=length
-  inst PROPERTY_NUMBER prop_width (value=0.1, n="Width") : -> out=width
-  inst FUNC_NUM_3 lower_thresh_sq (expression="(x-y)^2") : x=length, y=width -> out=lower_thresh
-  inst FUNC_NUM_3 upper_thresh_sq (expression="(x+y)^2") : x=length, y=width -> out=upper_thresh
-  inst FUNC_NUM_8 dist_sq_calc (expression="(x-a)^2+(y-b)^2+(z-c)^2") : x=sensor_a_x, y=sensor_a_y, z=sensor_a_z, a=sensor_b_x, b=sensor_b_y, c=sensor_b_z -> out=dist_sq
-  inst GREATER_THAN dist_gt_lower : a=dist_sq, b=lower_thresh -> out=dist_gt_lower_out
-  inst LESS_THAN dist_lt_upper : a=dist_sq, b=upper_thresh -> out=dist_lt_upper_out
-  inst NAND in_door_zone : a=dist_lt_upper_out, b=dist_gt_lower_out -> out=in_door_zone_out
+  # --- Door command and open/close latch ---
+  inst FUNC_NUM_1 door_paired_ch (expression="x+1") : x=door_side_ch_out -> out=door_paired_ch_out
+  inst COMPOSITE_READ_BOOLEAN door_cmd_read (channel=-1) : channel_input=door_side_ch_out, composite=door_cmd_gate_out -> out=door_cmd_read_out
+  inst COMPOSITE_READ_BOOLEAN door_close_cmd_read (channel=-1) : channel_input=door_paired_ch_out, composite="NITS Ext. Input" -> out=door_close_cmd_read_out
+  inst BOOL_FUNC_4 door_close_trigger (expression="(!x)&y") : x=door_cmd_read_out, y=door_close_cmd_read_out -> out=door_close_trigger_out
+  inst SR_LATCH door_open_latch : r=door_close_trigger_out, s=door_cmd_read_out -> q=door_open_latch_q
+  inst OR door_open_or : a=door_open_latch_q, b=phys_door_open_out -> out="Door is Open"
 
-  # ================================================================
-  # ドア開扉判定 (SRラッチ + NITS外部信号)
-  # ================================================================
+  # --- Chime timer (triggered on door state edge) ---
+  inst PULSE door_state_edge (mode="both") : a=door_open_latch_q -> out=door_state_edge_out
+  inst CONST_BOOL chime_counter_disable : -> out=chime_counter_disable_out
+  inst COUNTER chime_timer (reset_value=0, increment=1, min=0, max=120, m=1) : reset=door_state_edge_out, up=chime_counter_disable_out -> out=chime_timer_out
+  inst THRESHOLD chime_high_phase1 (min=1, max=79) : value=chime_timer_out -> out=chime_high_phase1_out
+  inst THRESHOLD chime_high_phase2 (min=81, max=120) : value=chime_timer_out -> out=chime_high_phase2_out
+  inst THRESHOLD chime_low_phase1 (min=21, max=99) : value=chime_timer_out -> out=chime_low_phase1_out
+  inst THRESHOLD chime_low_phase2 (min=101, max=120) : value=chime_timer_out -> out=chime_low_phase2_out
+  inst OR chime_high_or : a=chime_high_phase1_out, b=chime_high_phase2_out -> out="Chime High"
+  inst OR chime_low_or : a=chime_low_phase1_out, b=chime_low_phase2_out -> out="Chime Low"
 
-  inst COMPOSITE_READ_BOOLEAN other_in_ch10 (channel=10) : composite="Other Inputs" -> out=nits_ext_switch
-  inst COMPOSITE_SWITCHBOX nits_composite_sw : b="NITS Ext. Input", switch=nits_ext_switch -> out=nits_composite
-  inst PROPERTY_DROPDOWN prop_door_side (name="Door Side", v=16) : -> out=door_side_ch
-  inst COMPOSITE_READ_BOOLEAN door_side_rx (channel=-1) : channel_input=door_side_ch, composite=nits_composite -> out=door_side_signal
-  inst FUNC_NUM_1 door_side_opp_ch (expression="x+1") : x=door_side_ch -> out=door_side_opp
-  inst COMPOSITE_READ_BOOLEAN nits_opp_side_rx (channel=-1) : channel_input=door_side_opp, composite="NITS Ext. Input" -> out=nits_opp_signal
-  inst BOOL_FUNC_4 door_close_reset (expression="(!x)&y") : x=door_side_signal, y=nits_opp_signal -> out=door_close_reset_out
-  inst SR_LATCH door_open_latch : r=door_close_reset_out, s=door_side_signal -> q=door_open
-  inst OR door_open_or : a=door_open, b=in_door_zone_out -> out="Door is Open"
-
-  # ================================================================
-  # チャイムタイマー (ドア変化時リセット、120tick計測)
-  # ================================================================
-
-  inst PULSE door_change_pulse (mode="both") : a=door_open -> out=door_change
-  inst CONST_BOOL const_false : -> out=const_false_out
-  inst COUNTER chime_counter (reset_value=0, increment=1, min=0, max=120, m=1) : reset=door_change, up=const_false_out -> out=chime_tick
-
-  # ================================================================
-  # チャイム出力 (High/Low × 開扉/閉扉タイミング)
-  # ================================================================
-
-  inst THRESHOLD chime_high_open (min=1, max=79) : value=chime_tick -> out=chime_high_open_out
-  inst THRESHOLD chime_low_open (min=21, max=99) : value=chime_tick -> out=chime_low_open_out
-  inst THRESHOLD chime_high_close (min=81, max=120) : value=chime_tick -> out=chime_high_close_out
-  inst THRESHOLD chime_low_close (min=101, max=120) : value=chime_tick -> out=chime_low_close_out
-  inst OR chime_high_or : a=chime_high_open_out, b=chime_high_close_out -> out="Chime High"
-  inst OR chime_low_or : a=chime_low_open_out, b=chime_low_close_out -> out="Chime Low"
-
-  # ================================================================
-  # ドアモーター速度出力 (方向 × 速度)
-  # ================================================================
-
-  inst CONST const_open_dir (value=1) : -> value=open_dir
-  inst CONST const_close_dir (value=-1) : -> value=close_dir
-  inst NUM_SWITCHBOX door_dir_sw : a=open_dir, b=close_dir, switch=door_open -> out=door_dir
-  inst CAPACITOR door_moving_cap (charge_time=0, discharge_time=1) : enable=door_change -> out=door_moving
-  inst CONST const_speed_normal (value=0.4) : -> value=speed_normal
-  inst CONST const_speed_slow (value=0.2) : -> value=speed_slow
-  inst NUM_SWITCHBOX speed_mode_sw : a=speed_normal, b=speed_slow, switch=door_moving -> out=door_speed
-  inst MULTIPLY door_speed_out : a=door_dir, b=door_speed -> out="Input"
+  # --- Haptic output (direction x strength, decays after state change) ---
+  inst CONST const_open_dir (value=1) : -> value=const_open_dir_value
+  inst CONST const_close_dir (value=-1) : -> value=const_close_dir_value
+  inst NUM_SWITCHBOX door_dir_sw : a=const_open_dir_value, b=const_close_dir_value, switch=door_open_latch_q -> out=door_dir_sw_out
+  inst CONST haptic_fast_strength (value=0.4) : -> value=haptic_fast_strength_value
+  inst CONST haptic_slow_strength (value=0.2) : -> value=haptic_slow_strength_value
+  inst CAPACITOR haptic_decay_cap (charge_time=0, discharge_time=1) : enable=door_state_edge_out -> out=haptic_decay_cap_out
+  inst NUM_SWITCHBOX haptic_strength_sw : a=haptic_fast_strength_value, b=haptic_slow_strength_value, switch=haptic_decay_cap_out -> out=haptic_strength_sw_out
+  inst MULTIPLY haptic_output_mul : a=door_dir_sw_out, b=haptic_strength_sw_out -> out="Input"
 end

@@ -6,80 +6,90 @@ module main
   port out "NITS Extension Output" : composite
   port in "NITS Extension Input" : composite
 
+  # --- Configuration: Extension channel mode properties ---
+  inst PROPERTY_TEXT nits_ext_id_property (name="NITS Ext. ID", v=0) : ->
+  inst PROPERTY_DROPDOWN n1_n9_mode (items="[{\"l\":\"Integer same\",\"value\":\"0\"},{\"l\":\"Binary same\",\"value\":\"2\"},{\"l\":\"Binary separate\",\"value\":\"3\"}]", name="N1/N9 Mode") : -> out=n1_n9_mode_out
+  inst PROPERTY_DROPDOWN n2_n10_mode (items="[{\"l\":\"Integer same\",\"value\":\"0\"},{\"l\":\"Binary same\",\"value\":\"2\"},{\"l\":\"Binary separate\",\"value\":\"3\"}]", name="N2/N10 Mode") : -> out=n2_n10_mode_out
+  inst PROPERTY_DROPDOWN n3_n11_mode (items="[{\"l\":\"Integer same\",\"value\":\"0\"},{\"l\":\"Binary same\",\"value\":\"2\"},{\"l\":\"Binary separate\",\"value\":\"3\"}]", name="N3/N11 Mode") : -> out=n3_n11_mode_out
+  inst PROPERTY_DROPDOWN n4_n12_mode (items="[{\"l\":\"Integer same\",\"value\":\"0\"},{\"l\":\"Binary same\",\"value\":\"2\"},{\"l\":\"Binary separate\",\"value\":\"3\"}]", name="N4/N12 Mode") : -> out=n4_n12_mode_out
+  inst PROPERTY_DROPDOWN n5_n13_mode (items="[{\"l\":\"Integer same\",\"value\":\"0\"},{\"l\":\"Binary same\",\"value\":\"2\"},{\"l\":\"Binary separate\",\"value\":\"3\"}]", name="N5/N13 Mode") : -> out=n5_n13_mode_out
+  inst PROPERTY_DROPDOWN n6_n14_mode (items="[{\"l\":\"Integer same\",\"value\":\"0\"},{\"l\":\"Binary same\",\"value\":\"2\"},{\"l\":\"Binary separate\",\"value\":\"3\"}]", name="N6/N14 Mode") : -> out=n6_n14_mode_out
+  inst PROPERTY_DROPDOWN n7_n15_mode (items="[{\"l\":\"Integer same\",\"value\":\"0\"},{\"l\":\"Binary same\",\"value\":\"2\"},{\"l\":\"Binary separate\",\"value\":\"3\"}]", name="N7/N15 Mode") : -> out=n7_n15_mode_out
+  inst PROPERTY_DROPDOWN n8_n16_mode (items="[{\"l\":\"Integer same\",\"value\":\"0\"},{\"l\":\"Binary same\",\"value\":\"2\"},{\"l\":\"Binary separate\",\"value\":\"3\"}]", name="N8/N16 Mode") : -> out=n8_n16_mode_out
 
-  # ================================================================
-  # TXコマンドフラグ組み立て: 割込/上書き要求・押出し要求・アドレス競合をnits_tx_encoder_luaへの上書きコンポジットに集約
-  # ================================================================
-  inst COMPOSITE_READ_BOOLEAN ext_input_interrupt_req (channel=12) : composite=simpleif_tx_encoder_lua_composite -> out=ext_input_interrupt_req_out
-  inst OR tx_interrupt_flag : a=ext_input_interrupt_req_out -> out=tx_interrupt_flag_out
-  inst COMPOSITE_READ_BOOLEAN ext_input_override_req (channel=14) : composite=simpleif_tx_encoder_lua_composite -> out=ext_input_override_req_out
-  inst OR tx_override_flag : a=ext_input_override_req_out -> out=tx_override_flag_out
-  inst COMPOSITE_READ_BOOLEAN simpleif_cmd_ready_read (channel=13) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_ready_read_out
-  inst OR simpleif_push_flag : a=simpleif_cmd_ready_read_out -> out=simpleif_push_flag_out
-  inst COMPOSITE_READ_BOOLEAN rx_addr_conflict_read (channel=5) : composite=nits_rx_decoder_lua_composite -> out=rx_addr_conflict_read_out
-  inst COMPOSITE_READ_NUMBER simpleif_cmd_value_back_read (channel=5) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_value_back_read_out
-  inst COMPOSITE_READ_NUMBER simpleif_cmd_value_front_read (channel=6) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_value_front_read_out
-  inst COMPOSITE_READ_NUMBER rx_total_car_count_read (channel=5) : composite=nits_rx_decoder_lua_composite -> out=rx_total_car_count_read_out
-  inst COMPOSITE_WRITE_NUMBER tx_override_number_write (count=3, offset=5) : in1=simpleif_cmd_value_back_read_out, in2=simpleif_cmd_value_front_read_out, in3=rx_total_car_count_read_out, inc="Simple IF TX" -> out=tx_override_number_write_out
-  inst COMPOSITE_WRITE_BOOLEAN nits_tx_command_composite (count=4, offset=5) : in1=rx_addr_conflict_read_out, in2=tx_interrupt_flag_out, in3=simpleif_push_flag_out, in4=tx_override_flag_out, inc=tx_override_number_write_out -> out=nits_tx_command_composite_out
+  # --- NITS RX: decode incoming NITS bus frame ---
+  inst LUA nits_rx_decoder_lua (script_ref="scripts/n466.lua") : composite="from NITS" -> composite=nits_rx_decoder_lua_composite
+  inst COMPOSITE_READ_BOOLEAN rx_addr_conflict_read (channel=6) : composite=nits_rx_decoder_lua_composite -> out=rx_addr_conflict_read_out
+  inst COMPOSITE_READ_BOOLEAN rx_addr_not_mine_read (channel=7) : composite=nits_rx_decoder_lua_composite -> out=rx_addr_not_mine_read_out
+  inst COMPOSITE_READ_BOOLEAN rx_addr_matched_read (channel=8) : composite=nits_rx_decoder_lua_composite -> out=rx_addr_matched_read_out
+  inst COMPOSITE_READ_BOOLEAN rx_decoded_op1_read (channel=1) : composite=nits_rx_decoder_lua_composite -> out=rx_decoded_op1_read_out
+  inst COMPOSITE_READ_NUMBER rx_total_car_count_read (channel=6) : composite=nits_rx_decoder_lua_composite -> out=rx_total_car_count_read_out
+  inst COMPOSITE_READ_BOOLEAN nits_rx_raw_passthrough_bit (channel=11) : composite="from NITS" -> out=nits_rx_raw_passthrough_bit_out
 
-  # ================================================================
-  # NITS TXフレーム生成 (nits_tx_encoder_lua) とウォッチドッグ変化検出によるストローブ生成 -> "to NITS"
-  # ================================================================
+  # --- Address match latch / local mode timer ---
+  inst SR_LATCH ext_mode_latch : r=rx_addr_not_mine_read_out, s=rx_addr_matched_read_out -> q=ext_mode_latch_q
+  inst CAPACITOR local_mode_timer (charge_time=3, discharge_time=0) : enable=ext_mode_latch_q -> out=local_mode_timer_out
+  inst TOOLTIP_BOOLEAN local_mode_tooltip (label="value", on_label="on", off_label="off") : value=local_mode_timer_out ->
+  inst COMPOSITE_SWITCHBOX nits_rx_gate_switch : a="from NITS", switch=local_mode_timer_out -> out=nits_rx_gate_switch_out
+
+  # --- NITS TX: strobe / watchdog logic ---
   inst LUA nits_tx_encoder_lua (script_ref="scripts/n440.lua") : composite=nits_tx_command_composite_out -> composite=nits_tx_encoder_lua_composite
-  inst COMPOSITE_READ_BOOLEAN nits_tx_watchdog_read (channel=null) : composite=nits_tx_encoder_lua_composite -> out=nits_tx_watchdog_read_out
+  inst COMPOSITE_READ_BOOLEAN nits_tx_watchdog_read (channel=1) : composite=nits_tx_encoder_lua_composite -> out=nits_tx_watchdog_read_out
   inst NOT nits_tx_watchdog_not : a=nits_tx_watchdog_read_out -> out=nits_tx_watchdog_not_out
   inst XOR nits_tx_watchdog_xor : a=nits_tx_watchdog_read_out, b=nits_tx_watchdog_not_out -> out=nits_tx_watchdog_xor_out
   inst NOT nits_tx_watchdog_xor_not : a=nits_tx_watchdog_xor_out -> out=nits_tx_watchdog_xor_not_out
   inst CAPACITOR nits_tx_strobe_cap (charge_time=0, discharge_time=0.1) : enable=nits_tx_watchdog_xor_not_out -> out=nits_tx_strobe_cap_out
-  inst COMPOSITE_READ_BOOLEAN simpleif_tx_bit5_read (channel=5) : composite="Simple IF TX" -> out=simpleif_tx_bit5_read_out
-  inst COMPOSITE_READ_BOOLEAN simpleif_tx_bit6_read (channel=6) : composite="Simple IF TX" -> out=simpleif_tx_bit6_read_out
-  inst COMPOSITE_READ_BOOLEAN simpleif_tx_primary_bit_read (channel=null) : composite="Simple IF TX" -> out=simpleif_tx_primary_bit_read_out
-  inst COMPOSITE_READ_BOOLEAN simpleif_tx_bit7_read (channel=7) : composite="Simple IF TX" -> out=simpleif_tx_bit7_read_out
-  inst COMPOSITE_READ_BOOLEAN simpleif_tx_bit8_read (channel=8) : composite="Simple IF TX" -> out=simpleif_tx_bit8_read_out
-  inst COMPOSITE_WRITE_BOOLEAN nits_tx_bus_write (count=6, offset=0) : in1=nits_tx_strobe_cap_out, in2=simpleif_tx_bit5_read_out, in3=simpleif_tx_bit6_read_out, in4=simpleif_tx_primary_bit_read_out, in5=simpleif_tx_bit7_read_out, in6=simpleif_tx_bit8_read_out, inc=nits_tx_encoder_lua_composite -> out="to NITS"
 
-  # ================================================================
-  # NITS RXフレーム解読 (nits_rx_decoder_lua): アドレス競合/一致でローカル拡張モードのSRラッチ・タイマーを駆動、"Simple IF RX"へ中継
-  # ================================================================
-  inst LUA nits_rx_decoder_lua (script_ref="scripts/n466.lua") : composite="from NITS" -> composite=nits_rx_decoder_lua_composite
-  inst COMPOSITE_READ_BOOLEAN rx_addr_not_mine_read (channel=6) : composite=nits_rx_decoder_lua_composite -> out=rx_addr_not_mine_read_out
-  inst COMPOSITE_READ_BOOLEAN rx_addr_matched_read (channel=7) : composite=nits_rx_decoder_lua_composite -> out=rx_addr_matched_read_out
-  inst SR_LATCH ext_mode_latch : r=rx_addr_not_mine_read_out, s=rx_addr_matched_read_out -> q=ext_mode_latch_q
-  inst CAPACITOR local_mode_timer (charge_time=3, discharge_time=0) : enable=ext_mode_latch_q -> out=local_mode_timer_out
-  inst TOOLTIP_BOOLEAN local_mode_tooltip (label="value", on_label="on", off_label="off") : value=local_mode_timer_out ->
-  inst COMPOSITE_READ_BOOLEAN nits_rx_raw_passthrough_bit (channel=10) : composite="from NITS" -> out=nits_rx_raw_passthrough_bit_out
-  inst COMPOSITE_READ_BOOLEAN rx_decoded_op1_read (channel=null) : composite=nits_rx_decoder_lua_composite -> out=rx_decoded_op1_read_out
-  inst OR simpleif_rx_status_bit : a=nits_rx_raw_passthrough_bit_out, b=rx_decoded_op1_read_out -> out=simpleif_rx_status_bit_out
-  inst COMPOSITE_WRITE_BOOLEAN simpleif_rx_bus_write (count=1, offset=0) : in1=simpleif_rx_status_bit_out, inc=nits_rx_decoder_lua_composite -> out="Simple IF RX"
+  # --- NITS TX: assemble command composite and write to bus ---
+  inst COMPOSITE_WRITE_BOOLEAN nits_tx_command_composite (count=4, offset=6) : in1=rx_addr_conflict_read_out, in2=tx_interrupt_flag_out, in3=simpleif_push_flag_out, in4=tx_override_flag_out, inc=tx_override_number_write_out -> out=nits_tx_command_composite_out
+  inst COMPOSITE_WRITE_BOOLEAN nits_tx_bus_write (count=6, offset=1) : in1=nits_tx_strobe_cap_out, in2=simpleif_tx_bit5_read_out, in3=simpleif_tx_bit6_read_out, in4=simpleif_tx_primary_bit_read_out, in5=simpleif_tx_bit7_read_out, in6=simpleif_tx_bit8_read_out, inc=nits_tx_encoder_lua_composite -> out="to NITS"
 
-  # ================================================================
-  # Simple IFコマンドエンコーダ (simpleif_tx_encoder_lua): "NITS Extension Input"をラウンドロビンでコマンド語に変換
-  # ================================================================
-  inst COMPOSITE_WRITE_BOOLEAN simpleif_input_mode_write (count=1, offset=16) : in1=local_mode_timer_out, inc="NITS Extension Input" -> out=simpleif_input_mode_write_out
+  # --- Simple IF TX: read bits from Simple IF port ---
+  inst COMPOSITE_READ_BOOLEAN simpleif_tx_primary_bit_read (channel=1) : composite="Simple IF TX" -> out=simpleif_tx_primary_bit_read_out
+  inst COMPOSITE_READ_BOOLEAN simpleif_tx_bit5_read (channel=6) : composite="Simple IF TX" -> out=simpleif_tx_bit5_read_out
+  inst COMPOSITE_READ_BOOLEAN simpleif_tx_bit6_read (channel=7) : composite="Simple IF TX" -> out=simpleif_tx_bit6_read_out
+  inst COMPOSITE_READ_BOOLEAN simpleif_tx_bit7_read (channel=8) : composite="Simple IF TX" -> out=simpleif_tx_bit7_read_out
+  inst COMPOSITE_READ_BOOLEAN simpleif_tx_bit8_read (channel=9) : composite="Simple IF TX" -> out=simpleif_tx_bit8_read_out
+
+  # --- Simple IF TX: encode and read command/override values ---
+  inst COMPOSITE_WRITE_BOOLEAN simpleif_input_mode_write (count=1, offset=17) : in1=local_mode_timer_out, inc="NITS Extension Input" -> out=simpleif_input_mode_write_out
   inst LUA simpleif_tx_encoder_lua (script_ref="scripts/n458.lua") : composite=simpleif_input_mode_write_out -> composite=simpleif_tx_encoder_lua_composite
+  inst COMPOSITE_READ_BOOLEAN simpleif_cmd_ready_read (channel=14) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_ready_read_out
+  inst COMPOSITE_READ_NUMBER simpleif_cmd_value_back_read (channel=6) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_value_back_read_out
+  inst COMPOSITE_READ_NUMBER simpleif_cmd_value_front_read (channel=7) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_value_front_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_input_interrupt_req (channel=13) : composite=simpleif_tx_encoder_lua_composite -> out=ext_input_interrupt_req_out
+  inst COMPOSITE_READ_BOOLEAN ext_input_override_req (channel=15) : composite=simpleif_tx_encoder_lua_composite -> out=ext_input_override_req_out
 
-  # ================================================================
-  # 拡張出力デコード (ext_output_decoder_lua): ローカルモード時はバスを遮断し、N1-N8瞬時値/N9-N16ラッチ値を"NITS Extension Output"へ
-  # ================================================================
-  inst COMPOSITE_SWITCHBOX nits_rx_gate_switch : a="from NITS", switch=local_mode_timer_out -> out=nits_rx_gate_switch_out
+  # --- TX command flags (interrupt / override) ---
+  inst OR simpleif_push_flag : a=simpleif_cmd_ready_read_out -> out=simpleif_push_flag_out
+  inst OR tx_interrupt_flag : a=ext_input_interrupt_req_out -> out=tx_interrupt_flag_out
+  inst OR tx_override_flag : a=ext_input_override_req_out -> out=tx_override_flag_out
+  inst COMPOSITE_WRITE_NUMBER tx_override_number_write (count=3, offset=6) : in1=simpleif_cmd_value_back_read_out, in2=simpleif_cmd_value_front_read_out, in3=rx_total_car_count_read_out, inc="Simple IF TX" -> out=tx_override_number_write_out
+
+  # --- Simple IF RX: pass status back ---
+  inst OR simpleif_rx_status_bit : a=nits_rx_raw_passthrough_bit_out, b=rx_decoded_op1_read_out -> out=simpleif_rx_status_bit_out
+  inst COMPOSITE_WRITE_BOOLEAN simpleif_rx_bus_write (count=1, offset=1) : in1=simpleif_rx_status_bit_out, inc=nits_rx_decoder_lua_composite -> out="Simple IF RX"
+
+  # --- Extension Output: decode from gated NITS RX ---
   inst LUA ext_output_decoder_lua (script_ref="scripts/n848.lua") : composite=nits_rx_gate_switch_out -> composite=ext_output_decoder_lua_composite
-  inst COMPOSITE_READ_NUMBER ext_out_n1_value_read (channel=null) : composite=ext_output_decoder_lua_composite -> out=ext_out_n1_value_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_out_n1_flag_read (channel=null) : composite=ext_output_decoder_lua_composite -> out=ext_out_n1_flag_read_out
-  inst COMPOSITE_READ_NUMBER ext_out_n2_value_read (channel=1) : composite=ext_output_decoder_lua_composite -> out=ext_out_n2_value_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_out_n2_flag_read (channel=1) : composite=ext_output_decoder_lua_composite -> out=ext_out_n2_flag_read_out
-  inst COMPOSITE_READ_NUMBER ext_out_n3_value_read (channel=2) : composite=ext_output_decoder_lua_composite -> out=ext_out_n3_value_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_out_n3_flag_read (channel=2) : composite=ext_output_decoder_lua_composite -> out=ext_out_n3_flag_read_out
-  inst COMPOSITE_READ_NUMBER ext_out_n4_value_read (channel=3) : composite=ext_output_decoder_lua_composite -> out=ext_out_n4_value_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_out_n4_flag_read (channel=3) : composite=ext_output_decoder_lua_composite -> out=ext_out_n4_flag_read_out
-  inst COMPOSITE_READ_NUMBER ext_out_n5_value_read (channel=4) : composite=ext_output_decoder_lua_composite -> out=ext_out_n5_value_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_out_n5_flag_read (channel=4) : composite=ext_output_decoder_lua_composite -> out=ext_out_n5_flag_read_out
-  inst COMPOSITE_READ_NUMBER ext_out_n6_value_read (channel=5) : composite=ext_output_decoder_lua_composite -> out=ext_out_n6_value_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_out_n6_flag_read (channel=5) : composite=ext_output_decoder_lua_composite -> out=ext_out_n6_flag_read_out
-  inst COMPOSITE_READ_NUMBER ext_out_n7_value_read (channel=6) : composite=ext_output_decoder_lua_composite -> out=ext_out_n7_value_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_out_n7_flag_read (channel=6) : composite=ext_output_decoder_lua_composite -> out=ext_out_n7_flag_read_out
-  inst COMPOSITE_READ_NUMBER ext_out_n8_value_read (channel=7) : composite=ext_output_decoder_lua_composite -> out=ext_out_n8_value_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_out_n8_flag_read (channel=7) : composite=ext_output_decoder_lua_composite -> out=ext_out_n8_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n1_value_read (channel=1) : composite=ext_output_decoder_lua_composite -> out=ext_out_n1_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n1_flag_read (channel=1) : composite=ext_output_decoder_lua_composite -> out=ext_out_n1_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n2_value_read (channel=2) : composite=ext_output_decoder_lua_composite -> out=ext_out_n2_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n2_flag_read (channel=2) : composite=ext_output_decoder_lua_composite -> out=ext_out_n2_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n3_value_read (channel=3) : composite=ext_output_decoder_lua_composite -> out=ext_out_n3_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n3_flag_read (channel=3) : composite=ext_output_decoder_lua_composite -> out=ext_out_n3_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n4_value_read (channel=4) : composite=ext_output_decoder_lua_composite -> out=ext_out_n4_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n4_flag_read (channel=4) : composite=ext_output_decoder_lua_composite -> out=ext_out_n4_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n5_value_read (channel=5) : composite=ext_output_decoder_lua_composite -> out=ext_out_n5_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n5_flag_read (channel=5) : composite=ext_output_decoder_lua_composite -> out=ext_out_n5_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n6_value_read (channel=6) : composite=ext_output_decoder_lua_composite -> out=ext_out_n6_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n6_flag_read (channel=6) : composite=ext_output_decoder_lua_composite -> out=ext_out_n6_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n7_value_read (channel=7) : composite=ext_output_decoder_lua_composite -> out=ext_out_n7_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n7_flag_read (channel=7) : composite=ext_output_decoder_lua_composite -> out=ext_out_n7_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n8_value_read (channel=8) : composite=ext_output_decoder_lua_composite -> out=ext_out_n8_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n8_flag_read (channel=8) : composite=ext_output_decoder_lua_composite -> out=ext_out_n8_flag_read_out
+
+  # --- Extension Output: N9-N16 memory registers (latched on address match) ---
   inst MEMORY_REGISTER ext_out_n9_memory (reset_value=0) : reset=rx_addr_not_mine_read_out, set=ext_out_n1_flag_read_out, value=ext_out_n1_value_read_out -> out=ext_out_n9_memory_out
   inst MEMORY_REGISTER ext_out_n10_memory (reset_value=0) : reset=rx_addr_not_mine_read_out, set=ext_out_n2_flag_read_out, value=ext_out_n2_value_read_out -> out=ext_out_n10_memory_out
   inst MEMORY_REGISTER ext_out_n11_memory (reset_value=0) : reset=rx_addr_not_mine_read_out, set=ext_out_n3_flag_read_out, value=ext_out_n3_value_read_out -> out=ext_out_n11_memory_out
@@ -88,19 +98,7 @@ module main
   inst MEMORY_REGISTER ext_out_n14_memory (reset_value=0) : reset=rx_addr_not_mine_read_out, set=ext_out_n6_flag_read_out, value=ext_out_n6_value_read_out -> out=ext_out_n14_memory_out
   inst MEMORY_REGISTER ext_out_n15_memory (reset_value=0) : reset=rx_addr_not_mine_read_out, set=ext_out_n7_flag_read_out, value=ext_out_n7_value_read_out -> out=ext_out_n15_memory_out
   inst MEMORY_REGISTER ext_out_n16_memory (reset_value=0) : reset=rx_addr_not_mine_read_out, set=ext_out_n8_flag_read_out, value=ext_out_n8_value_read_out -> out=ext_out_n16_memory_out
-  inst COMPOSITE_WRITE_NUMBER ext_output_bus_write (count=8, offset=8) : in1=ext_out_n9_memory_out, in2=ext_out_n10_memory_out, in3=ext_out_n11_memory_out, in4=ext_out_n12_memory_out, in5=ext_out_n13_memory_out, in6=ext_out_n14_memory_out, in7=ext_out_n15_memory_out, in8=ext_out_n16_memory_out, inc=ext_output_decoder_lua_composite -> out="NITS Extension Output"
 
-  # ================================================================
-  # プロパティ設定 (Lua内でproperty.get*により参照、配線なし)
-  # ================================================================
-  inst PROPERTY_TEXT nits_ext_id_property (name="NITS Ext. ID", v=0) : ->
-  inst PROPERTY_DROPDOWN n1_n9_mode (name="N1/N9 Mode") : -> out=n1_n9_mode_out
-  inst PROPERTY_DROPDOWN n2_n10_mode (name="N2/N10 Mode") : -> out=n2_n10_mode_out
-  inst PROPERTY_DROPDOWN n3_n11_mode (name="N3/N11 Mode") : -> out=n3_n11_mode_out
-  inst PROPERTY_DROPDOWN n4_n12_mode (name="N4/N12 Mode") : -> out=n4_n12_mode_out
-  inst PROPERTY_DROPDOWN n5_n13_mode (name="N5/N13 Mode") : -> out=n5_n13_mode_out
-  inst PROPERTY_DROPDOWN n6_n14_mode (name="N6/N14 Mode") : -> out=n6_n14_mode_out
-  inst PROPERTY_DROPDOWN n7_n15_mode (name="N7/N15 Mode") : -> out=n7_n15_mode_out
-  inst PROPERTY_DROPDOWN n8_n16_mode (name="N8/N16 Mode") : -> out=n8_n16_mode_out
-
+  # --- Extension Output: write to bus port ---
+  inst COMPOSITE_WRITE_NUMBER ext_output_bus_write (count=8, offset=9) : in1=ext_out_n9_memory_out, in2=ext_out_n10_memory_out, in3=ext_out_n11_memory_out, in4=ext_out_n12_memory_out, in5=ext_out_n13_memory_out, in6=ext_out_n14_memory_out, in7=ext_out_n15_memory_out, in8=ext_out_n16_memory_out, inc=ext_output_decoder_lua_composite -> out="NITS Extension Output"
 end

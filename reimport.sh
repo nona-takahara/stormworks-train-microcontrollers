@@ -7,12 +7,13 @@ set -e
 cd "$(dirname "$0")"
 
 declare -A TARGETS=(
-  #["CHUSO2000_Cab_Controller_IV.xml"]="CHUSO2000_Cab_Controller_V"
+  ["CHUSO2000_Cab_Controller_IV.xml"]="CHUSO2000_Cab_Controller_V"
   ["CHUSO2000_Cab_Display_IV.xml"]="CHUSO2000_Cab_Display_IV"
   ["CHUSO2000_Driver_Assistance_IV.xml"]="CHUSO2000_Driver_Assistance_IV"
   ["CHUSO_2000_Traction_Controller.xml"]="CHUSO2000_Traction_Controller"
   ["CHUSO_2000_Door_Min.xml"]="CHUSO2000_Door_Min"
   ["CHUSO_2000_Onecar_Control.xml"]="CHUSO2000_Onecar_Control"
+  ["NITS_Simple_Bridge.xml"]="NITS_Simple_Bridge"
 )
 
 for xml in "${!TARGETS[@]}"; do

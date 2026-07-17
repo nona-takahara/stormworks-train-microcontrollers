@@ -1,0 +1,1846 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor name="CHUSO Series 2000 Cab Display" description="v0.5.0" width="2" length="3" id_counter="621" id_counter_node="55">
+	<nodes>
+		<n id="1" component_id="3">
+			<node label="Main Monitor" type="6" description="The input signal to be processed.">
+				<position x="1" z="2"/>
+			</node>
+		</n>
+		<n id="14" component_id="114">
+			<node label="Monitor Status" mode="1" type="5" description="The input signal to be processed.">
+				<position x="1" z="1"/>
+			</node>
+		</n>
+		<n id="18" component_id="126">
+			<node label="Loop Start, ATS/C Settings" type="5" description="The input signal to be processed."/>
+		</n>
+		<n id="28" component_id="269">
+			<node label="ATS/ATC" mode="1" type="5" description="The input signal to be processed.">
+				<position z="1"/>
+			</node>
+		</n>
+		<n id="34" component_id="308">
+			<node label="ARC" type="1" description="The input signal to be processed."/>
+		</n>
+		<n id="41" component_id="379">
+			<node label="ATP Switch" type="6" description="The input signal to be processed.">
+				<position x="1"/>
+			</node>
+		</n>
+		<n id="43" component_id="406">
+			<node label="Electricity Display" type="6" description="The input signal to be processed.">
+				<position x="1" z="1"/>
+			</node>
+		</n>
+		<n id="44" component_id="539">
+			<node label="Rolling Stock Status" mode="1" type="5" description="The input signal to be processed.">
+				<position z="2"/>
+			</node>
+		</n>
+		<n id="53" component_id="596">
+			<node label="ATP Monitor Touch Composite" mode="1" type="5" description="The input signal to be processed.">
+				<position x="1"/>
+			</node>
+		</n>
+		<n id="55" component_id="617">
+			<node label="ATC Train Length" type="1" description="The input signal to be processed.">
+				<position z="1"/>
+			</node>
+		</n>
+	</nodes>
+	<group>
+		<data type="-1104064832">
+			<inputs/>
+			<outputs/>
+		</data>
+		<components>
+			<c type="56">
+				<object id="4" script="function R(x,y,w,h)S.drawRectF(x,y,w,h)end
+function V(x,y,h)R(x,y,1,h)end
+function H(x,y,w)R(x,y,w,1)end
+function onDraw()S=screen C=S.setColor C(5,5,5)R(0,0,96,2)R(0,0,6,3)V(8,0,3)R(11,0,85,3)R(0,0,4,4)V(5,0,4)R(12,0,84,4)R(0,0,3,6)H(0,5,4)R(14,0,82,6)R(15,0,25,7)V(42,0,7)R(45,0,51,7)H(0,8,3)R(15,0,23,9)R(47,0,49,9)R(15,0,21,11)R(49,0,47,11)H(13,13,23)H(49,13,47)R(0,15,35,3)R(0,16,36,2)R(0,14,6,5)V(8,15,4)R(11,14,24,5)H(11,18,27)R(0,12,4,8)V(5,14,6)V(11,14,6)R(13,13,22,7)H(13,19,25)R(0,11,3,11)H(0,21,4)H(13,21,83)H(0,24,3)R(14,11,21,14)R(14,20,26,5)R(14,22,82,3)H(0,27,4)H(13,27,83)R(0,0,2,32)R(0,27,3,5)R(0,29,4,3)V(5,29,3)R(0,30,6,2)V(11,29,3)R(15,0,20,32)V(35,16,16)R(36,18,2,14)R(38,20,2,12)R(50,0,46,32)R(49,16,47,16)R(47,18,49,14)R(45,20,51,12)R(40,21,56,11)R(14,27,82,5)R(13,29,83,3)R(11,30,85,2)H(0,31,96)C(32,32,32)H(6,1,5)H(4,2,2)V(8,1,2)H(11,2,2)V(3,3,1)V(5,2,2)V(12,2,2)H(12,3,2)V(2,4,2)H(2,5,2)V(14,4,2)R(40,1,5,5)R(37,2,11,4)R(35,3,15,3)R(34,4,17,2)H(33,5,19)R(37,2,3,5)R(35,3,5,4)R(34,4,6,3)R(33,5,7,2)H(32,6,8)V(42,1,6)R(45,2,3,5)H(45,6,8)H(1,8,2)V(37,2,7)R(35,3,3,6)R(34,4,4,5)R(33,5,5,4)R(32,6,6,3)H(31,8,7)V(47,2,7)R(48,3,2,6)R(47,7,6,2)H(47,8,7)R(7,7,3,3)V(1,6,5)V(15,6,5)V(35,3,8)R(34,4,2,7)R(33,5,3,6)R(32,6,4,5)R(31,8,5,3)V(49,3,8)R(49,9,5,2)V(2,11,2)H(2,12,2)V(14,11,2)V(3,12,2)V(13,13,1)H(30,13,6)H(49,13,6)H(4,14,2)H(11,14,2)R(41,12,3,3)H(6,15,5)R(30,11,5,5)R(50,11,5,5)H(6,17,5)H(4,18,2)V(8,17,2)H(11,18,2)R(31,8,4,11)R(31,16,5,3)H(31,18,7)R(50,11,4,8)R(49,16,5,3)H(47,18,7)V(3,19,1)V(5,18,2)V(11,18,2)V(13,19,1)R(32,6,3,15)R(32,19,6,2)H(32,20,8)R(50,11,3,10)R(49,16,4,5)R(47,18,6,3)H(45,20,8)V(2,20,2)H(2,21,2)H(13,21,2)R(33,5,2,17)R(50,11,2,11)R(49,16,3,6)R(47,18,5,4)R(45,20,7,2)H(33,21,19)V(34,4,19)V(50,4,19)R(49,16,2,7)R(47,18,4,5)R(45,20,6,3)R(40,21,11,2)V(35,16,8)R(36,18,2,6)V(49,16,8)R(47,18,3,6)R(45,20,5,4)R(40,21,10,3)H(1,24,2)V(14,20,5)R(14,22,2,3)V(37,18,7)R(38,20,2,5)V(47,18,7)R(45,20,3,5)R(40,21,8,4)R(7,23,3,3)V(39,20,6)V(45,20,6)R(40,21,6,5)V(1,22,5)V(15,22,5)H(2,27,2)H(13,27,2)V(2,27,2)V(14,27,2)V(3,29,1)V(13,29,1)V(5,29,2)H(4,30,2)V(11,29,2)H(11,30,2)H(6,31,5)C(0,0,0)R(40,1,5,4)R(37,2,11,3)R(35,3,15,2)H(34,4,17)R(37,2,3,4)R(35,3,5,3)R(34,4,6,2)H(33,5,7)R(45,2,3,4)H(45,5,7)V(37,2,5)R(35,3,3,4)R(34,4,4,3)R(33,5,5,2)H(32,6,6)V(39,2,5)V(45,2,5)V(47,2,5)H(47,6,6)R(35,3,2,5)R(34,4,3,4)R(33,5,4,3)R(32,6,5,2)R(48,3,2,5)H(48,7,5)V(35,3,6)R(34,4,2,5)R(33,5,3,4)R(32,6,4,3)H(31,8,5)V(49,3,6)H(49,8,5)V(34,4,7)R(33,5,2,6)R(32,6,3,5)R(31,8,4,3)H(31,10,5)V(50,4,7)R(50,9,4,2)H(49,10,5)R(30,11,4,5)R(51,11,4,5)H(31,16,5)H(49,16,5)R(31,8,3,11)R(31,16,4,3)H(31,18,5)V(53,8,11)R(51,11,3,8)R(50,16,4,3)H(49,18,5)R(32,6,2,15)R(32,19,5,2)H(32,20,6)V(52,6,15)R(51,11,2,10)R(50,16,3,5)R(49,18,4,3)R(48,19,5,2)H(47,20,6)V(33,5,17)H(33,21,7)V(51,5,17)R(50,16,2,6)R(49,18,3,4)R(48,19,4,3)R(47,20,5,2)H(45,21,7)V(34,16,7)V(50,16,7)R(49,18,2,5)R(48,19,3,4)R(47,20,4,3)R(45,21,6,2)H(34,22,17)V(35,18,6)V(36,19,5)V(49,18,6)R(48,19,2,5)R(47,20,3,4)R(45,21,5,3)R(40,22,10,2)H(35,23,15)V(37,20,5)R(38,21,2,4)V(47,20,5)R(45,21,3,4)R(40,22,8,3)V(39,21,5)V(45,21,5)R(40,22,6,4)R(18,2,11,29)R(40,28,5,3)R(56,2,11,29)C(10,10,10)V(8,2,1)V(5,3,1)V(3,5,1)V(39,6,1)V(42,6,1)V(45,6,1)V(2,8,1)H(7,8,3)V(37,8,1)V(47,8,1)V(8,7,3)V(35,10,1)V(49,10,1)V(3,12,1)V(35,13,1)H(41,13,3)V(49,13,1)V(42,12,3)V(35,16,1)V(49,16,1)V(8,18,1)V(37,18,1)V(47,18,1)V(5,19,1)V(11,19,1)V(3,21,1)V(13,21,1)V(2,24,1)H(7,24,3)V(14,22,3)V(8,23,3)V(3,27,1)V(13,27,1)V(5,29,1)V(11,29,1)C(255,0,0)V(12,3,1)V(14,22,2)
+end">
+					<pos x="-2.25" y="5"/>
+					<in2 component_id="81" node_index="1"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="81" script='spda=0
+spd=0
+spdt=0
+
+brka=0
+brk=0
+
+bc=0
+
+mr=0
+function onTick()
+spdt=math.abs(input.getNumber(4))
+spda=(spda*0.78)+((spdt-spd)*0.034)
+spd=spd+spda
+
+brkt=input.getNumber(1)
+if input.getBool(1) then brkt=32 end
+if brkt&lt;=0 then
+	brkt=1.25
+elseif brkt&gt;=32 then
+	brkt=0.25
+else
+	brkt=1.25-(brkt/32)
+end
+brka=(brka*0.78)+((brkt-brk)*0.034)
+brk=brk+brka
+
+bc=input.getNumber(5)/98
+mr=input.getNumber(6)-1
+end
+
+function onDraw()S=screen C=S.setColor
+C(0,0,0,64)S.drawText(38-((spdt*3.6)//100)*3,16,("%2d"):format((spdt*3.6)//1))
+
+C(255,0,0)
+needle(8,24,((8-mr)/6)*math.pi,5)
+C(0,0,0)
+needle(42,13,(100-spd*3.6)/80*math.pi,6)
+needle(8,8,brk*math.pi,5)
+needle(8,24,((8-bc)/6)*math.pi,5)
+end
+
+function needle(x,y,a,l)
+S.drawLine(x,y,x+l*math.cos(a),y-l*math.sin(a))
+end
+'>
+					<pos x="-3.5" y="5"/>
+					<in1 component_id="551"/>
+					<in2 component_id="347" node_index="1"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="129" count="6">
+					<pos x="1.5" y="1"/>
+					<inc component_id="497"/>
+					<in1 component_id="609"/>
+					<in2 component_id="131"/>
+					<in3 component_id="568"/>
+					<in4 component_id="569"/>
+					<in5 component_id="407"/>
+					<in6 component_id="411"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="131">
+					<pos x="-1" y="2"/>
+					<in1 component_id="614"/>
+					<in2 component_id="613"/>
+					<in3 component_id="132"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="132" i="1">
+					<pos x="-2.25" y="2"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="334" script="ATC=false
+ATS=false
+idc=0
+
+Cross=false
+Notice=false
+Patt=false
+Rsig=false
+Gsig=false
+
+ticker=0
+
+function onTick()
+if Notice or Patt then ticker=(ticker+1)%60 else ticker=0 end
+
+idc=input.getNumber(1)
+
+ATC=input.getBool(1)
+Rsig=input.getBool(2)
+Gsig=input.getBool(3)
+Cross=input.getBool(4)
+Patt=input.getBool(5)
+Notice=input.getBool(6)
+ATS=input.getBool(10)
+end
+
+function onDraw()S=screen C=S.setColor R=S.drawRectF
+C(255,0,0)
+if Rsig then R(39,2,2,2)end
+if Cross then P(41,23)P(41,25)P(42,24)P(43,23)P(43,25)end
+
+C(0,96,0)
+if idc&lt;0 then --none
+elseif idc&lt;5 then P(36,19) --0
+elseif idc&lt;10 then P(35,18) --5
+elseif idc&lt;15 then P(34,16) --10
+elseif idc&lt;20 then P(33,15) --15
+elseif idc&lt;25 then P(33,13) --20
+elseif idc&lt;30 then P(33,11) --25
+elseif idc&lt;35 then P(34,10) --30
+elseif idc&lt;40 then P(35,8) --35
+elseif idc&lt;45 then P(36,7) --40
+elseif idc&lt;50 then P(37,6) --45
+elseif idc&lt;55 then P(39,5) --50
+elseif idc&lt;60 then P(40,4) --55
+elseif idc&lt;65 then P(42,4) --60
+elseif idc&lt;70 then P(44,4) --65
+elseif idc&lt;75 then P(45,5) --70
+elseif idc&lt;80 then P(47,6) --75
+elseif idc&lt;85 then P(48,7) --80
+elseif idc&lt;90 then P(49,8) --85
+elseif idc&lt;95 then P(50,10) --90
+elseif idc&lt;100 then P(51,11) --90
+elseif idc&lt;110 then P(51,13) --100
+else P(50,16) end--110
+
+if Patt and ticker&lt;=30 then R(37,21,1,4)P(38,21)P(39,22)P(38,23)end
+if Notice and ticker&lt;=30 then R(45,22,4,2)end
+
+C(0,160,0)
+if Gsig then R(44,2,2,2)end
+if ATS then R(56,3,1,4)R(57,2,2,1)R(59,3,1,4)R(57,4,2,1) R(60,2,3,1)R(61,3,1,4) P(63,3)R(64,2,3,1)R(64,4,2,1)P(66,5)R(63,6,3,1)end
+if ATC then R(18,3,1,4)R(19,2,2,1)R(21,3,1,4)R(19,4,2,1) R(22,2,3,1)R(23,3,1,4) R(25,3,1,3)R(26,2,3,1)R(26,6,3,1)end
+end
+
+function P(x,y)R(x,y,1,1)end">
+					<pos x="-1" y="5"/>
+					<in1 component_id="269"/>
+					<in2 component_id="4" node_index="1"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="347" script="function onDraw()
+screen.setColor(160,160,160)screen.drawClear()
+end">
+					<pos x="-4.75" y="5"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="349" script="function onTick()
+B=input.getNumber(1)&gt;0
+PP=input.getNumber(2)
+
+EB=input.getBool(1)
+NITS=input.getBool(2)
+Ctrl=input.getBool(3)
+DCls=not (input.getBool(4) or input.getBool(5))
+PBPres=input.getBool(6)
+NextStop=input.getBool(7)
+TASC=input.getBool(8)
+end
+
+function onDraw()S=screen C=S.setColor R=S.drawRectF
+C(255,0,0)
+if EB then R(19,14,1,4)P(18,15)R(18,17,1,2)R(21,14,1,5)P(22,15)P(22,17) R(24,15,5,1)P(25,14)P(27,14)P(24,16)P(28,16)R(25,17,3,1)P(24,18)P(26,18)P(28,18)end
+
+C(255,50,0)
+if B then R(18,9,5,1)P(19,8)P(21,8)P(18,10)P(22,10)R(19,11,3,1)P(18,12)P(20,12)P(22,12) R(25,8,2,2)P(25,10)P(27,8)P(27,10)R(24,11,1,2)R(26,11,1,2)R(28,8,1,5)end
+if ConstB then R(57,14,1,5)P(56,15)P(56,17)R(58,15,1,2)P(59,14)R(60,15,1,3)R(59,17,1,2) P(62,14)R(62,16,1,2)R(63,18,4,1)P(64,17)P(66,17)P(65,16)P(64,15)P(66,15)R(64,14,3,1)
+end
+if PBPres then R(59,15,2,4)P(58,14)P(60,14)P(58,16)R(56,15,1,3)P(57,15)P(57,17)R(62,15,1,4)R(63,14,4,1)R(65,15,1,4)R(64,16,3,1)R(63,18,4,1)end
+if NextStop then R(57,20,1,2)R(59,20,1,2)P(56,22)R(58,21,1,3)R(60,21,1,3)R(57,23,1,2)R(59,23,1,2)P(62,21)P(62,23)P(64,20)P(66,21)P(66,23)P(64,24)R(63,21,3,3)end
+
+C(0,160,0)
+if DCls then R(56,8,5,1)R(57,8,1,4)R(57,10,4,1)R(60,8,1,3)P(56,12) R(62,8,1,5)R(63,8,1,2)R(65,8,1,2)R(66,8,1,5)P(64,10)P(65,11)P(64,12)end
+if (not EB) and PP and PP&gt;0 then
+R(18,21,4,1)R(19,20,1,3)R(18,23,1,2)R(21,21,1,4)R(21,22,4,1)R(24,22,1,3)P(23,24)P(20,24)P(22,20)P(24,20)
+dgt3(26,20,PP)
+end
+if DCls and Ctrl then R(40,28,5,3)end
+if NITS then
+R(56,26,1,5)P(57,26)R(58,27,1,4)R(60,26,1,5)R(62,26,3,1)R(63,26,1,5)P(66,26)P(65,27)P(66,28)P(66,29)P(65,30)
+end
+if TASC then
+R(19,26,1,5)R(18,26,3,1)R(21,27,1,4)P(22,26)P(22,28)R(23,27,1,4)P(25,26)P(24,27)P(25,28)P(25,29)P(24,30)P(28,26)R(27,27,1,3)P(28,30)
+end
+end
+
+function P(x,y)R(x,y,1,1)end
+
+function dgt3(x,y,n)
+if n==0 or 4&lt;=n and n~=7 then R(x,y,1,3) end
+if n%2==0 and n~=4 then R(x,y+2,1,3) end
+if n~=1 and n~=4 then R(x,y,3,1) end
+if 2&lt;=n and n~=7 then R(x,y+2,3,1) end
+if n~=1 and n~=4 and n~=7 then R(x,y+4,3,1) end
+if n~=5 and n~=6 then R(x+2,y,1,3) end
+if n~=2 then R(x+2,y+2,1,3) end
+end">
+					<pos x="0.25" y="5"/>
+					<in1 component_id="552"/>
+					<in2 component_id="334" node_index="1"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="385">
+					<pos x="-2.25" y="0.25"/>
+					<in1 component_id="389"/>
+					<in2 component_id="599"/>
+					<in3 component_id="597"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="386">
+					<pos x="-7.25" y="0.25"/>
+					<in1 component_id="596"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="387" m="0">
+					<pos x="-6" y="0.25"/>
+					<in1 component_id="386"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="388">
+					<pos x="-4.75"/>
+					<in1 component_id="387"/>
+					<in2 component_id="567"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="389">
+					<pos x="-3.5" y="1.25"/>
+					<n text="1" value="1"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="390" script="function R(x,y,w,h)S.drawRectF(x,y,w,h)end
+function V(x,y,h)R(x,y,1,h)end
+function H(x,y,w)R(x,y,w,1)end
+I=0
+function onTick()I=input.getNumber(1)end
+function onDraw()S=screen C=S.setColor
+C(16,16,16)R(0,0,32,32)C(48,48,48)R(2,12,27,9)R(3,10,25,13)R(4,8,23,17)R(5,7,21,19)R(6,6,19,21)R(7,5,17,23)R(8,4,15,25)R(10,3,11,27)R(12,2,7,29)C(64,64,64)R(10,3,11,6)R(8,4,15,5)R(7,5,17,4)R(6,6,19,3)R(5,7,21,2)H(4,8,23)R(5,7,15,9)R(4,8,16,8)R(3,10,25,6)R(2,12,27,4)R(2,12,3,8)V(28,12,8)R(6,16,23,4)R(2,17,27,3)R(3,10,2,12)R(20,10,8,12)R(6,16,22,6)R(5,17,23,5)R(20,10,7,13)R(6,16,21,7)R(5,17,22,6)H(4,22,23)V(4,8,16)R(4,22,16,2)V(26,8,16)R(21,9,6,15)R(5,17,15,8)V(25,7,18)R(21,9,5,16)H(5,24,21)R(6,6,14,20)V(24,6,20)R(21,9,4,17)R(20,24,5,2)R(7,5,13,22)V(23,5,22)R(21,9,3,18)R(20,24,4,3)V(1,26,2)R(8,4,12,24)R(21,4,2,24)R(20,24,3,4)V(29,26,2)H(2,28,4)R(10,3,10,26)V(20,24,5)H(25,28,4)R(3,27,2,3)R(12,2,7,28)R(26,27,2,3)V(3,26,5)V(27,26,5)C(0,0,0)V(6,8,1)H(8,8,3)H(12,8,2)V(18,8,1)H(20,8,3)H(24,8,2)V(11,9,1)H(5,10,3)V(13,10,1)H(17,10,3)V(23,9,2)V(5,9,3)V(7,9,3)V(9,8,4)H(11,11,2)V(17,9,3)V(19,9,3)V(21,8,4)H(24,11,2)
+
+if I==1then C(32,32,32)R(12,15,6,3)R(12,16,7,2)H(12,17,8)R(13,14,4,5)H(13,18,7)R(14,13,2,7)H(14,19,7)V(15,13,8)H(15,20,7)V(16,14,8)H(16,21,7)V(17,15,8)H(17,22,7)V(18,16,8)H(18,23,7)V(19,17,8)H(19,24,7)V(20,19,7)H(20,25,7)V(21,20,7)H(21,26,6)V(22,21,7)C(19,19,19)H(22,27,5)V(23,22,7)V(26,25,4)R(23,26,4,3)V(24,23,7)V(25,24,6)C(0,33,26)R(12,15,6,2)H(12,16,7)R(13,14,4,4)H(13,17,7)R(14,13,2,6)H(14,18,6)V(15,13,7)H(15,19,6)V(16,14,7)V(17,15,6)H(16,20,6)V(18,16,6)H(18,21,5)V(19,17,6)H(19,22,5)V(20,19,5)H(20,23,5)V(21,20,5)H(21,24,5)V(22,21,5)H(22,25,5)V(23,22,5)V(26,25,2)H(23,26,4)V(24,23,5)V(25,24,4)C(64,64,64)H(14,15,3)R(14,15,2,2)V(14,15,3)V(16,17,1)V(17,18,1)V(18,19,1)end
+if I==2then C(32,32,32)R(14,15,6,3)R(13,16,7,2)H(12,17,8)R(15,14,4,5)R(14,15,5,4)R(13,16,6,3)R(12,17,7,2)R(16,13,2,7)R(15,14,3,6)R(14,15,4,5)R(13,16,5,4)R(12,17,6,3)H(11,19,7)V(16,13,8)R(15,14,2,7)R(14,15,3,6)R(13,16,4,5)R(12,17,5,4)R(11,19,6,2)H(10,20,7)V(15,14,8)R(14,15,2,7)R(13,16,3,6)R(12,17,4,5)R(11,19,5,3)R(10,20,6,2)H(9,21,7)V(14,15,8)R(13,16,2,7)R(12,17,3,6)R(11,19,4,4)R(10,20,5,3)R(9,21,6,2)H(8,22,7)V(13,16,8)R(12,17,2,7)R(11,19,3,5)R(10,20,4,4)R(9,21,5,3)R(8,22,6,2)H(7,23,7)V(12,17,8)R(11,19,2,6)R(10,20,3,5)R(9,21,4,4)R(8,22,5,3)R(7,23,6,2)H(6,24,7)V(11,19,7)R(10,20,2,6)R(9,21,3,5)R(8,22,4,4)R(7,23,5,3)R(6,24,6,2)H(5,25,7)V(10,20,7)R(9,21,2,6)R(8,22,3,5)R(7,23,4,4)R(6,24,5,3)R(5,25,6,2)V(9,21,7)R(8,22,2,6)R(7,23,3,5)R(6,24,4,4)R(5,25,5,3)C(19,19,19)H(5,27,5)V(8,22,7)R(7,23,2,6)R(6,24,3,5)R(5,25,4,4)V(7,23,7)R(6,24,2,6)C(0,33,26)R(14,15,6,2)H(13,16,7)R(15,14,4,4)R(14,15,5,3)R(13,16,6,2)H(12,17,7)R(16,13,2,6)R(15,14,3,5)R(14,15,4,4)R(13,16,5,3)R(12,17,6,2)V(16,13,7)R(15,14,2,6)R(14,15,3,5)R(13,16,4,4)R(12,17,5,3)H(11,19,6)V(15,14,7)R(14,15,2,6)R(13,16,3,5)R(12,17,4,4)R(11,19,5,2)H(10,20,6)V(13,16,6)R(12,17,2,5)R(11,19,3,3)R(10,20,4,2)H(9,21,5)V(12,17,6)R(11,19,2,4)R(10,20,3,3)R(9,21,4,2)H(8,22,5)V(11,19,5)R(10,20,2,4)R(9,21,3,3)R(8,22,4,2)H(7,23,5)V(10,20,5)R(9,21,2,4)R(8,22,3,3)R(7,23,4,2)H(6,24,5)V(9,21,5)R(8,22,2,4)R(7,23,3,3)R(6,24,4,2)H(5,25,5)V(8,22,5)R(7,23,2,4)R(6,24,3,3)R(5,25,4,2)V(7,23,5)R(6,24,2,4)C(64,64,64)H(15,15,3)R(16,15,2,2)V(15,17,1)V(17,15,3)V(14,18,1)V(13,19,1)end
+end">
+					<pos x="0.25" y="-0.5"/>
+					<in1 component_id="391"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="391" count="1">
+					<pos x="-1" y="-0.5"/>
+					<in1 component_id="385"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="407">
+					<pos x="0.25" y="0.5"/>
+					<in1 component_id="526"/>
+					<in3 component_id="573"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="411">
+					<pos x="1.5"/>
+					<in1 component_id="598"/>
+					<in3 component_id="567"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="415" script="function R(x,y,w,h)S.drawRectF(x+70,y+3,w,h)end
+function V(x,y,h)R(x,y,1,h)end
+function H(x,y,w)R(x,y,w,1)end
+I=0
+J=0
+K=0
+L=0
+function onTick()
+local i=(input.getNumber(2)//100)%100
+K=i//10
+L=(input.getNumber(2)//10000)%10
+J=input.getNumber(1)
+I=0
+if K==1 then I=4
+elseif K==2 then I=9
+elseif K==3 then I=5
+elseif K==4 then I=6
+elseif K==5 then I=7
+elseif K==7 then I=8
+elseif i==2 then I=1
+elseif i==1 then I=2
+elseif i==3 then I=3
+end
+
+end
+
+function onDraw()S=screen C=S.setColor
+if I==1then C(255,0,0)H(0,0,5)H(8,0,3)V(2,0,2)V(4,0,2)H(0,2,2)V(9,0,3)H(6,2,5)R(6,1,2,3)V(0,0,5)V(2,3,2)H(0,4,3)V(4,3,2)V(10,2,3)H(9,4,2)end
+if I==2then C(255,0,0)H(4,0,4)V(3,1,1)H(4,2,3)V(6,0,4)R(5,2,2,2)V(3,3,2)V(5,2,3)H(3,4,3)V(7,4,1)end
+if I==3then C(255,0,0)H(0,0,5)V(6,0,1)H(8,0,3)V(9,0,2)V(2,2,1)V(8,2,1)V(10,2,1)V(0,0,5)V(4,0,5)H(0,4,5)V(6,2,3)H(6,4,5)end
+if I==4then C(0,44,8)H(1,0,4)H(6,0,5)V(1,0,2)H(0,1,2)H(5,1,2)H(2,2,2)V(8,0,3)V(10,0,3)H(8,2,3)H(0,3,2)H(3,3,2)V(1,3,2)V(3,0,5)H(1,4,3)V(6,0,5)V(9,2,3)H(8,4,2)end
+if I==5then C(0,44,8)V(0,0,1)H(2,0,3)H(7,0,3)V(6,1,1)R(8,0,2,3)R(8,1,3,2)V(0,2,2)V(4,0,4)R(2,2,3,2)H(0,3,5)H(6,3,2)V(2,0,5)V(6,3,2)H(8,4,3)end
+if I==6then C(255,22,0)H(0,0,5)H(7,0,3)V(2,0,2)V(4,0,2)V(6,1,1)V(3,2,1)R(8,0,2,3)R(8,1,3,2)H(6,3,2)V(0,0,5)V(2,3,2)V(4,3,2)H(0,4,5)V(6,3,2)H(8,4,3)end
+if I==7then C(255,0,0)H(1,0,3)V(7,0,1)H(9,0,2)V(0,1,1)V(6,1,1)R(2,0,2,3)R(2,1,3,2)H(9,2,2)H(0,3,2)H(6,3,2)V(0,3,2)H(2,4,3)V(7,2,3)V(10,2,3)H(9,4,2)end
+if I==8then C(255,22,0)H(2,0,3)H(7,0,3)V(0,0,2)H(0,1,2)V(6,1,1)V(3,0,3)H(1,2,4)R(8,0,2,3)R(8,1,3,2)H(0,3,2)H(6,3,2)V(1,1,4)V(4,2,3)H(3,4,2)V(6,3,2)H(8,4,3)end
+if I==9then C(0,44,8)V(0,0,1)H(2,0,3)V(6,0,1)H(8,0,3)V(1,1,1)V(4,0,2)H(2,2,2)V(6,2,2)V(10,0,4)R(8,2,3,2)H(6,3,5)V(0,2,3)V(2,2,3)V(4,3,2)H(0,4,5)V(8,0,5)end
+if I==10then C(0,44,8)H(0,0,5)V(6,0,1)H(8,0,3)H(0,2,5)V(9,0,3)H(8,2,3)V(1,0,5)V(3,0,5)H(1,4,3)V(6,2,3)V(8,2,3)V(10,2,3)H(6,4,5)end
+if I==11then C(255,22,0)V(6,0,1)H(8,0,3)H(0,1,2)V(8,0,2)R(3,1,2,2)H(2,2,3)H(9,2,2)V(3,0,4)V(0,0,5)V(2,4,1)V(4,4,1)V(6,2,3)V(8,3,2)V(10,0,5)H(6,4,5)end
+if I==12then C(255,22,0)V(0,0,1)H(2,0,3)V(1,1,1)V(4,0,2)H(6,1,2)H(2,2,2)R(9,1,2,2)H(8,2,3)V(9,0,4)V(0,2,3)V(2,2,3)V(4,3,2)H(0,4,5)V(6,0,5)V(8,4,1)V(10,4,1)end
+if I==13then C(0,44,8)H(8,0,3)H(0,1,2)V(6,0,2)H(6,1,2)R(3,1,2,2)H(2,2,3)V(9,0,3)H(7,2,4)V(3,0,4)H(6,3,2)V(0,0,5)V(2,4,1)V(4,4,1)V(7,1,4)V(10,2,3)H(9,4,2)end
+
+C(255,50,0)
+if J~=0 then
+dgt3(16,0,(J//10)%10)
+dgt3(20,0,(J//1)%10)
+end
+
+if L==2 then C(0,160,0) else C(0,0,0) end V(22,8,1)
+if L==1 then C(0,160,0) else C(0,0,0) end V(6,8,1)
+end
+
+function dgt3(x,y,n)
+if n==0 or 4&lt;=n and n~=7 then R(x,y,1,3) end
+if n%2==0 and n~=4 then R(x,y+2,1,3) end
+if n~=1 and n~=4 then R(x,y,3,1) end
+if 2&lt;=n and n~=7 then R(x,y+2,3,1) end
+if n~=1 and n~=4 and n~=7 then R(x,y+4,3,1) end
+if n~=5 and n~=6 then R(x+2,y,1,3) end
+if n~=2 then R(x+2,y+2,1,3) end
+end">
+					<pos x="2.75" y="6.25"/>
+					<in1 component_id="114"/>
+					<in2 component_id="419" node_index="1"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="417" script="function onDraw()S=screen C=S.setColor R=S.drawRectF
+C(0,0,5)R(69,2,25,29)
+end">
+					<pos x="1.5" y="4.25"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="419" script='bound = false--property.getBool("Cab bound")
+info0 = 0
+info1 = 0
+info2 = 0
+carcnt = 1
+
+function onTick()
+    info0 = unpk(input.getNumber(27))
+    info1 = unpk(input.getNumber(28))
+    info2 = unpk(input.getNumber(29))
+    carcnt = input.getNumber(31) + input.getNumber(32) + 1
+	bound = input.getBool(1)
+end
+
+function onDraw()
+    S = screen
+    C = S.setColor
+    R = S.drawRectF
+    C(0, 0, 0)
+    R(70, 3, 11, 5)
+    R(86, 3, 3, 5)
+    R(90, 3, 3, 5)
+    C(25, 25, 25)
+    R(68, 1, 27, 1)
+    R(68, 1, 1, 30)
+    R(68, 30, 27, 1)
+    R(94, 1, 1, 30)
+
+    C(30, 30, 30)
+    R(79, 9, 1, 4)
+    P(80, 10)
+    R(78, 12, 3, 1)             --up
+    R(89, 9, 1, 4)
+    P(90, 11)
+    R(88, 9, 3, 1)              --down
+
+    R(76, 14, 16, 1)
+    R(75, 15, 18, 2)
+
+    R(70, 17, 1, 4)
+    P(71, 18)
+    R(72, 17, 1, 4)
+    R(75, 19, 18, 1)
+    R(70, 22, 1, 3)
+    P(71, 22)
+    P(71, 24)
+    P(72, 23)
+    R(75, 23, 18, 1)
+    R(70, 26, 1, 4)
+    P(71, 26)
+    P(71, 28)
+    P(72, 27)
+    R(75, 27, 18, 1)
+
+    for i = 1, 6 do
+        local CE = (info0 &amp; (1 &lt;&lt; (i - 1))) ~= 0
+        local DClose = CE and ((info2 &amp; (1 &lt;&lt; (i + 23))) ~= 0)
+        local DC = CE and ((info2 &amp; (1 &lt;&lt; (i + 15))) ~= 0)
+        local Me = CE and ((info1 &amp; (1 &lt;&lt; (i + 23))) ~= 0)
+        local Mc = CE and ((info0 &amp; (1 &lt;&lt; (i + 23))) ~= 0) or ((info0 &amp; (1 &lt;&lt; (i + 15))) ~= 0)
+        local PNr = CE and ((info2 &amp; (1 &lt;&lt; (i + 7))) ~= 0)
+        local PNg = PNr and ((info1 &amp; (1 &lt;&lt; (i - 1))) ~= 0) and ((info1 &amp; (1 &lt;&lt; (i + 7))) == 0) and ((info1 &amp; (1 &lt;&lt; (i + 15))) == 0) and ((info1 &amp; (1 &lt;&lt; (i + 23))) == 0)
+        local x
+		if bound then
+			x=73+(7-i)*3 -- front is up bound
+		else
+			x=73+i*3 --front is down bound
+		end
+        C(30, 30, 30)
+        R(x, 18, 1, 3)
+        R(x, 22, 1, 3)
+        R(x, 26, 1, 3)
+
+        C(DClose and 255 or 0, CE and 160 or 0, 0)
+        P(x, 15)
+
+        if Me then C(255, 0, 0) elseif Mc then C(255, 50, 0) else C(0, 0, 0) end
+        P(x, 19)
+
+        C(DC and 255 or 0, 0, 0)
+        P(x, 23)
+
+        if PNg then C(255, 50, 0) elseif PNr then C(255, 0, 0) else C(0, 0, 0) end
+        P(x, 27)
+    end
+end
+
+function P(x, y) R(x, y, 1, 1) end
+
+function toi(x)
+    return math.tointeger(x) or 0
+end
+
+function enc(ch, dat)
+    return (&apos;f&apos;):unpack((&apos;I4&apos;):pack(toi(ch) &lt;&lt; 24|toi(dat) &amp; 0xFFFFFF))
+end
+
+function dec(fl)
+    local i = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+    return (i &gt;&gt; 24) &amp; 0xFF, i &amp; 0xFFFFFF
+end
+
+function unpk(fl)
+    local i = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+    return i
+end
+
+function numberToBinStr(x)
+	ret=""
+	while x~=1 and x~=0 do
+		ret=tostring(x%2)..ret
+		x=math.modf(x/2)
+	end
+	ret=tostring(x)..ret
+	return ret
+end
+'>
+					<pos x="1.5" y="6.25"/>
+					<in1 component_id="600"/>
+					<in2 component_id="349" node_index="1"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="497" count="10" offset="17">
+					<pos x="2.75" y="-0.5"/>
+					<in1 component_id="498"/>
+					<in2 component_id="499"/>
+					<in3/>
+					<in4/>
+					<in5 component_id="510"/>
+					<in6/>
+					<in7/>
+					<in8/>
+					<in9/>
+					<in10 component_id="511"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="498" i="13">
+					<pos x="4" y="1.75"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="499" i="14">
+					<pos x="4" y="1.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="510" i="11">
+					<pos x="4" y="0.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="511" i="12">
+					<pos x="4" y="-0.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="10">
+				<object id="517" e="((floor(x)%100000)+(floor(y)*100000))*z">
+					<pos x="9.25" y="0.25"/>
+					<in1 component_id="523"/>
+					<in2 component_id="524"/>
+					<in3 component_id="572"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="523" i="1">
+					<pos x="8" y="0.75"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="524">
+					<pos x="8" y="0.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="526">
+					<pos x="-1" y="0.5"/>
+					<in2 component_id="385"/>
+					<in3 component_id="527"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="527" i="2">
+					<pos x="-2.25" y="-0.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="551" count="3" offset="3">
+					<pos x="-3.5" y="5.75"/>
+					<inc component_id="552"/>
+					<in1 component_id="570"/>
+					<in2 component_id="538"/>
+					<in3 component_id="605"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="552" count="8">
+					<pos x="0.25" y="5.75"/>
+					<inc component_id="606"/>
+					<in1 component_id="590"/>
+					<in2 component_id="553"/>
+					<in3 component_id="573"/>
+					<in4 component_id="510"/>
+					<in5 component_id="511"/>
+					<in6 component_id="593"/>
+					<in7 component_id="594"/>
+					<in8/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="553" i="10">
+					<pos x="-1" y="7.75"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="538" i="1">
+					<pos x="-4.75" y="6.25"/>
+					<in1 component_id="539"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="567" i="3">
+					<pos x="-6" y="-0.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="568" i="10">
+					<pos x="-5.5" y="3"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="569" i="11">
+					<pos x="-5.5" y="2.5"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="570" i="12">
+					<pos x="-4.75" y="6.75"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="45">
+				<object id="572" e="max(x,0)">
+					<pos x="8" y="-0.25"/>
+					<in1 component_id="569"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="573" i="4">
+					<pos x="-1" y="7.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="576" script='function unpk(fl)
+    local i = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+    return i
+end
+
+function R(x,y,w,h)S.drawRectF(y,(32-x),h,-w)end
+function V(x,y,h)R(x,y,1,h)end
+function H(x,y,w)R(x,y,w,1)end
+CV=0 MA=0 Closed=false
+bound = false--property.getBool("Cab bound")
+function onTick()
+	CV=input.getNumber(3) MA=input.getNumber(4)
+	bound=input.getBool(1)
+	local info0=unpk(input.getNumber(1))
+	local info2=unpk(input.getNumber(2))
+
+	local ss,sc,ec,cc=true,0,0,0
+    for i=1,6 do
+        local CE = (info0 &amp; (1 &lt;&lt; (i - 1))) ~= 0
+        local DC = (info2 &amp; (1 &lt;&lt; (i + 15))) ~= 0
+		if CE then cc=cc+1 end
+		if DC then
+			if ss then sc=sc+1 end
+			ec=ec+1
+		elseif CE then
+			ss=false
+			ec=0
+		end
+	end
+	
+	Closed=false
+	if     bound and (ec==(cc-1)) then Closed=true end
+	if not bound and (sc==(cc-1)) then Closed=true end
+end
+function onDraw()S=screen C=S.setColor
+
+C(160,160,160)
+S.drawClear()
+
+C(0,0,0)
+N(24,14,CV/20*3,6)
+N2(50,14,MA*0.2,6)
+ C(8,8,8)R(0,0,32,12)R(0,0,11,13)R(24,0,8,13)R(0,16,32,2)R(0,16,15,3)R(20,16,12,3)R(0,16,14,4)R(21,16,11,4)R(0,16,12,7)R(23,16,9,7)R(0,26,12,12)R(0,29,13,9)V(14,29,9)R(0,30,15,8)V(20,29,9)R(23,26,9,12)R(22,29,10,9)R(20,30,12,8)R(0,31,32,7)R(0,15,11,24)R(24,15,8,24)R(0,42,32,2)R(0,42,15,3)R(20,42,12,3)R(0,42,14,4)R(21,42,11,4)R(0,42,12,7)R(23,42,9,7)R(0,0,10,64)R(0,41,11,23)R(0,52,12,12)R(0,55,13,9)V(14,55,9)R(0,56,15,8)V(20,55,9)R(25,0,7,64)R(24,41,8,23)R(23,52,9,12)R(22,55,10,9)R(20,56,12,8)R(0,57,32,7)C(0,0,0)H(9,11,17)R(9,11,2,2)R(24,11,2,2)R(9,16,17,2)R(9,16,6,3)V(17,16,3)R(20,16,6,3)R(9,16,5,4)R(21,16,5,4)R(9,16,3,7)R(23,16,3,7)V(9,11,23)R(9,15,2,19)R(9,26,3,8)R(9,29,4,5)V(14,29,5)R(9,30,6,4)V(20,29,5)V(25,11,23)R(24,15,2,19)R(23,26,3,8)R(22,29,4,5)R(20,30,6,4)R(9,31,17,3)H(9,37,17)R(9,37,2,2)R(24,37,2,2)R(9,42,17,2)R(9,42,6,3)V(17,42,3)R(20,42,6,3)R(9,42,5,4)R(21,42,5,4)R(9,42,3,7)R(23,42,3,7)V(9,37,23)R(9,41,2,19)R(9,52,3,8)R(9,55,4,5)V(14,55,5)R(9,56,6,4)V(20,55,5)V(25,37,23)R(24,41,2,19)R(23,52,3,8)R(22,55,4,5)R(20,56,6,4)R(9,57,17,3)C(32,32,32)V(10,12,1)V(24,12,1)V(10,15,1)V(24,15,1)H(15,17,5)H(13,18,2)V(17,17,2)H(20,18,2)V(13,18,2)H(12,19,2)V(21,18,2)H(21,19,2)V(11,20,3)H(10,22,2)V(23,20,3)H(23,22,2)R(16,23,3,3)V(10,22,5)H(10,26,2)V(24,22,5)H(23,26,2)V(11,26,3)V(23,26,3)V(12,29,1)V(22,29,1)V(14,29,2)H(13,30,2)V(20,29,2)H(20,30,2)H(15,31,5)V(10,38,1)V(24,38,1)V(10,41,1)V(24,41,1)H(15,43,5)H(13,44,2)V(17,43,2)H(20,44,2)V(13,44,2)H(12,45,2)V(21,44,2)H(21,45,2)V(11,46,3)H(10,48,2)V(23,46,3)H(23,48,2)R(16,49,3,3)V(10,48,5)H(10,52,2)V(24,48,5)H(23,52,2)V(11,52,3)V(23,52,3)V(12,55,1)V(22,55,1)V(14,55,2)H(13,56,2)V(20,55,2)H(20,56,2)H(15,57,5)C(10,10,10)H(11,13,2)H(15,13,2)H(18,13,3)V(23,13,1)V(12,13,2)H(12,14,2)V(15,13,2)V(19,13,2)V(22,14,1)V(10,17,1)V(24,17,1)V(17,18,1)V(13,19,1)V(21,19,1)V(11,22,1)V(23,22,1)H(16,24,3)V(17,23,3)V(11,26,1)V(23,26,1)V(14,29,1)V(20,29,1)V(10,31,1)V(24,31,1)H(9,33,17)H(16,39,3)H(21,39,2)R(12,39,2,2)H(12,40,3)V(17,39,2)V(21,39,2)H(20,40,2)V(10,43,1)V(24,43,1)V(17,44,1)V(13,45,1)V(21,45,1)V(11,48,1)V(23,48,1)H(16,50,3)V(17,49,3)V(11,52,1)V(23,52,1)V(14,55,1)V(20,55,1)V(10,57,1)V(24,57,1)H(9,59,17)
+
+C(64,64,64)
+R(13,5,9,3)
+R(14,4,7,5)
+if Closed then
+C(3,128,3)
+else
+C(6,6,6)
+end
+R(16,5,3,3)
+C(0,0,0,128)
+V(16,5,1)
+V(16,7,1)
+V(18,5,1)
+V(18,7,1)
+end
+
+function N(x,y,a,l)
+a=math.max(math.min(a,300),0)
+a=math.pi*(330-a)/180
+S.drawLine(x,y,x+(math.cos(a)*l),y-(math.sin(a)*l))
+end
+
+function N2(x,y,a,l)
+a=math.max(math.min(a,150),-150)
+a=math.pi*(180-a)/180
+S.drawLine(x,y,x+(math.cos(a)*l),y-(math.sin(a)*l))
+end'>
+					<pos x="-4.75" y="-1.5"/>
+					<in1 component_id="577"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="577" count="4">
+					<pos x="-6" y="-2.25"/>
+					<inc component_id="604"/>
+					<in1 component_id="578"/>
+					<in2 component_id="579"/>
+					<in3 component_id="581"/>
+					<in4 component_id="585"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="578" i="26">
+					<pos x="-7.25" y="-1.75"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="579" i="28">
+					<pos x="-7.25" y="-2.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="580">
+					<pos x="-8.5" y="-3.5"/>
+					<n text="2.71828182846" value="2.718282"/>
+				</object>
+			</c>
+			<c type="36">
+				<object id="581" e="(z^(-a))*(w+(y-x)*(a+1))+x">
+					<pos x="-7.25" y="-4.75"/>
+					<in1 component_id="588"/>
+					<in2 component_id="581"/>
+					<in3 component_id="580"/>
+					<in4 component_id="582"/>
+					<in5 component_id="583"/>
+				</object>
+			</c>
+			<c type="35">
+				<object id="582">
+					<pos x="-6" y="-3"/>
+					<in1 component_id="581"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="583">
+					<pos x="-8.5" y="-4"/>
+					<n text="0.4" value="0.4"/>
+				</object>
+			</c>
+			<c type="36">
+				<object id="585" e="(z^(-a))*(w+(y-x)*(a+1))+x">
+					<pos x="-7.25" y="-7.25"/>
+					<in1 component_id="589"/>
+					<in2 component_id="585"/>
+					<in3 component_id="580"/>
+					<in4 component_id="586"/>
+					<in5 component_id="583"/>
+				</object>
+			</c>
+			<c type="35">
+				<object id="586">
+					<pos x="-6" y="-5.5"/>
+					<in1 component_id="585"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="588" i="4">
+					<pos x="-8.5" y="-3"/>
+					<in1 component_id="539"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="589" i="2">
+					<pos x="-8.5" y="-5.5"/>
+					<in1 component_id="539"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="590" i="5">
+					<pos x="-1" y="8.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="593" i="7">
+					<pos x="-1" y="6.75"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="594" i="6">
+					<pos x="-1" y="6.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="28">
+				<object id="597">
+					<pos x="-3.5" y="0.25"/>
+					<in1 component_id="388"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="598">
+					<pos x="0.25" y="-1"/>
+					<n text="1" value="1"/>
+				</object>
+			</c>
+			<c type="15">
+				<object id="599">
+					<pos x="-3.5" y="0.75"/>
+					<n text="2" value="2"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="600" count="1">
+					<pos x="1.5" y="7"/>
+					<inc component_id="114"/>
+					<in1 component_id="601"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="601" i="15">
+					<pos x="-8.5" y="-1"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="604" count="1">
+					<pos x="-7.25" y="-1.25"/>
+					<in1 component_id="601"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="605" i="7">
+					<pos x="-4.75" y="5.75"/>
+					<in1 component_id="539"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="606" count="2">
+					<pos x="-3.5" y="7.5"/>
+					<in1 component_id="607"/>
+					<in2 component_id="608"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="607" i="8">
+					<pos x="-4.75" y="7.75"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="608" i="9">
+					<pos x="-4.75" y="7.25"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="609">
+					<pos x="-1" y="3.5"/>
+					<in1 component_id="612"/>
+					<in2 component_id="611"/>
+					<in3 component_id="132"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="611" n="Low Beam X">
+					<pos x="-2.25" y="3.5"/>
+					<v text="0"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="612" n="High Beam X">
+					<pos x="-2.25" y="4"/>
+					<v text="0"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="613" n="Low Beam Y">
+					<pos x="-2.25" y="2.5"/>
+					<v text="-0.5" value="-0.5"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="614" n="High Beam Y">
+					<pos x="-2.25" y="3"/>
+					<v text="0"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="618" i="30">
+					<pos x="-2.25" y="-1.5"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="619" i="31">
+					<pos x="-2.25" y="-2"/>
+					<in1 component_id="114"/>
+				</object>
+			</c>
+			<c type="10">
+				<object id="620" e="(x+y+1)*18">
+					<pos x="-1" y="-2"/>
+					<in1 component_id="618"/>
+					<in2 component_id="619"/>
+				</object>
+			</c>
+		</components>
+		<components_bridge>
+			<c type="7">
+				<object id="3">
+					<pos x="4" y="5"/>
+					<in1 component_id="415" node_index="1"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="114">
+					<pos x="-9.75" y="1.5"/>
+				</object>
+			</c>
+			<c type="5">
+				<object id="126">
+					<pos x="2.75" y="2.5"/>
+					<in1 component_id="129"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="269">
+					<pos x="-1" y="5.75"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="308">
+					<pos x="10.5" y="0.75"/>
+					<in1 component_id="517"/>
+				</object>
+			</c>
+			<c type="7">
+				<object id="379">
+					<pos x="1.5" y="-0.5"/>
+					<in1 component_id="390" node_index="1"/>
+				</object>
+			</c>
+			<c type="7">
+				<object id="406">
+					<pos x="-3.5" y="-1.5"/>
+					<in1 component_id="576" node_index="1"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="539">
+					<pos x="-6" y="6.25"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="596">
+					<pos x="-8.5" y="0.25"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="617">
+					<pos x="0.25" y="-1.5"/>
+					<in1 component_id="620"/>
+				</object>
+			</c>
+		</components_bridge>
+		<groups/>
+		<component_states>
+			<c0 id="4" script="function R(x,y,w,h)S.drawRectF(x,y,w,h)end
+function V(x,y,h)R(x,y,1,h)end
+function H(x,y,w)R(x,y,w,1)end
+function onDraw()S=screen C=S.setColor C(5,5,5)R(0,0,96,2)R(0,0,6,3)V(8,0,3)R(11,0,85,3)R(0,0,4,4)V(5,0,4)R(12,0,84,4)R(0,0,3,6)H(0,5,4)R(14,0,82,6)R(15,0,25,7)V(42,0,7)R(45,0,51,7)H(0,8,3)R(15,0,23,9)R(47,0,49,9)R(15,0,21,11)R(49,0,47,11)H(13,13,23)H(49,13,47)R(0,15,35,3)R(0,16,36,2)R(0,14,6,5)V(8,15,4)R(11,14,24,5)H(11,18,27)R(0,12,4,8)V(5,14,6)V(11,14,6)R(13,13,22,7)H(13,19,25)R(0,11,3,11)H(0,21,4)H(13,21,83)H(0,24,3)R(14,11,21,14)R(14,20,26,5)R(14,22,82,3)H(0,27,4)H(13,27,83)R(0,0,2,32)R(0,27,3,5)R(0,29,4,3)V(5,29,3)R(0,30,6,2)V(11,29,3)R(15,0,20,32)V(35,16,16)R(36,18,2,14)R(38,20,2,12)R(50,0,46,32)R(49,16,47,16)R(47,18,49,14)R(45,20,51,12)R(40,21,56,11)R(14,27,82,5)R(13,29,83,3)R(11,30,85,2)H(0,31,96)C(32,32,32)H(6,1,5)H(4,2,2)V(8,1,2)H(11,2,2)V(3,3,1)V(5,2,2)V(12,2,2)H(12,3,2)V(2,4,2)H(2,5,2)V(14,4,2)R(40,1,5,5)R(37,2,11,4)R(35,3,15,3)R(34,4,17,2)H(33,5,19)R(37,2,3,5)R(35,3,5,4)R(34,4,6,3)R(33,5,7,2)H(32,6,8)V(42,1,6)R(45,2,3,5)H(45,6,8)H(1,8,2)V(37,2,7)R(35,3,3,6)R(34,4,4,5)R(33,5,5,4)R(32,6,6,3)H(31,8,7)V(47,2,7)R(48,3,2,6)R(47,7,6,2)H(47,8,7)R(7,7,3,3)V(1,6,5)V(15,6,5)V(35,3,8)R(34,4,2,7)R(33,5,3,6)R(32,6,4,5)R(31,8,5,3)V(49,3,8)R(49,9,5,2)V(2,11,2)H(2,12,2)V(14,11,2)V(3,12,2)V(13,13,1)H(30,13,6)H(49,13,6)H(4,14,2)H(11,14,2)R(41,12,3,3)H(6,15,5)R(30,11,5,5)R(50,11,5,5)H(6,17,5)H(4,18,2)V(8,17,2)H(11,18,2)R(31,8,4,11)R(31,16,5,3)H(31,18,7)R(50,11,4,8)R(49,16,5,3)H(47,18,7)V(3,19,1)V(5,18,2)V(11,18,2)V(13,19,1)R(32,6,3,15)R(32,19,6,2)H(32,20,8)R(50,11,3,10)R(49,16,4,5)R(47,18,6,3)H(45,20,8)V(2,20,2)H(2,21,2)H(13,21,2)R(33,5,2,17)R(50,11,2,11)R(49,16,3,6)R(47,18,5,4)R(45,20,7,2)H(33,21,19)V(34,4,19)V(50,4,19)R(49,16,2,7)R(47,18,4,5)R(45,20,6,3)R(40,21,11,2)V(35,16,8)R(36,18,2,6)V(49,16,8)R(47,18,3,6)R(45,20,5,4)R(40,21,10,3)H(1,24,2)V(14,20,5)R(14,22,2,3)V(37,18,7)R(38,20,2,5)V(47,18,7)R(45,20,3,5)R(40,21,8,4)R(7,23,3,3)V(39,20,6)V(45,20,6)R(40,21,6,5)V(1,22,5)V(15,22,5)H(2,27,2)H(13,27,2)V(2,27,2)V(14,27,2)V(3,29,1)V(13,29,1)V(5,29,2)H(4,30,2)V(11,29,2)H(11,30,2)H(6,31,5)C(0,0,0)R(40,1,5,4)R(37,2,11,3)R(35,3,15,2)H(34,4,17)R(37,2,3,4)R(35,3,5,3)R(34,4,6,2)H(33,5,7)R(45,2,3,4)H(45,5,7)V(37,2,5)R(35,3,3,4)R(34,4,4,3)R(33,5,5,2)H(32,6,6)V(39,2,5)V(45,2,5)V(47,2,5)H(47,6,6)R(35,3,2,5)R(34,4,3,4)R(33,5,4,3)R(32,6,5,2)R(48,3,2,5)H(48,7,5)V(35,3,6)R(34,4,2,5)R(33,5,3,4)R(32,6,4,3)H(31,8,5)V(49,3,6)H(49,8,5)V(34,4,7)R(33,5,2,6)R(32,6,3,5)R(31,8,4,3)H(31,10,5)V(50,4,7)R(50,9,4,2)H(49,10,5)R(30,11,4,5)R(51,11,4,5)H(31,16,5)H(49,16,5)R(31,8,3,11)R(31,16,4,3)H(31,18,5)V(53,8,11)R(51,11,3,8)R(50,16,4,3)H(49,18,5)R(32,6,2,15)R(32,19,5,2)H(32,20,6)V(52,6,15)R(51,11,2,10)R(50,16,3,5)R(49,18,4,3)R(48,19,5,2)H(47,20,6)V(33,5,17)H(33,21,7)V(51,5,17)R(50,16,2,6)R(49,18,3,4)R(48,19,4,3)R(47,20,5,2)H(45,21,7)V(34,16,7)V(50,16,7)R(49,18,2,5)R(48,19,3,4)R(47,20,4,3)R(45,21,6,2)H(34,22,17)V(35,18,6)V(36,19,5)V(49,18,6)R(48,19,2,5)R(47,20,3,4)R(45,21,5,3)R(40,22,10,2)H(35,23,15)V(37,20,5)R(38,21,2,4)V(47,20,5)R(45,21,3,4)R(40,22,8,3)V(39,21,5)V(45,21,5)R(40,22,6,4)R(18,2,11,29)R(40,28,5,3)R(56,2,11,29)C(10,10,10)V(8,2,1)V(5,3,1)V(3,5,1)V(39,6,1)V(42,6,1)V(45,6,1)V(2,8,1)H(7,8,3)V(37,8,1)V(47,8,1)V(8,7,3)V(35,10,1)V(49,10,1)V(3,12,1)V(35,13,1)H(41,13,3)V(49,13,1)V(42,12,3)V(35,16,1)V(49,16,1)V(8,18,1)V(37,18,1)V(47,18,1)V(5,19,1)V(11,19,1)V(3,21,1)V(13,21,1)V(2,24,1)H(7,24,3)V(14,22,3)V(8,23,3)V(3,27,1)V(13,27,1)V(5,29,1)V(11,29,1)C(255,0,0)V(12,3,1)V(14,22,2)
+end">
+				<pos x="-2.25" y="5"/>
+				<in2 component_id="81" node_index="1"/>
+			</c0>
+			<c1 id="81" script='spda=0
+spd=0
+spdt=0
+
+brka=0
+brk=0
+
+bc=0
+
+mr=0
+function onTick()
+spdt=math.abs(input.getNumber(4))
+spda=(spda*0.78)+((spdt-spd)*0.034)
+spd=spd+spda
+
+brkt=input.getNumber(1)
+if input.getBool(1) then brkt=32 end
+if brkt&lt;=0 then
+	brkt=1.25
+elseif brkt&gt;=32 then
+	brkt=0.25
+else
+	brkt=1.25-(brkt/32)
+end
+brka=(brka*0.78)+((brkt-brk)*0.034)
+brk=brk+brka
+
+bc=input.getNumber(5)/98
+mr=input.getNumber(6)-1
+end
+
+function onDraw()S=screen C=S.setColor
+C(0,0,0,64)S.drawText(38-((spdt*3.6)//100)*3,16,("%2d"):format((spdt*3.6)//1))
+
+C(255,0,0)
+needle(8,24,((8-mr)/6)*math.pi,5)
+C(0,0,0)
+needle(42,13,(100-spd*3.6)/80*math.pi,6)
+needle(8,8,brk*math.pi,5)
+needle(8,24,((8-bc)/6)*math.pi,5)
+end
+
+function needle(x,y,a,l)
+S.drawLine(x,y,x+l*math.cos(a),y-l*math.sin(a))
+end
+'>
+				<pos x="-3.5" y="5"/>
+				<in1 component_id="551"/>
+				<in2 component_id="347" node_index="1"/>
+			</c1>
+			<c2 id="129" count="6">
+				<pos x="1.5" y="1"/>
+				<inc component_id="497"/>
+				<in1 component_id="609"/>
+				<in2 component_id="131"/>
+				<in3 component_id="568"/>
+				<in4 component_id="569"/>
+				<in5 component_id="407"/>
+				<in6 component_id="411"/>
+			</c2>
+			<c3 id="131">
+				<pos x="-1" y="2"/>
+				<in1 component_id="614"/>
+				<in2 component_id="613"/>
+				<in3 component_id="132"/>
+			</c3>
+			<c4 id="132" i="1">
+				<pos x="-2.25" y="2"/>
+				<in1 component_id="114"/>
+			</c4>
+			<c5 id="334" script="ATC=false
+ATS=false
+idc=0
+
+Cross=false
+Notice=false
+Patt=false
+Rsig=false
+Gsig=false
+
+ticker=0
+
+function onTick()
+if Notice or Patt then ticker=(ticker+1)%60 else ticker=0 end
+
+idc=input.getNumber(1)
+
+ATC=input.getBool(1)
+Rsig=input.getBool(2)
+Gsig=input.getBool(3)
+Cross=input.getBool(4)
+Patt=input.getBool(5)
+Notice=input.getBool(6)
+ATS=input.getBool(10)
+end
+
+function onDraw()S=screen C=S.setColor R=S.drawRectF
+C(255,0,0)
+if Rsig then R(39,2,2,2)end
+if Cross then P(41,23)P(41,25)P(42,24)P(43,23)P(43,25)end
+
+C(0,96,0)
+if idc&lt;0 then --none
+elseif idc&lt;5 then P(36,19) --0
+elseif idc&lt;10 then P(35,18) --5
+elseif idc&lt;15 then P(34,16) --10
+elseif idc&lt;20 then P(33,15) --15
+elseif idc&lt;25 then P(33,13) --20
+elseif idc&lt;30 then P(33,11) --25
+elseif idc&lt;35 then P(34,10) --30
+elseif idc&lt;40 then P(35,8) --35
+elseif idc&lt;45 then P(36,7) --40
+elseif idc&lt;50 then P(37,6) --45
+elseif idc&lt;55 then P(39,5) --50
+elseif idc&lt;60 then P(40,4) --55
+elseif idc&lt;65 then P(42,4) --60
+elseif idc&lt;70 then P(44,4) --65
+elseif idc&lt;75 then P(45,5) --70
+elseif idc&lt;80 then P(47,6) --75
+elseif idc&lt;85 then P(48,7) --80
+elseif idc&lt;90 then P(49,8) --85
+elseif idc&lt;95 then P(50,10) --90
+elseif idc&lt;100 then P(51,11) --90
+elseif idc&lt;110 then P(51,13) --100
+else P(50,16) end--110
+
+if Patt and ticker&lt;=30 then R(37,21,1,4)P(38,21)P(39,22)P(38,23)end
+if Notice and ticker&lt;=30 then R(45,22,4,2)end
+
+C(0,160,0)
+if Gsig then R(44,2,2,2)end
+if ATS then R(56,3,1,4)R(57,2,2,1)R(59,3,1,4)R(57,4,2,1) R(60,2,3,1)R(61,3,1,4) P(63,3)R(64,2,3,1)R(64,4,2,1)P(66,5)R(63,6,3,1)end
+if ATC then R(18,3,1,4)R(19,2,2,1)R(21,3,1,4)R(19,4,2,1) R(22,2,3,1)R(23,3,1,4) R(25,3,1,3)R(26,2,3,1)R(26,6,3,1)end
+end
+
+function P(x,y)R(x,y,1,1)end">
+				<pos x="-1" y="5"/>
+				<in1 component_id="269"/>
+				<in2 component_id="4" node_index="1"/>
+			</c5>
+			<c6 id="347" script="function onDraw()
+screen.setColor(160,160,160)screen.drawClear()
+end">
+				<pos x="-4.75" y="5"/>
+			</c6>
+			<c7 id="349" script="function onTick()
+B=input.getNumber(1)&gt;0
+PP=input.getNumber(2)
+
+EB=input.getBool(1)
+NITS=input.getBool(2)
+Ctrl=input.getBool(3)
+DCls=not (input.getBool(4) or input.getBool(5))
+PBPres=input.getBool(6)
+NextStop=input.getBool(7)
+TASC=input.getBool(8)
+end
+
+function onDraw()S=screen C=S.setColor R=S.drawRectF
+C(255,0,0)
+if EB then R(19,14,1,4)P(18,15)R(18,17,1,2)R(21,14,1,5)P(22,15)P(22,17) R(24,15,5,1)P(25,14)P(27,14)P(24,16)P(28,16)R(25,17,3,1)P(24,18)P(26,18)P(28,18)end
+
+C(255,50,0)
+if B then R(18,9,5,1)P(19,8)P(21,8)P(18,10)P(22,10)R(19,11,3,1)P(18,12)P(20,12)P(22,12) R(25,8,2,2)P(25,10)P(27,8)P(27,10)R(24,11,1,2)R(26,11,1,2)R(28,8,1,5)end
+if ConstB then R(57,14,1,5)P(56,15)P(56,17)R(58,15,1,2)P(59,14)R(60,15,1,3)R(59,17,1,2) P(62,14)R(62,16,1,2)R(63,18,4,1)P(64,17)P(66,17)P(65,16)P(64,15)P(66,15)R(64,14,3,1)
+end
+if PBPres then R(59,15,2,4)P(58,14)P(60,14)P(58,16)R(56,15,1,3)P(57,15)P(57,17)R(62,15,1,4)R(63,14,4,1)R(65,15,1,4)R(64,16,3,1)R(63,18,4,1)end
+if NextStop then R(57,20,1,2)R(59,20,1,2)P(56,22)R(58,21,1,3)R(60,21,1,3)R(57,23,1,2)R(59,23,1,2)P(62,21)P(62,23)P(64,20)P(66,21)P(66,23)P(64,24)R(63,21,3,3)end
+
+C(0,160,0)
+if DCls then R(56,8,5,1)R(57,8,1,4)R(57,10,4,1)R(60,8,1,3)P(56,12) R(62,8,1,5)R(63,8,1,2)R(65,8,1,2)R(66,8,1,5)P(64,10)P(65,11)P(64,12)end
+if (not EB) and PP and PP&gt;0 then
+R(18,21,4,1)R(19,20,1,3)R(18,23,1,2)R(21,21,1,4)R(21,22,4,1)R(24,22,1,3)P(23,24)P(20,24)P(22,20)P(24,20)
+dgt3(26,20,PP)
+end
+if DCls and Ctrl then R(40,28,5,3)end
+if NITS then
+R(56,26,1,5)P(57,26)R(58,27,1,4)R(60,26,1,5)R(62,26,3,1)R(63,26,1,5)P(66,26)P(65,27)P(66,28)P(66,29)P(65,30)
+end
+if TASC then
+R(19,26,1,5)R(18,26,3,1)R(21,27,1,4)P(22,26)P(22,28)R(23,27,1,4)P(25,26)P(24,27)P(25,28)P(25,29)P(24,30)P(28,26)R(27,27,1,3)P(28,30)
+end
+end
+
+function P(x,y)R(x,y,1,1)end
+
+function dgt3(x,y,n)
+if n==0 or 4&lt;=n and n~=7 then R(x,y,1,3) end
+if n%2==0 and n~=4 then R(x,y+2,1,3) end
+if n~=1 and n~=4 then R(x,y,3,1) end
+if 2&lt;=n and n~=7 then R(x,y+2,3,1) end
+if n~=1 and n~=4 and n~=7 then R(x,y+4,3,1) end
+if n~=5 and n~=6 then R(x+2,y,1,3) end
+if n~=2 then R(x+2,y+2,1,3) end
+end">
+				<pos x="0.25" y="5"/>
+				<in1 component_id="552"/>
+				<in2 component_id="334" node_index="1"/>
+			</c7>
+			<c8 id="385">
+				<pos x="-2.25" y="0.25"/>
+				<in1 component_id="389"/>
+				<in2 component_id="599"/>
+				<in3 component_id="597"/>
+			</c8>
+			<c9 id="386">
+				<pos x="-7.25" y="0.25"/>
+				<in1 component_id="596"/>
+			</c9>
+			<c10 id="387" m="0">
+				<pos x="-6" y="0.25"/>
+				<in1 component_id="386"/>
+			</c10>
+			<c11 id="388">
+				<pos x="-4.75"/>
+				<in1 component_id="387"/>
+				<in2 component_id="567"/>
+			</c11>
+			<c12 id="389">
+				<pos x="-3.5" y="1.25"/>
+				<n text="1" value="1"/>
+			</c12>
+			<c13 id="390" script="function R(x,y,w,h)S.drawRectF(x,y,w,h)end
+function V(x,y,h)R(x,y,1,h)end
+function H(x,y,w)R(x,y,w,1)end
+I=0
+function onTick()I=input.getNumber(1)end
+function onDraw()S=screen C=S.setColor
+C(16,16,16)R(0,0,32,32)C(48,48,48)R(2,12,27,9)R(3,10,25,13)R(4,8,23,17)R(5,7,21,19)R(6,6,19,21)R(7,5,17,23)R(8,4,15,25)R(10,3,11,27)R(12,2,7,29)C(64,64,64)R(10,3,11,6)R(8,4,15,5)R(7,5,17,4)R(6,6,19,3)R(5,7,21,2)H(4,8,23)R(5,7,15,9)R(4,8,16,8)R(3,10,25,6)R(2,12,27,4)R(2,12,3,8)V(28,12,8)R(6,16,23,4)R(2,17,27,3)R(3,10,2,12)R(20,10,8,12)R(6,16,22,6)R(5,17,23,5)R(20,10,7,13)R(6,16,21,7)R(5,17,22,6)H(4,22,23)V(4,8,16)R(4,22,16,2)V(26,8,16)R(21,9,6,15)R(5,17,15,8)V(25,7,18)R(21,9,5,16)H(5,24,21)R(6,6,14,20)V(24,6,20)R(21,9,4,17)R(20,24,5,2)R(7,5,13,22)V(23,5,22)R(21,9,3,18)R(20,24,4,3)V(1,26,2)R(8,4,12,24)R(21,4,2,24)R(20,24,3,4)V(29,26,2)H(2,28,4)R(10,3,10,26)V(20,24,5)H(25,28,4)R(3,27,2,3)R(12,2,7,28)R(26,27,2,3)V(3,26,5)V(27,26,5)C(0,0,0)V(6,8,1)H(8,8,3)H(12,8,2)V(18,8,1)H(20,8,3)H(24,8,2)V(11,9,1)H(5,10,3)V(13,10,1)H(17,10,3)V(23,9,2)V(5,9,3)V(7,9,3)V(9,8,4)H(11,11,2)V(17,9,3)V(19,9,3)V(21,8,4)H(24,11,2)
+
+if I==1then C(32,32,32)R(12,15,6,3)R(12,16,7,2)H(12,17,8)R(13,14,4,5)H(13,18,7)R(14,13,2,7)H(14,19,7)V(15,13,8)H(15,20,7)V(16,14,8)H(16,21,7)V(17,15,8)H(17,22,7)V(18,16,8)H(18,23,7)V(19,17,8)H(19,24,7)V(20,19,7)H(20,25,7)V(21,20,7)H(21,26,6)V(22,21,7)C(19,19,19)H(22,27,5)V(23,22,7)V(26,25,4)R(23,26,4,3)V(24,23,7)V(25,24,6)C(0,33,26)R(12,15,6,2)H(12,16,7)R(13,14,4,4)H(13,17,7)R(14,13,2,6)H(14,18,6)V(15,13,7)H(15,19,6)V(16,14,7)V(17,15,6)H(16,20,6)V(18,16,6)H(18,21,5)V(19,17,6)H(19,22,5)V(20,19,5)H(20,23,5)V(21,20,5)H(21,24,5)V(22,21,5)H(22,25,5)V(23,22,5)V(26,25,2)H(23,26,4)V(24,23,5)V(25,24,4)C(64,64,64)H(14,15,3)R(14,15,2,2)V(14,15,3)V(16,17,1)V(17,18,1)V(18,19,1)end
+if I==2then C(32,32,32)R(14,15,6,3)R(13,16,7,2)H(12,17,8)R(15,14,4,5)R(14,15,5,4)R(13,16,6,3)R(12,17,7,2)R(16,13,2,7)R(15,14,3,6)R(14,15,4,5)R(13,16,5,4)R(12,17,6,3)H(11,19,7)V(16,13,8)R(15,14,2,7)R(14,15,3,6)R(13,16,4,5)R(12,17,5,4)R(11,19,6,2)H(10,20,7)V(15,14,8)R(14,15,2,7)R(13,16,3,6)R(12,17,4,5)R(11,19,5,3)R(10,20,6,2)H(9,21,7)V(14,15,8)R(13,16,2,7)R(12,17,3,6)R(11,19,4,4)R(10,20,5,3)R(9,21,6,2)H(8,22,7)V(13,16,8)R(12,17,2,7)R(11,19,3,5)R(10,20,4,4)R(9,21,5,3)R(8,22,6,2)H(7,23,7)V(12,17,8)R(11,19,2,6)R(10,20,3,5)R(9,21,4,4)R(8,22,5,3)R(7,23,6,2)H(6,24,7)V(11,19,7)R(10,20,2,6)R(9,21,3,5)R(8,22,4,4)R(7,23,5,3)R(6,24,6,2)H(5,25,7)V(10,20,7)R(9,21,2,6)R(8,22,3,5)R(7,23,4,4)R(6,24,5,3)R(5,25,6,2)V(9,21,7)R(8,22,2,6)R(7,23,3,5)R(6,24,4,4)R(5,25,5,3)C(19,19,19)H(5,27,5)V(8,22,7)R(7,23,2,6)R(6,24,3,5)R(5,25,4,4)V(7,23,7)R(6,24,2,6)C(0,33,26)R(14,15,6,2)H(13,16,7)R(15,14,4,4)R(14,15,5,3)R(13,16,6,2)H(12,17,7)R(16,13,2,6)R(15,14,3,5)R(14,15,4,4)R(13,16,5,3)R(12,17,6,2)V(16,13,7)R(15,14,2,6)R(14,15,3,5)R(13,16,4,4)R(12,17,5,3)H(11,19,6)V(15,14,7)R(14,15,2,6)R(13,16,3,5)R(12,17,4,4)R(11,19,5,2)H(10,20,6)V(13,16,6)R(12,17,2,5)R(11,19,3,3)R(10,20,4,2)H(9,21,5)V(12,17,6)R(11,19,2,4)R(10,20,3,3)R(9,21,4,2)H(8,22,5)V(11,19,5)R(10,20,2,4)R(9,21,3,3)R(8,22,4,2)H(7,23,5)V(10,20,5)R(9,21,2,4)R(8,22,3,3)R(7,23,4,2)H(6,24,5)V(9,21,5)R(8,22,2,4)R(7,23,3,3)R(6,24,4,2)H(5,25,5)V(8,22,5)R(7,23,2,4)R(6,24,3,3)R(5,25,4,2)V(7,23,5)R(6,24,2,4)C(64,64,64)H(15,15,3)R(16,15,2,2)V(15,17,1)V(17,15,3)V(14,18,1)V(13,19,1)end
+end">
+				<pos x="0.25" y="-0.5"/>
+				<in1 component_id="391"/>
+			</c13>
+			<c14 id="391" count="1">
+				<pos x="-1" y="-0.5"/>
+				<in1 component_id="385"/>
+			</c14>
+			<c15 id="407">
+				<pos x="0.25" y="0.5"/>
+				<in1 component_id="526"/>
+				<in3 component_id="573"/>
+			</c15>
+			<c16 id="411">
+				<pos x="1.5"/>
+				<in1 component_id="598"/>
+				<in3 component_id="567"/>
+			</c16>
+			<c17 id="415" script="function R(x,y,w,h)S.drawRectF(x+70,y+3,w,h)end
+function V(x,y,h)R(x,y,1,h)end
+function H(x,y,w)R(x,y,w,1)end
+I=0
+J=0
+K=0
+L=0
+function onTick()
+local i=(input.getNumber(2)//100)%100
+K=i//10
+L=(input.getNumber(2)//10000)%10
+J=input.getNumber(1)
+I=0
+if K==1 then I=4
+elseif K==2 then I=9
+elseif K==3 then I=5
+elseif K==4 then I=6
+elseif K==5 then I=7
+elseif K==7 then I=8
+elseif i==2 then I=1
+elseif i==1 then I=2
+elseif i==3 then I=3
+end
+
+end
+
+function onDraw()S=screen C=S.setColor
+if I==1then C(255,0,0)H(0,0,5)H(8,0,3)V(2,0,2)V(4,0,2)H(0,2,2)V(9,0,3)H(6,2,5)R(6,1,2,3)V(0,0,5)V(2,3,2)H(0,4,3)V(4,3,2)V(10,2,3)H(9,4,2)end
+if I==2then C(255,0,0)H(4,0,4)V(3,1,1)H(4,2,3)V(6,0,4)R(5,2,2,2)V(3,3,2)V(5,2,3)H(3,4,3)V(7,4,1)end
+if I==3then C(255,0,0)H(0,0,5)V(6,0,1)H(8,0,3)V(9,0,2)V(2,2,1)V(8,2,1)V(10,2,1)V(0,0,5)V(4,0,5)H(0,4,5)V(6,2,3)H(6,4,5)end
+if I==4then C(0,44,8)H(1,0,4)H(6,0,5)V(1,0,2)H(0,1,2)H(5,1,2)H(2,2,2)V(8,0,3)V(10,0,3)H(8,2,3)H(0,3,2)H(3,3,2)V(1,3,2)V(3,0,5)H(1,4,3)V(6,0,5)V(9,2,3)H(8,4,2)end
+if I==5then C(0,44,8)V(0,0,1)H(2,0,3)H(7,0,3)V(6,1,1)R(8,0,2,3)R(8,1,3,2)V(0,2,2)V(4,0,4)R(2,2,3,2)H(0,3,5)H(6,3,2)V(2,0,5)V(6,3,2)H(8,4,3)end
+if I==6then C(255,22,0)H(0,0,5)H(7,0,3)V(2,0,2)V(4,0,2)V(6,1,1)V(3,2,1)R(8,0,2,3)R(8,1,3,2)H(6,3,2)V(0,0,5)V(2,3,2)V(4,3,2)H(0,4,5)V(6,3,2)H(8,4,3)end
+if I==7then C(255,0,0)H(1,0,3)V(7,0,1)H(9,0,2)V(0,1,1)V(6,1,1)R(2,0,2,3)R(2,1,3,2)H(9,2,2)H(0,3,2)H(6,3,2)V(0,3,2)H(2,4,3)V(7,2,3)V(10,2,3)H(9,4,2)end
+if I==8then C(255,22,0)H(2,0,3)H(7,0,3)V(0,0,2)H(0,1,2)V(6,1,1)V(3,0,3)H(1,2,4)R(8,0,2,3)R(8,1,3,2)H(0,3,2)H(6,3,2)V(1,1,4)V(4,2,3)H(3,4,2)V(6,3,2)H(8,4,3)end
+if I==9then C(0,44,8)V(0,0,1)H(2,0,3)V(6,0,1)H(8,0,3)V(1,1,1)V(4,0,2)H(2,2,2)V(6,2,2)V(10,0,4)R(8,2,3,2)H(6,3,5)V(0,2,3)V(2,2,3)V(4,3,2)H(0,4,5)V(8,0,5)end
+if I==10then C(0,44,8)H(0,0,5)V(6,0,1)H(8,0,3)H(0,2,5)V(9,0,3)H(8,2,3)V(1,0,5)V(3,0,5)H(1,4,3)V(6,2,3)V(8,2,3)V(10,2,3)H(6,4,5)end
+if I==11then C(255,22,0)V(6,0,1)H(8,0,3)H(0,1,2)V(8,0,2)R(3,1,2,2)H(2,2,3)H(9,2,2)V(3,0,4)V(0,0,5)V(2,4,1)V(4,4,1)V(6,2,3)V(8,3,2)V(10,0,5)H(6,4,5)end
+if I==12then C(255,22,0)V(0,0,1)H(2,0,3)V(1,1,1)V(4,0,2)H(6,1,2)H(2,2,2)R(9,1,2,2)H(8,2,3)V(9,0,4)V(0,2,3)V(2,2,3)V(4,3,2)H(0,4,5)V(6,0,5)V(8,4,1)V(10,4,1)end
+if I==13then C(0,44,8)H(8,0,3)H(0,1,2)V(6,0,2)H(6,1,2)R(3,1,2,2)H(2,2,3)V(9,0,3)H(7,2,4)V(3,0,4)H(6,3,2)V(0,0,5)V(2,4,1)V(4,4,1)V(7,1,4)V(10,2,3)H(9,4,2)end
+
+C(255,50,0)
+if J~=0 then
+dgt3(16,0,(J//10)%10)
+dgt3(20,0,(J//1)%10)
+end
+
+if L==2 then C(0,160,0) else C(0,0,0) end V(22,8,1)
+if L==1 then C(0,160,0) else C(0,0,0) end V(6,8,1)
+end
+
+function dgt3(x,y,n)
+if n==0 or 4&lt;=n and n~=7 then R(x,y,1,3) end
+if n%2==0 and n~=4 then R(x,y+2,1,3) end
+if n~=1 and n~=4 then R(x,y,3,1) end
+if 2&lt;=n and n~=7 then R(x,y+2,3,1) end
+if n~=1 and n~=4 and n~=7 then R(x,y+4,3,1) end
+if n~=5 and n~=6 then R(x+2,y,1,3) end
+if n~=2 then R(x+2,y+2,1,3) end
+end">
+				<pos x="2.75" y="6.25"/>
+				<in1 component_id="114"/>
+				<in2 component_id="419" node_index="1"/>
+			</c17>
+			<c18 id="417" script="function onDraw()S=screen C=S.setColor R=S.drawRectF
+C(0,0,5)R(69,2,25,29)
+end">
+				<pos x="1.5" y="4.25"/>
+			</c18>
+			<c19 id="419" script='bound = false--property.getBool("Cab bound")
+info0 = 0
+info1 = 0
+info2 = 0
+carcnt = 1
+
+function onTick()
+    info0 = unpk(input.getNumber(27))
+    info1 = unpk(input.getNumber(28))
+    info2 = unpk(input.getNumber(29))
+    carcnt = input.getNumber(31) + input.getNumber(32) + 1
+	bound = input.getBool(1)
+end
+
+function onDraw()
+    S = screen
+    C = S.setColor
+    R = S.drawRectF
+    C(0, 0, 0)
+    R(70, 3, 11, 5)
+    R(86, 3, 3, 5)
+    R(90, 3, 3, 5)
+    C(25, 25, 25)
+    R(68, 1, 27, 1)
+    R(68, 1, 1, 30)
+    R(68, 30, 27, 1)
+    R(94, 1, 1, 30)
+
+    C(30, 30, 30)
+    R(79, 9, 1, 4)
+    P(80, 10)
+    R(78, 12, 3, 1)             --up
+    R(89, 9, 1, 4)
+    P(90, 11)
+    R(88, 9, 3, 1)              --down
+
+    R(76, 14, 16, 1)
+    R(75, 15, 18, 2)
+
+    R(70, 17, 1, 4)
+    P(71, 18)
+    R(72, 17, 1, 4)
+    R(75, 19, 18, 1)
+    R(70, 22, 1, 3)
+    P(71, 22)
+    P(71, 24)
+    P(72, 23)
+    R(75, 23, 18, 1)
+    R(70, 26, 1, 4)
+    P(71, 26)
+    P(71, 28)
+    P(72, 27)
+    R(75, 27, 18, 1)
+
+    for i = 1, 6 do
+        local CE = (info0 &amp; (1 &lt;&lt; (i - 1))) ~= 0
+        local DClose = CE and ((info2 &amp; (1 &lt;&lt; (i + 23))) ~= 0)
+        local DC = CE and ((info2 &amp; (1 &lt;&lt; (i + 15))) ~= 0)
+        local Me = CE and ((info1 &amp; (1 &lt;&lt; (i + 23))) ~= 0)
+        local Mc = CE and ((info0 &amp; (1 &lt;&lt; (i + 23))) ~= 0) or ((info0 &amp; (1 &lt;&lt; (i + 15))) ~= 0)
+        local PNr = CE and ((info2 &amp; (1 &lt;&lt; (i + 7))) ~= 0)
+        local PNg = PNr and ((info1 &amp; (1 &lt;&lt; (i - 1))) ~= 0) and ((info1 &amp; (1 &lt;&lt; (i + 7))) == 0) and ((info1 &amp; (1 &lt;&lt; (i + 15))) == 0) and ((info1 &amp; (1 &lt;&lt; (i + 23))) == 0)
+        local x
+		if bound then
+			x=73+(7-i)*3 -- front is up bound
+		else
+			x=73+i*3 --front is down bound
+		end
+        C(30, 30, 30)
+        R(x, 18, 1, 3)
+        R(x, 22, 1, 3)
+        R(x, 26, 1, 3)
+
+        C(DClose and 255 or 0, CE and 160 or 0, 0)
+        P(x, 15)
+
+        if Me then C(255, 0, 0) elseif Mc then C(255, 50, 0) else C(0, 0, 0) end
+        P(x, 19)
+
+        C(DC and 255 or 0, 0, 0)
+        P(x, 23)
+
+        if PNg then C(255, 50, 0) elseif PNr then C(255, 0, 0) else C(0, 0, 0) end
+        P(x, 27)
+    end
+end
+
+function P(x, y) R(x, y, 1, 1) end
+
+function toi(x)
+    return math.tointeger(x) or 0
+end
+
+function enc(ch, dat)
+    return (&apos;f&apos;):unpack((&apos;I4&apos;):pack(toi(ch) &lt;&lt; 24|toi(dat) &amp; 0xFFFFFF))
+end
+
+function dec(fl)
+    local i = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+    return (i &gt;&gt; 24) &amp; 0xFF, i &amp; 0xFFFFFF
+end
+
+function unpk(fl)
+    local i = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+    return i
+end
+
+function numberToBinStr(x)
+	ret=""
+	while x~=1 and x~=0 do
+		ret=tostring(x%2)..ret
+		x=math.modf(x/2)
+	end
+	ret=tostring(x)..ret
+	return ret
+end
+'>
+				<pos x="1.5" y="6.25"/>
+				<in1 component_id="600"/>
+				<in2 component_id="349" node_index="1"/>
+			</c19>
+			<c20 id="497" count="10" offset="17">
+				<pos x="2.75" y="-0.5"/>
+				<in1 component_id="498"/>
+				<in2 component_id="499"/>
+				<in3/>
+				<in4/>
+				<in5 component_id="510"/>
+				<in6/>
+				<in7/>
+				<in8/>
+				<in9/>
+				<in10 component_id="511"/>
+			</c20>
+			<c21 id="498" i="13">
+				<pos x="4" y="1.75"/>
+				<in1 component_id="114"/>
+			</c21>
+			<c22 id="499" i="14">
+				<pos x="4" y="1.25"/>
+				<in1 component_id="114"/>
+			</c22>
+			<c23 id="510" i="11">
+				<pos x="4" y="0.25"/>
+				<in1 component_id="114"/>
+			</c23>
+			<c24 id="511" i="12">
+				<pos x="4" y="-0.25"/>
+				<in1 component_id="114"/>
+			</c24>
+			<c25 id="517" e="((floor(x)%100000)+(floor(y)*100000))*z">
+				<pos x="9.25" y="0.25"/>
+				<in1 component_id="523"/>
+				<in2 component_id="524"/>
+				<in3 component_id="572"/>
+			</c25>
+			<c26 id="523" i="1">
+				<pos x="8" y="0.75"/>
+				<in1 component_id="114"/>
+			</c26>
+			<c27 id="524">
+				<pos x="8" y="0.25"/>
+				<in1 component_id="114"/>
+			</c27>
+			<c28 id="526">
+				<pos x="-1" y="0.5"/>
+				<in2 component_id="385"/>
+				<in3 component_id="527"/>
+			</c28>
+			<c29 id="527" i="2">
+				<pos x="-2.25" y="-0.25"/>
+				<in1 component_id="114"/>
+			</c29>
+			<c30 id="551" count="3" offset="3">
+				<pos x="-3.5" y="5.75"/>
+				<inc component_id="552"/>
+				<in1 component_id="570"/>
+				<in2 component_id="538"/>
+				<in3 component_id="605"/>
+			</c30>
+			<c31 id="552" count="8">
+				<pos x="0.25" y="5.75"/>
+				<inc component_id="606"/>
+				<in1 component_id="590"/>
+				<in2 component_id="553"/>
+				<in3 component_id="573"/>
+				<in4 component_id="510"/>
+				<in5 component_id="511"/>
+				<in6 component_id="593"/>
+				<in7 component_id="594"/>
+				<in8/>
+			</c31>
+			<c32 id="553" i="10">
+				<pos x="-1" y="7.75"/>
+				<in1 component_id="114"/>
+			</c32>
+			<c33 id="538" i="1">
+				<pos x="-4.75" y="6.25"/>
+				<in1 component_id="539"/>
+			</c33>
+			<c34 id="567" i="3">
+				<pos x="-6" y="-0.25"/>
+				<in1 component_id="114"/>
+			</c34>
+			<c35 id="568" i="10">
+				<pos x="-5.5" y="3"/>
+				<in1 component_id="114"/>
+			</c35>
+			<c36 id="569" i="11">
+				<pos x="-5.5" y="2.5"/>
+				<in1 component_id="114"/>
+			</c36>
+			<c37 id="570" i="12">
+				<pos x="-4.75" y="6.75"/>
+				<in1 component_id="114"/>
+			</c37>
+			<c38 id="572" e="max(x,0)">
+				<pos x="8" y="-0.25"/>
+				<in1 component_id="569"/>
+			</c38>
+			<c39 id="573" i="4">
+				<pos x="-1" y="7.25"/>
+				<in1 component_id="114"/>
+			</c39>
+			<c40 id="576" script='function unpk(fl)
+    local i = (&apos;I4&apos;):unpack((&apos;f&apos;):pack(fl))
+    return i
+end
+
+function R(x,y,w,h)S.drawRectF(y,(32-x),h,-w)end
+function V(x,y,h)R(x,y,1,h)end
+function H(x,y,w)R(x,y,w,1)end
+CV=0 MA=0 Closed=false
+bound = false--property.getBool("Cab bound")
+function onTick()
+	CV=input.getNumber(3) MA=input.getNumber(4)
+	bound=input.getBool(1)
+	local info0=unpk(input.getNumber(1))
+	local info2=unpk(input.getNumber(2))
+
+	local ss,sc,ec,cc=true,0,0,0
+    for i=1,6 do
+        local CE = (info0 &amp; (1 &lt;&lt; (i - 1))) ~= 0
+        local DC = (info2 &amp; (1 &lt;&lt; (i + 15))) ~= 0
+		if CE then cc=cc+1 end
+		if DC then
+			if ss then sc=sc+1 end
+			ec=ec+1
+		elseif CE then
+			ss=false
+			ec=0
+		end
+	end
+	
+	Closed=false
+	if     bound and (ec==(cc-1)) then Closed=true end
+	if not bound and (sc==(cc-1)) then Closed=true end
+end
+function onDraw()S=screen C=S.setColor
+
+C(160,160,160)
+S.drawClear()
+
+C(0,0,0)
+N(24,14,CV/20*3,6)
+N2(50,14,MA*0.2,6)
+ C(8,8,8)R(0,0,32,12)R(0,0,11,13)R(24,0,8,13)R(0,16,32,2)R(0,16,15,3)R(20,16,12,3)R(0,16,14,4)R(21,16,11,4)R(0,16,12,7)R(23,16,9,7)R(0,26,12,12)R(0,29,13,9)V(14,29,9)R(0,30,15,8)V(20,29,9)R(23,26,9,12)R(22,29,10,9)R(20,30,12,8)R(0,31,32,7)R(0,15,11,24)R(24,15,8,24)R(0,42,32,2)R(0,42,15,3)R(20,42,12,3)R(0,42,14,4)R(21,42,11,4)R(0,42,12,7)R(23,42,9,7)R(0,0,10,64)R(0,41,11,23)R(0,52,12,12)R(0,55,13,9)V(14,55,9)R(0,56,15,8)V(20,55,9)R(25,0,7,64)R(24,41,8,23)R(23,52,9,12)R(22,55,10,9)R(20,56,12,8)R(0,57,32,7)C(0,0,0)H(9,11,17)R(9,11,2,2)R(24,11,2,2)R(9,16,17,2)R(9,16,6,3)V(17,16,3)R(20,16,6,3)R(9,16,5,4)R(21,16,5,4)R(9,16,3,7)R(23,16,3,7)V(9,11,23)R(9,15,2,19)R(9,26,3,8)R(9,29,4,5)V(14,29,5)R(9,30,6,4)V(20,29,5)V(25,11,23)R(24,15,2,19)R(23,26,3,8)R(22,29,4,5)R(20,30,6,4)R(9,31,17,3)H(9,37,17)R(9,37,2,2)R(24,37,2,2)R(9,42,17,2)R(9,42,6,3)V(17,42,3)R(20,42,6,3)R(9,42,5,4)R(21,42,5,4)R(9,42,3,7)R(23,42,3,7)V(9,37,23)R(9,41,2,19)R(9,52,3,8)R(9,55,4,5)V(14,55,5)R(9,56,6,4)V(20,55,5)V(25,37,23)R(24,41,2,19)R(23,52,3,8)R(22,55,4,5)R(20,56,6,4)R(9,57,17,3)C(32,32,32)V(10,12,1)V(24,12,1)V(10,15,1)V(24,15,1)H(15,17,5)H(13,18,2)V(17,17,2)H(20,18,2)V(13,18,2)H(12,19,2)V(21,18,2)H(21,19,2)V(11,20,3)H(10,22,2)V(23,20,3)H(23,22,2)R(16,23,3,3)V(10,22,5)H(10,26,2)V(24,22,5)H(23,26,2)V(11,26,3)V(23,26,3)V(12,29,1)V(22,29,1)V(14,29,2)H(13,30,2)V(20,29,2)H(20,30,2)H(15,31,5)V(10,38,1)V(24,38,1)V(10,41,1)V(24,41,1)H(15,43,5)H(13,44,2)V(17,43,2)H(20,44,2)V(13,44,2)H(12,45,2)V(21,44,2)H(21,45,2)V(11,46,3)H(10,48,2)V(23,46,3)H(23,48,2)R(16,49,3,3)V(10,48,5)H(10,52,2)V(24,48,5)H(23,52,2)V(11,52,3)V(23,52,3)V(12,55,1)V(22,55,1)V(14,55,2)H(13,56,2)V(20,55,2)H(20,56,2)H(15,57,5)C(10,10,10)H(11,13,2)H(15,13,2)H(18,13,3)V(23,13,1)V(12,13,2)H(12,14,2)V(15,13,2)V(19,13,2)V(22,14,1)V(10,17,1)V(24,17,1)V(17,18,1)V(13,19,1)V(21,19,1)V(11,22,1)V(23,22,1)H(16,24,3)V(17,23,3)V(11,26,1)V(23,26,1)V(14,29,1)V(20,29,1)V(10,31,1)V(24,31,1)H(9,33,17)H(16,39,3)H(21,39,2)R(12,39,2,2)H(12,40,3)V(17,39,2)V(21,39,2)H(20,40,2)V(10,43,1)V(24,43,1)V(17,44,1)V(13,45,1)V(21,45,1)V(11,48,1)V(23,48,1)H(16,50,3)V(17,49,3)V(11,52,1)V(23,52,1)V(14,55,1)V(20,55,1)V(10,57,1)V(24,57,1)H(9,59,17)
+
+C(64,64,64)
+R(13,5,9,3)
+R(14,4,7,5)
+if Closed then
+C(3,128,3)
+else
+C(6,6,6)
+end
+R(16,5,3,3)
+C(0,0,0,128)
+V(16,5,1)
+V(16,7,1)
+V(18,5,1)
+V(18,7,1)
+end
+
+function N(x,y,a,l)
+a=math.max(math.min(a,300),0)
+a=math.pi*(330-a)/180
+S.drawLine(x,y,x+(math.cos(a)*l),y-(math.sin(a)*l))
+end
+
+function N2(x,y,a,l)
+a=math.max(math.min(a,150),-150)
+a=math.pi*(180-a)/180
+S.drawLine(x,y,x+(math.cos(a)*l),y-(math.sin(a)*l))
+end'>
+				<pos x="-4.75" y="-1.5"/>
+				<in1 component_id="577"/>
+			</c40>
+			<c41 id="577" count="4">
+				<pos x="-6" y="-2.25"/>
+				<inc component_id="604"/>
+				<in1 component_id="578"/>
+				<in2 component_id="579"/>
+				<in3 component_id="581"/>
+				<in4 component_id="585"/>
+			</c41>
+			<c42 id="578" i="26">
+				<pos x="-7.25" y="-1.75"/>
+				<in1 component_id="114"/>
+			</c42>
+			<c43 id="579" i="28">
+				<pos x="-7.25" y="-2.25"/>
+				<in1 component_id="114"/>
+			</c43>
+			<c44 id="580">
+				<pos x="-8.5" y="-3.5"/>
+				<n text="2.71828182846" value="2.718282"/>
+			</c44>
+			<c45 id="581" e="(z^(-a))*(w+(y-x)*(a+1))+x">
+				<pos x="-7.25" y="-4.75"/>
+				<in1 component_id="588"/>
+				<in2 component_id="581"/>
+				<in3 component_id="580"/>
+				<in4 component_id="582"/>
+				<in5 component_id="583"/>
+			</c45>
+			<c46 id="582">
+				<pos x="-6" y="-3"/>
+				<in1 component_id="581"/>
+			</c46>
+			<c47 id="583">
+				<pos x="-8.5" y="-4"/>
+				<n text="0.4" value="0.4"/>
+			</c47>
+			<c48 id="585" e="(z^(-a))*(w+(y-x)*(a+1))+x">
+				<pos x="-7.25" y="-7.25"/>
+				<in1 component_id="589"/>
+				<in2 component_id="585"/>
+				<in3 component_id="580"/>
+				<in4 component_id="586"/>
+				<in5 component_id="583"/>
+			</c48>
+			<c49 id="586">
+				<pos x="-6" y="-5.5"/>
+				<in1 component_id="585"/>
+			</c49>
+			<c50 id="588" i="4">
+				<pos x="-8.5" y="-3"/>
+				<in1 component_id="539"/>
+			</c50>
+			<c51 id="589" i="2">
+				<pos x="-8.5" y="-5.5"/>
+				<in1 component_id="539"/>
+			</c51>
+			<c52 id="590" i="5">
+				<pos x="-1" y="8.25"/>
+				<in1 component_id="114"/>
+			</c52>
+			<c53 id="593" i="7">
+				<pos x="-1" y="6.75"/>
+				<in1 component_id="114"/>
+			</c53>
+			<c54 id="594" i="6">
+				<pos x="-1" y="6.25"/>
+				<in1 component_id="114"/>
+			</c54>
+			<c55 id="597">
+				<pos x="-3.5" y="0.25"/>
+				<in1 component_id="388"/>
+			</c55>
+			<c56 id="598">
+				<pos x="0.25" y="-1"/>
+				<n text="1" value="1"/>
+			</c56>
+			<c57 id="599">
+				<pos x="-3.5" y="0.75"/>
+				<n text="2" value="2"/>
+			</c57>
+			<c58 id="600" count="1">
+				<pos x="1.5" y="7"/>
+				<inc component_id="114"/>
+				<in1 component_id="601"/>
+			</c58>
+			<c59 id="601" i="15">
+				<pos x="-8.5" y="-1"/>
+				<in1 component_id="114"/>
+			</c59>
+			<c60 id="604" count="1">
+				<pos x="-7.25" y="-1.25"/>
+				<in1 component_id="601"/>
+			</c60>
+			<c61 id="605" i="7">
+				<pos x="-4.75" y="5.75"/>
+				<in1 component_id="539"/>
+			</c61>
+			<c62 id="606" count="2">
+				<pos x="-3.5" y="7.5"/>
+				<in1 component_id="607"/>
+				<in2 component_id="608"/>
+			</c62>
+			<c63 id="607" i="8">
+				<pos x="-4.75" y="7.75"/>
+				<in1 component_id="114"/>
+			</c63>
+			<c64 id="608" i="9">
+				<pos x="-4.75" y="7.25"/>
+				<in1 component_id="114"/>
+			</c64>
+			<c65 id="609">
+				<pos x="-1" y="3.5"/>
+				<in1 component_id="612"/>
+				<in2 component_id="611"/>
+				<in3 component_id="132"/>
+			</c65>
+			<c66 id="611" n="Low Beam X">
+				<pos x="-2.25" y="3.5"/>
+				<v text="0"/>
+			</c66>
+			<c67 id="612" n="High Beam X">
+				<pos x="-2.25" y="4"/>
+				<v text="0"/>
+			</c67>
+			<c68 id="613" n="Low Beam Y">
+				<pos x="-2.25" y="2.5"/>
+				<v text="-0.5" value="-0.5"/>
+			</c68>
+			<c69 id="614" n="High Beam Y">
+				<pos x="-2.25" y="3"/>
+				<v text="0"/>
+			</c69>
+			<c70 id="618" i="30">
+				<pos x="-2.25" y="-1.5"/>
+				<in1 component_id="114"/>
+			</c70>
+			<c71 id="619" i="31">
+				<pos x="-2.25" y="-2"/>
+				<in1 component_id="114"/>
+			</c71>
+			<c72 id="620" e="(x+y+1)*18">
+				<pos x="-1" y="-2"/>
+				<in1 component_id="618"/>
+				<in2 component_id="619"/>
+			</c72>
+		</component_states>
+		<component_bridge_states>
+			<c0 id="3">
+				<pos x="4" y="5"/>
+				<in1 component_id="415" node_index="1"/>
+			</c0>
+			<c1 id="114">
+				<pos x="-9.75" y="1.5"/>
+			</c1>
+			<c2 id="126">
+				<pos x="2.75" y="2.5"/>
+				<in1 component_id="129"/>
+			</c2>
+			<c3 id="269">
+				<pos x="-1" y="5.75"/>
+			</c3>
+			<c4 id="308">
+				<pos x="10.5" y="0.75"/>
+				<in1 component_id="517"/>
+			</c4>
+			<c5 id="379">
+				<pos x="1.5" y="-0.5"/>
+				<in1 component_id="390" node_index="1"/>
+			</c5>
+			<c6 id="406">
+				<pos x="-3.5" y="-1.5"/>
+				<in1 component_id="576" node_index="1"/>
+			</c6>
+			<c7 id="539">
+				<pos x="-6" y="6.25"/>
+			</c7>
+			<c8 id="596">
+				<pos x="-8.5" y="0.25"/>
+			</c8>
+			<c9 id="617">
+				<pos x="0.25" y="-1.5"/>
+				<in1 component_id="620"/>
+			</c9>
+		</component_bridge_states>
+		<group_states/>
+	</group>
+</microprocessor>
+
