@@ -68,5 +68,5 @@ return function(h)
     h.assert_true(regen_set_tick ~= nil, "regen latches at some point")
     h.assert_true(regen_set_tick > phase2_set_tick, "regen latches after phase2")
     h.assert_true(st.phase2_latch, "phase2 still latched when regen sets")
-    h.assert_true(st.position_counter <= 1, "cam has wrapped to <=1 when regen sets")
+    h.assert_eq(st.position_counter, 0, "cam has wrapped to exactly 0 when regen sets")
 end
