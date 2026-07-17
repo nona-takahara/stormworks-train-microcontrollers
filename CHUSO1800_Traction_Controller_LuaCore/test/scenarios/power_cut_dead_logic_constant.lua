@@ -1,4 +1,4 @@
--- SPEC.md §4.4: power_cut_latch/startup_delay/motor_current_oor is provably
+-- SPEC.md §11 (last paragraph)/§15: power_cut_latch/startup_delay/motor_current_oor is provably
 -- dead in main.sw-net (startup_delay's enable is unconnected -> always Off;
 -- motor_current_oor's +-200000A threshold is unreachable from the Newton
 -- solve). This module simplifies it away entirely (see README.md
