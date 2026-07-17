@@ -1747,3 +1747,84 @@ Type ID）が一切送出されていなかった不具合を修正
     追加）、`test/scenarios/eb_and_db_auto_off_force_disconnect.lua`
     （各サブテストに`bc_target_smooth`の非ゼロ初期シードと出力ゼロ
     アサーションを追加）。
+
+## #30 README.md/SIGNAL_MAP.md/main.sw-net/テストのSPEC.md節番号参照を、
+新SPEC.md（2026-07-12再検証版）に同期
+
+- **背景**：`CHUSO1800_Traction_Controller/SPEC.md`は2026-07-12にChatGPTと
+  の再検証で全面改訂・再編されたが（commit 214b847、同時に
+  `LEGACY_SPEC_CORRECTIONS.md`を新設）、この改訂は
+  `CHUSO1800_Traction_Controller/`配下の3ファイル（`SPEC.md`／
+  `LEGACY_SPEC_CORRECTIONS.md`／`CHUSO1800_Traction_Controller_main_
+  renamed.sw-net`）だけに適用され、`CHUSO1800_Traction_Controller_LuaCore/`
+  側は一切変更されなかった。#17（`main.sw-net`実配線）や#20（ノード名の
+  全面リネーム）は同日中に新SPEC.mdへ追随済みだったが、README.md／
+  SIGNAL_MAP.md／`main.sw-net`のコメント／`src/chuso1800_core.lua`の
+  コメント／各テストシナリオのヘッダコメントに残る「SPEC.md §x.y」形式の
+  節番号参照までは追随していなかった。旧SPEC.mdは§0.1-0.3（表記・
+  tickモデル・storm-mcl不具合注記）・§1（概要）・§3.1-3.10（機能ブロック）・
+  §4（異常ステート分析、H1-H7）という構成だったが、新SPEC.mdは§2（sw-net
+  解釈上の前提）・§3（外部入出力）・§5-§14（機能ブロック）という全く別の
+  構成に再編されており、§4の異常ステート分析章（H1-H7）自体が丸ごと廃止
+  されている（該当する旧結論の扱いは`LEGACY_SPEC_CORRECTIONS.md` §5に
+  整理済み）。ユーザーから「前者(SPEC.md)をもとに後者(LuaCore)を開発したが、
+  後者が行き詰ったタイミングで前者だけを更新してしまいずれが生じている」
+  との指摘を受け、全参照を洗い出して同期した。
+- **対応表**（主要なもの）：旧§0.1-0.3→新§2、旧§1→新§3、旧§3.1→新§5、
+  旧§3.2→新§6.2、旧§3.3→新§6.1、旧§3.4→新§8、旧§3.5(`eb_condition`)→
+  新§11(`traction_inhibit`)、旧§3.6(phase1/phase2/regenの状態機械)→
+  新§7(直列/並列/界磁制御、`series_connection_latch`/
+  `parallel_connection_latch`/`field_control_latch`)、旧§3.7→新§7.3、
+  旧§3.8→新§9・§10、旧§3.9→新§12、旧§3.10→新§13・§14、旧§4(H1-H7)→
+  章ごと廃止（`LEGACY_SPEC_CORRECTIONS.md` §5参照）。内部Lua識別子
+  （`phase1_latch`/`phase2_latch`/`regen_latch`/`eb_condition`等）自体は
+  リネームしていない──新旧名称の対応関係はドキュメント側に明記するに
+  留めた（変更範囲を最小化するため。フルリネームは将来の課題）。
+- **tickモデル節の訂正**：当初「新SPEC.md §2の『組合せゲートが一律に1 tick
+  遅延するとは仮定しない』は、多段ゲート連鎖の総伝搬tick数を段数を数えず
+  一律『1 tick』と決め打ちしてはいけない、という意味」という解釈で
+  README.md/`chuso1800_core.lua`を書いたが、ユーザーから「ゲート1個=1tick
+  delayという理解自体は今も正しい。新SPEC.md §2のその一文は、書いた側
+  （ChatGPTによる再検証）に十分な情報が渡っていなかっただけで、深読み
+  しすぎ」との訂正を受けた。ゲート1個ごとに入力から1tick遅延するという
+  Stormworks実機の事実は旧SPEC.md §0.2から新SPEC.md §2まで一貫して不変で
+  あり、本モジュールの「同tick内への圧縮」は今も昔もSPEC.md自身が許容する
+  簡略化（過渡のtick数は短縮されうるが定常状態の結論は不変）という位置
+  づけのまま──「新解釈と整合するようになった」という理屈は誤りとして撤回
+  した。
+- **`h7_cam_overshoot_homing.lua`で発見した実バグ（テストのみ、本体ロジック
+  は無影響）**：同テストのヘッダコメントは「`notch_fb_ge1`はTHRESHOLD(0,1)
+  なのでカム位置0と1の両方がホーム」という旧SPEC.md前提のまま書かれていた
+  が、`LEGACY_SPEC_CORRECTIONS.md` §3で実機THRESHOLDは`(0,0)`と確定済み
+  （現行`notch_fb_ge1 = notch_fb==0`のみ）。実際に`position_counter=1`・
+  アイドル状態から`core_tick`を回して確認したところ、`regen_off_all`が
+  true のままカムが2, 3, ...と回り続け、位置1では停止しないことを確認した
+  （ホーム位置は厳密に0のみで、0または1ではない）。テスト末尾の緩い表明
+  `position_counter == 0 or position_counter == 1` を
+  `assert_eq(position_counter, 0)` へ厳格化した（保証を弱めるのではなく
+  強める方向の変更のため、既存の他テストへの影響なし。23/23 pass）。
+- **保留とした項目**：`main.sw-net`の`PROPERTY_TOGGLE`ノード2つ
+  （`use_supplied_catenary_voltage`のn=`"Catenary Line Voltage"`、
+  `vehicle_type_1900`のn=`"M type"`）は、リネーム版参照sw-netでは既に
+  `"Use Supplied Catenary Voltage"`／`"M Type"`にリネームされているが、
+  #20で「実機セーブのプロパティ値が名前変更で初期化される破壊的変更の
+  ためユーザー確認待ち」として保留されていたもの。改めてユーザーに確認
+  したところ「保留のままにする」との回答だったため、今回も未変更。
+- **確認**：ドキュメント・コメントのみの変更（`main.sw-net`のゲート配線・
+  `src/chuso1800_core.lua`のロジック自体は無変更）。`h7_cam_overshoot_
+  homing.lua`のアサーション厳格化を含め`lua test/run_all.lua`で23/23 pass
+  を確認。
+- **影響箇所**：`README.md`（スコープ節・tickモデル節・コードの構成節・
+  CAPACITOR記述・テスト節）、`SIGNAL_MAP.md`（信号の由来と分類表・
+  ゲートに残すもの節）、`main.sw-net`（delay tapコメント）、
+  `src/chuso1800_core.lua`（ファイル冒頭のtickモデル説明、各tick
+  サブステップ関数のコメント）、`test/scenarios/`配下の各ファイルの
+  ヘッダコメント（`direction_eb_interlock_corrected_semantics.lua`／
+  `eb_trip_converges_idle.lua`／`h5_phase1_phase2_coon_corner.lua`／
+  `h7_cam_overshoot_homing.lua`（アサーションも変更）／
+  `power_cut_dead_logic_constant.lua`／
+  `sr_latch_reset_priority_sanity.lua`／
+  `state_diagram_basic_traversal.lua`／
+  `field_current_excess_pulse_reset_masking.lua`／
+  `current_limit_cam_advance.lua`／`regen_delay_cap_timing.lua`／
+  `bc_smoothing_ramp_rates.lua`）。
