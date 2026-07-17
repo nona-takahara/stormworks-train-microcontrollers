@@ -10,77 +10,77 @@ module main
   port in "ATP Monitor Touch Composite" : composite
   port out "ATC Train Length" : number
 
-  inst LUA lua_root (script_ref="scripts/n4.lua") : video=top_screen_video -> video=root_video
-  inst LUA lua_top_screen (script_ref="scripts/n81.lua") : composite=ats_screen_composite, video=bg_draw_video -> video=top_screen_video
-  inst COMPOSITE_WRITE_NUMBER loop_start_num_write (count=6, offset=1) : in1=beam_x, in2=beam_pos, in3=ms_n11_reverser, in4=ms_n12_formation_dir, in5=formation_dir_gated, in6=mascon_active_gated, inc=loop_start_bool -> out="Loop Start, ATS/C Settings"
-  inst NUM_SWITCHBOX beam_pos_sw : a=prop_high_beam_y_val, b=prop_low_beam_y_val, switch=ms_b2_high_beam -> out=beam_pos
-  inst COMPOSITE_READ_BOOLEAN ms_b2_high_beam_read (channel=2) : composite="Monitor Status" -> out=ms_b2_high_beam
-  inst LUA lua_ats_screen (script_ref="scripts/n334.lua") : composite="ATS/ATC", video=root_video -> video=ats_screen_video
-  inst LUA lua_bg_draw (script_ref="scripts/n347.lua") : -> video=bg_draw_video
-  inst LUA lua_ats_overlay (script_ref="scripts/n349.lua") : composite=ats_screen_bool_composite, video=ats_screen_video -> video=ats_overlay_video
-  inst NUM_SWITCHBOX atp_page_sw : a=const_atp_page_1_val, b=const_atp_page_2_val, switch=atp_page_toggled -> out=atp_page
-  inst COMPOSITE_READ_BOOLEAN atp_touch_b1_read (channel=1) : composite="ATP Monitor Touch Composite" -> out=atp_touch_b1
-  inst PULSE atp_touch_fall_pulse (mode="fall") : a=atp_touch_b1 -> out=atp_touch_fall
-  inst AND atp_touch_gate : a=atp_touch_fall, b=ms_b4_eb_pos -> out=atp_touch_gated
-  inst CONST const_atp_page_1 (value=1) : -> value=const_atp_page_1_val
-  inst LUA lua_atp_switch (script_ref="scripts/n390.lua") : composite=atp_switch_composite -> video="ATP Switch"
-  inst COMPOSITE_WRITE_NUMBER atp_switch_num_write (count=1, offset=1) : in1=atp_page -> out=atp_switch_composite
-  inst NUM_SWITCHBOX formation_dir_sw : a=atp_toggle_page, switch=ms_b5_mascon_active -> out=formation_dir_gated
-  inst NUM_SWITCHBOX mascon_active_sw : a=const_1_val, switch=ms_b4_eb_pos -> out=mascon_active_gated
-  inst LUA lua_main_monitor (script_ref="scripts/n415.lua") : composite="Monitor Status", video=main_screen_video -> video="Main Monitor"
-  inst LUA lua_dummy (script_ref="scripts/n417.lua") : ->
-  inst LUA lua_main_screen (script_ref="scripts/n419.lua") : composite=main_screen_composite, video=ats_overlay_video -> video=main_screen_video
-  inst COMPOSITE_WRITE_BOOLEAN loop_start_bool_write (count=10, offset=18) : in1=ms_b14_doorcut_self, in2=ms_b15_doorcut_other, in5=ms_b12_door_a, in10=ms_b13_door_b -> out=loop_start_bool
-  inst COMPOSITE_READ_BOOLEAN ms_b14_doorcut_self_read (channel=14) : composite="Monitor Status" -> out=ms_b14_doorcut_self
-  inst COMPOSITE_READ_BOOLEAN ms_b15_doorcut_other_read (channel=15) : composite="Monitor Status" -> out=ms_b15_doorcut_other
-  inst COMPOSITE_READ_BOOLEAN ms_b12_door_a_read (channel=12) : composite="Monitor Status" -> out=ms_b12_door_a
-  inst COMPOSITE_READ_BOOLEAN ms_b13_door_b_read (channel=13) : composite="Monitor Status" -> out=ms_b13_door_b
-  inst FUNC_NUM_3 arc_calc (expression="((floor(x)%100000)+(floor(y)*100000))*z") : x=ms_n2_km, y=ms_n1_km, z=formation_dir_clamped -> out="ARC"
-  inst COMPOSITE_READ_NUMBER ms_n2_km_read (channel=2) : composite="Monitor Status" -> out=ms_n2_km
-  inst COMPOSITE_READ_NUMBER ms_n1_km_read (channel=1) : composite="Monitor Status" -> out=ms_n1_km
-  inst NUM_SWITCHBOX atp_toggle_sw : b=atp_page, switch=ms_b3_atsc_disable -> out=atp_toggle_page
-  inst COMPOSITE_READ_BOOLEAN ms_b3_atsc_disable_read (channel=3) : composite="Monitor Status" -> out=ms_b3_atsc_disable
-  inst COMPOSITE_WRITE_NUMBER ats_screen_num_write (count=3, offset=4) : in1=ms_n13_speed, in2=rs_n2_bc_press, in3=rs_n8_mr_press, inc=ats_screen_bool_composite -> out=ats_screen_composite
-  inst COMPOSITE_WRITE_BOOLEAN ats_screen_bool_write (count=8, offset=1) : in1=ms_b6_eb_active, in2=ms_b11_nits_ext, in3=ms_b5_mascon_active, in4=ms_b12_door_a, in5=ms_b13_door_b, in6=ms_b8_boost_active, in7=ms_b7_stop_lamp, inc=ats_screen_notch_composite -> out=ats_screen_bool_composite
-  inst COMPOSITE_READ_BOOLEAN ms_b11_nits_ext_read (channel=11) : composite="Monitor Status" -> out=ms_b11_nits_ext
-  inst COMPOSITE_READ_NUMBER rs_n2_bc_press_read (channel=2) : composite="Rolling Stock Status" -> out=rs_n2_bc_press
-  inst COMPOSITE_READ_BOOLEAN ms_b4_eb_pos_read (channel=4) : composite="Monitor Status" -> out=ms_b4_eb_pos
-  inst COMPOSITE_READ_NUMBER ms_n11_reverser_read (channel=11) : composite="Monitor Status" -> out=ms_n11_reverser
-  inst COMPOSITE_READ_NUMBER ms_n12_formation_dir_read (channel=12) : composite="Monitor Status" -> out=ms_n12_formation_dir
-  inst COMPOSITE_READ_NUMBER ms_n13_speed_read (channel=13) : composite="Monitor Status" -> out=ms_n13_speed
-  inst FUNC_NUM_1 formation_dir_clamp (expression="max(x,0)") : x=ms_n12_formation_dir -> out=formation_dir_clamped
-  inst COMPOSITE_READ_BOOLEAN ms_b5_mascon_active_read (channel=5) : composite="Monitor Status" -> out=ms_b5_mascon_active
-  inst LUA lua_elec_disp (script_ref="scripts/n576.lua") : composite=elec_disp_composite -> video="Electricity Display"
-  inst COMPOSITE_WRITE_NUMBER elec_disp_num_write (count=4, offset=1) : in1=ms_n27_packed_traction, in2=ms_n29_packed_door, in3=line_voltage_smoothed, in4=motor_current_smoothed, inc=elec_disp_bool_composite -> out=elec_disp_composite
-  inst COMPOSITE_READ_NUMBER ms_n27_packed_traction_read (channel=27) : composite="Monitor Status" -> out=ms_n27_packed_traction
-  inst COMPOSITE_READ_NUMBER ms_n29_packed_door_read (channel=29) : composite="Monitor Status" -> out=ms_n29_packed_door
-  inst CONST const_euler (value=2.71828182846) : -> value=euler_val
-  inst FUNC_NUM_8 line_voltage_smooth (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=rs_n5_line_voltage, y=line_voltage_smoothed, z=euler_val, w=line_voltage_diff, a=smooth_factor_val -> out=line_voltage_smoothed
-  inst DELTA line_voltage_delta : a=line_voltage_smoothed -> out=line_voltage_diff
-  inst CONST const_smooth_factor (value=0.4) : -> value=smooth_factor_val
-  inst FUNC_NUM_8 motor_current_smooth (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=rs_n3_motor_current, y=motor_current_smoothed, z=euler_val, w=motor_current_diff, a=smooth_factor_val -> out=motor_current_smoothed
-  inst DELTA motor_current_delta : a=motor_current_smoothed -> out=motor_current_diff
-  inst COMPOSITE_READ_NUMBER rs_n5_line_voltage_read (channel=5) : composite="Rolling Stock Status" -> out=rs_n5_line_voltage
-  inst COMPOSITE_READ_NUMBER rs_n3_motor_current_read (channel=3) : composite="Rolling Stock Status" -> out=rs_n3_motor_current
-  inst COMPOSITE_READ_BOOLEAN ms_b6_eb_active_read (channel=6) : composite="Monitor Status" -> out=ms_b6_eb_active
-  inst COMPOSITE_READ_BOOLEAN ms_b8_boost_active_read (channel=8) : composite="Monitor Status" -> out=ms_b8_boost_active
-  inst COMPOSITE_READ_BOOLEAN ms_b7_stop_lamp_read (channel=7) : composite="Monitor Status" -> out=ms_b7_stop_lamp
-  inst TOGGLE atp_page_toggle : a=atp_touch_gated -> out=atp_page_toggled
-  inst CONST const_1 (value=1) : -> value=const_1_val
-  inst CONST const_atp_page_2 (value=2) : -> value=const_atp_page_2_val
-  inst COMPOSITE_WRITE_BOOLEAN main_screen_bool_write (count=1, offset=1) : in1=ms_b16_direction, inc="Monitor Status" -> out=main_screen_composite
-  inst COMPOSITE_READ_BOOLEAN ms_b16_direction_read (channel=16) : composite="Monitor Status" -> out=ms_b16_direction
-  inst COMPOSITE_WRITE_BOOLEAN elec_disp_bool_write (count=1, offset=1) : in1=ms_b16_direction -> out=elec_disp_bool_composite
-  inst COMPOSITE_READ_NUMBER rs_n8_mr_press_read (channel=8) : composite="Rolling Stock Status" -> out=rs_n8_mr_press
-  inst COMPOSITE_WRITE_NUMBER ats_screen_notch_write (count=2, offset=1) : in1=ms_n9_brake, in2=ms_n10_power -> out=ats_screen_notch_composite
-  inst COMPOSITE_READ_NUMBER ms_n9_brake_read (channel=9) : composite="Monitor Status" -> out=ms_n9_brake
-  inst COMPOSITE_READ_NUMBER ms_n10_power_read (channel=10) : composite="Monitor Status" -> out=ms_n10_power
-  inst NUM_SWITCHBOX beam_x_sw : a=prop_high_beam_x_val, b=prop_low_beam_x_val, switch=ms_b2_high_beam -> out=beam_x
-  inst PROPERTY_NUMBER prop_low_beam_x (value=0, n="Low Beam X") : -> out=prop_low_beam_x_val
-  inst PROPERTY_NUMBER prop_high_beam_x (value=0, n="High Beam X") : -> out=prop_high_beam_x_val
-  inst PROPERTY_NUMBER prop_low_beam_y (value=-0.5, n="Low Beam Y") : -> out=prop_low_beam_y_val
-  inst PROPERTY_NUMBER prop_high_beam_y (value=0, n="High Beam Y") : -> out=prop_high_beam_y_val
-  inst COMPOSITE_READ_NUMBER ms_n31_front_cars_read (channel=31) : composite="Monitor Status" -> out=ms_n31_front_cars
-  inst COMPOSITE_READ_NUMBER ms_n32_back_cars_read (channel=32) : composite="Monitor Status" -> out=ms_n32_back_cars
-  inst FUNC_NUM_3 atc_train_length_calc (expression="(x+y+1)*18") : x=ms_n31_front_cars, y=ms_n32_back_cars -> out="ATC Train Length"
+  inst LUA main_display_filter_lua (script_ref="scripts/n4.lua") : video=composite_data_display_lua_video -> video=main_display_filter_lua_video
+  inst LUA composite_data_display_lua (script_ref="scripts/n81.lua") : composite=display_num_composite_out, video=display_template_lua_video -> video=composite_data_display_lua_video
+  inst COMPOSITE_WRITE_NUMBER loop_start_atsc_write (count=6, offset=1) : in1=headlight_beam_x_sw_out, in2=headlight_beam_y_sw_out, in3=atsc_setting_1_read_out, in4=atsc_setting_2_read_out, in5=atc_setting_3_sw_out, in6=atp_active_sw_out, inc=atsc_bool_write_out -> out="Loop Start, ATS/C Settings"
+  inst NUM_SWITCHBOX headlight_beam_y_sw : a=high_beam_y_out, b=low_beam_y_out, switch=headlight_high_beam_read_out -> out=headlight_beam_y_sw_out
+  inst COMPOSITE_READ_BOOLEAN headlight_high_beam_read (channel=2) : composite="Monitor Status" -> out=headlight_high_beam_read_out
+  inst LUA ats_panel_lua (script_ref="scripts/n334.lua") : composite="ATS/ATC", video=main_display_filter_lua_video -> video=ats_panel_lua_video
+  inst LUA display_template_lua (script_ref="scripts/n347.lua") : -> video=display_template_lua_video
+  inst LUA atc_panel_lua (script_ref="scripts/n349.lua") : composite=display_bool_composite_out, video=ats_panel_lua_video -> video=atc_panel_lua_video
+  inst NUM_SWITCHBOX atp_mode_sw : a=const_atp_mode_1_value, b=const_atp_mode_2_value, switch=atp_mode_toggle_out -> out=atp_mode_sw_out
+  inst COMPOSITE_READ_BOOLEAN atp_touch_read (channel=1) : composite="ATP Monitor Touch Composite" -> out=atp_touch_read_out
+  inst PULSE atp_touch_fall_pulse (mode="fall") : a=atp_touch_read_out -> out=atp_touch_fall_pulse_out
+  inst AND atp_toggle_trigger : a=atp_touch_fall_pulse_out, b=atp_switch_active_read_out -> out=atp_toggle_trigger_out
+  inst CONST const_atp_mode_1 (value=1) : -> value=const_atp_mode_1_value
+  inst LUA atp_switch_panel_lua (script_ref="scripts/n390.lua") : composite=atp_mode_composite_write_out -> video="ATP Switch"
+  inst COMPOSITE_WRITE_NUMBER atp_mode_composite_write (count=1, offset=1) : in1=atp_mode_sw_out -> out=atp_mode_composite_write_out
+  inst NUM_SWITCHBOX atc_setting_3_sw : a=atp_mode_gate_sw_out, switch=atc_mode_active_read_out -> out=atc_setting_3_sw_out
+  inst NUM_SWITCHBOX atp_active_sw : a=const_atp_mode_active_value, switch=atp_switch_active_read_out -> out=atp_active_sw_out
+  inst LUA main_monitor_lua (script_ref="scripts/n415.lua") : composite="Monitor Status", video=display_compositor_lua_video -> video="Main Monitor"
+  inst LUA display_init_lua (script_ref="scripts/n417.lua") : ->
+  inst LUA display_compositor_lua (script_ref="scripts/n419.lua") : composite=display_mode_bool_composite_out, video=atc_panel_lua_video -> video=display_compositor_lua_video
+  inst COMPOSITE_WRITE_BOOLEAN atsc_bool_write (count=10, offset=18) : in1=monitor_flag_14_read_out, in2=monitor_flag_15_read_out, in5=atc_flag_1_read_out, in10=atc_flag_2_read_out -> out=atsc_bool_write_out
+  inst COMPOSITE_READ_BOOLEAN monitor_flag_14_read (channel=14) : composite="Monitor Status" -> out=monitor_flag_14_read_out
+  inst COMPOSITE_READ_BOOLEAN monitor_flag_15_read (channel=15) : composite="Monitor Status" -> out=monitor_flag_15_read_out
+  inst COMPOSITE_READ_BOOLEAN atc_flag_1_read (channel=12) : composite="Monitor Status" -> out=atc_flag_1_read_out
+  inst COMPOSITE_READ_BOOLEAN atc_flag_2_read (channel=13) : composite="Monitor Status" -> out=atc_flag_2_read_out
+  inst FUNC_NUM_3 arc_calc (expression="((floor(x)%100000)+(floor(y)*100000))*z") : x=arc_minor_count_read_out, y=arc_major_count_read_out, z=arc_speed_clamped_out -> out="ARC"
+  inst COMPOSITE_READ_NUMBER arc_minor_count_read (channel=2) : composite="Monitor Status" -> out=arc_minor_count_read_out
+  inst COMPOSITE_READ_NUMBER arc_major_count_read (channel=1) : composite="Monitor Status" -> out=arc_major_count_read_out
+  inst NUM_SWITCHBOX atp_mode_gate_sw : b=atp_mode_sw_out, switch=atp_mode_gate_enable_read_out -> out=atp_mode_gate_sw_out
+  inst COMPOSITE_READ_BOOLEAN atp_mode_gate_enable_read (channel=3) : composite="Monitor Status" -> out=atp_mode_gate_enable_read_out
+  inst COMPOSITE_WRITE_NUMBER display_num_composite (count=3, offset=4) : in1=atsc_setting_3_read_out, in2=bc_pressure_read_out, in3=rolling_composite_ch8_read_out, inc=display_bool_composite_out -> out=display_num_composite_out
+  inst COMPOSITE_WRITE_BOOLEAN display_bool_composite (count=8, offset=1) : in1=signal_flag_read_out, in2=monitor_flag_11_read_out, in3=atc_mode_active_read_out, in4=atc_flag_1_read_out, in5=atc_flag_2_read_out, in6=display_flag_8_read_out, in7=display_flag_7_read_out, inc=display_vals_composite_out -> out=display_bool_composite_out
+  inst COMPOSITE_READ_BOOLEAN monitor_flag_11_read (channel=11) : composite="Monitor Status" -> out=monitor_flag_11_read_out
+  inst COMPOSITE_READ_NUMBER bc_pressure_read (channel=2) : composite="Rolling Stock Status" -> out=bc_pressure_read_out
+  inst COMPOSITE_READ_BOOLEAN atp_switch_active_read (channel=4) : composite="Monitor Status" -> out=atp_switch_active_read_out
+  inst COMPOSITE_READ_NUMBER atsc_setting_1_read (channel=11) : composite="Monitor Status" -> out=atsc_setting_1_read_out
+  inst COMPOSITE_READ_NUMBER atsc_setting_2_read (channel=12) : composite="Monitor Status" -> out=atsc_setting_2_read_out
+  inst COMPOSITE_READ_NUMBER atsc_setting_3_read (channel=13) : composite="Monitor Status" -> out=atsc_setting_3_read_out
+  inst FUNC_NUM_1 arc_speed_clamped (expression="max(x,0)") : x=atsc_setting_2_read_out -> out=arc_speed_clamped_out
+  inst COMPOSITE_READ_BOOLEAN atc_mode_active_read (channel=5) : composite="Monitor Status" -> out=atc_mode_active_read_out
+  inst LUA electricity_panel_lua (script_ref="scripts/n576.lua") : composite=electricity_display_composite_out -> video="Electricity Display"
+  inst COMPOSITE_WRITE_NUMBER electricity_display_composite (count=4, offset=1) : in1=motor_current_raw_read_out, in2=regen_current_raw_read_out, in3=motor_current_smooth_out, in4=regen_current_smooth_out, inc=electricity_bool_header_out -> out=electricity_display_composite_out
+  inst COMPOSITE_READ_NUMBER motor_current_raw_read (channel=27) : composite="Monitor Status" -> out=motor_current_raw_read_out
+  inst COMPOSITE_READ_NUMBER regen_current_raw_read (channel=29) : composite="Monitor Status" -> out=regen_current_raw_read_out
+  inst CONST const_euler (value=2.71828182846) : -> value=const_euler_value
+  inst FUNC_NUM_8 motor_current_smooth (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=motor_current_rolling_read_out, y=motor_current_smooth_out, z=const_euler_value, w=motor_current_delta_out, a=smooth_alpha_value -> out=motor_current_smooth_out
+  inst DELTA motor_current_delta : a=motor_current_smooth_out -> out=motor_current_delta_out
+  inst CONST smooth_alpha (value=0.4) : -> value=smooth_alpha_value
+  inst FUNC_NUM_8 regen_current_smooth (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=regen_current_rolling_read_out, y=regen_current_smooth_out, z=const_euler_value, w=regen_current_delta_out, a=smooth_alpha_value -> out=regen_current_smooth_out
+  inst DELTA regen_current_delta : a=regen_current_smooth_out -> out=regen_current_delta_out
+  inst COMPOSITE_READ_NUMBER motor_current_rolling_read (channel=5) : composite="Rolling Stock Status" -> out=motor_current_rolling_read_out
+  inst COMPOSITE_READ_NUMBER regen_current_rolling_read (channel=3) : composite="Rolling Stock Status" -> out=regen_current_rolling_read_out
+  inst COMPOSITE_READ_BOOLEAN signal_flag_read (channel=6) : composite="Monitor Status" -> out=signal_flag_read_out
+  inst COMPOSITE_READ_BOOLEAN display_flag_8_read (channel=8) : composite="Monitor Status" -> out=display_flag_8_read_out
+  inst COMPOSITE_READ_BOOLEAN display_flag_7_read (channel=7) : composite="Monitor Status" -> out=display_flag_7_read_out
+  inst TOGGLE atp_mode_toggle : a=atp_toggle_trigger_out -> out=atp_mode_toggle_out
+  inst CONST const_atp_mode_active (value=1) : -> value=const_atp_mode_active_value
+  inst CONST const_atp_mode_2 (value=2) : -> value=const_atp_mode_2_value
+  inst COMPOSITE_WRITE_BOOLEAN display_mode_bool_composite (count=1, offset=1) : in1=display_mode_flag_read_out, inc="Monitor Status" -> out=display_mode_bool_composite_out
+  inst COMPOSITE_READ_BOOLEAN display_mode_flag_read (channel=16) : composite="Monitor Status" -> out=display_mode_flag_read_out
+  inst COMPOSITE_WRITE_BOOLEAN electricity_bool_header (count=1, offset=1) : in1=display_mode_flag_read_out -> out=electricity_bool_header_out
+  inst COMPOSITE_READ_NUMBER rolling_composite_ch8_read (channel=8) : composite="Rolling Stock Status" -> out=rolling_composite_ch8_read_out
+  inst COMPOSITE_WRITE_NUMBER display_vals_composite (count=2, offset=1) : in1=display_val_1_read_out, in2=display_val_2_read_out -> out=display_vals_composite_out
+  inst COMPOSITE_READ_NUMBER display_val_1_read (channel=9) : composite="Monitor Status" -> out=display_val_1_read_out
+  inst COMPOSITE_READ_NUMBER display_val_2_read (channel=10) : composite="Monitor Status" -> out=display_val_2_read_out
+  inst NUM_SWITCHBOX headlight_beam_x_sw : a=high_beam_x_out, b=low_beam_x_out, switch=headlight_high_beam_read_out -> out=headlight_beam_x_sw_out
+  inst PROPERTY_NUMBER low_beam_x (value=0, n="Low Beam X") : -> out=low_beam_x_out
+  inst PROPERTY_NUMBER high_beam_x (value=0, n="High Beam X") : -> out=high_beam_x_out
+  inst PROPERTY_NUMBER low_beam_y (value=-0.5, n="Low Beam Y") : -> out=low_beam_y_out
+  inst PROPERTY_NUMBER high_beam_y (value=0, n="High Beam Y") : -> out=high_beam_y_out
+  inst COMPOSITE_READ_NUMBER atc_car_count_low_read (channel=31) : composite="Monitor Status" -> out=atc_car_count_low_read_out
+  inst COMPOSITE_READ_NUMBER atc_car_count_high_read (channel=32) : composite="Monitor Status" -> out=atc_car_count_high_read_out
+  inst FUNC_NUM_3 atc_train_length (expression="(x+y+1)*18") : x=atc_car_count_low_read_out, y=atc_car_count_high_read_out -> out="ATC Train Length"
 end

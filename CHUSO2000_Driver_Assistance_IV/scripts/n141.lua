@@ -1,6 +1,6 @@
-link_tbl={nil,{2},{1},{3},{2},{5,6},nil,{5,6},{3,4},nil,{3,4},{7},{6},{8,9},{7},nil,{7},{10},{9},{11},{10},{12},{11},{13,14},{12},nil,{12},{15},{14},{17},nil,nil,{15}}
-arc_type_tbl={{3},{1},{2},nil,{min=10,max=19},{min=30,max=39},{min=50,max=59},{min=70,max=79},{min=70,max=79},{min=20,max=29}}
-arc_trk_tbl={nil,{min=20,max=29},{33},{34},{39},nil,{min=40,max=48},{49},nil,nil,nil,{min=50,max=58},{59},nil,{min=60,max=69},nil,{min=70,max=79}}
+link_tbl={nil,{2},{1},{3},{2},{5,6},nil,{5,6},{3,4},nil,{3,4},{7},{6},{8,9},{7},nil,{7},{10},{9},{11},{10},{12},{11},{13,14},{12},nil,{12},{15,16},{14},nil,{14}}
+arc_type_tbl={{3},{1},{2},nil,{min=10,max=19},{min=30,max=39},{min=50,max=59},{min=70,max=79},{min=70,max=79},{min=20,max=29},{min=40,max=49}}
+arc_trk_tbl={{29},{min=20,max=28},{33},{34},{39},nil,{min=40,max=48},{49},nil,nil,nil,{min=50,max=58},{59},nil,{61},{63}}
 
 function gI(i)
     return toint(input.getNumber(i))

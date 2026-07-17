@@ -1,0 +1,233 @@
+module main
+  port in "Seat Input" : composite
+  port out "Main Handle Sound" : boolean
+  port out "Main Handle Angle" : number
+  port in "Mas-con Key" : boolean
+  port in "Simple Interface RX" : composite
+  port in "Physics Sensor [+Z = front]" : composite
+  port out "Control Commands TX" : composite
+  port out "Reverser Sound" : boolean
+  port in "Drive Loop" : composite
+  port in "Settings Loop" : composite
+  port out "Crew Buzzer" : boolean
+  port out "Formation Lever" : number
+  port in "ATS/ATC" : composite
+  port in "Crew Handle Right" : composite
+  port in "Crew Handle Left" : composite
+  port in "Conductor Switch Interlock Release" : boolean
+  port in "Drive Support" : composite
+  port out "Front Sign" : boolean
+  port out "Tail Sign" : boolean
+  port in "Conductor Em brake 1" : boolean
+  port out "Monitor Status" : composite
+  port out "Express Light (UMI)" : boolean
+  port in "Extended Commands RX" : composite
+  port in "Conductor Em brake 2" : boolean
+  port out "Express Light (YAMA)" : boolean
+  port out "Reverser Position" : number
+  port out "High beam" : boolean
+  port out "ATS/C Reset Signal" : boolean
+  port in "Rolling Stock Settings" : composite
+
+  inst COMPOSITE_READ_NUMBER seat_handle_num_read (channel=2) : composite="Seat Input" -> out=seat_handle_num_read_out
+  inst THRESHOLD handle_pos_up_thresh (min=0.5, max=1) : value=seat_handle_num_read_out -> out=handle_pos_up_thresh_out
+  inst THRESHOLD handle_pos_dn_thresh (min=-1, max=-0.5) : value=seat_handle_num_read_out -> out=handle_pos_dn_thresh_out
+  inst COUNTER handle_notch (reset_value=0, increment=1, min=4, max=-7, m=1) : down=notch_dn_func_out, reset=handle_reset_or_out, up=notch_up_func_out -> out=handle_notch_out
+  inst PULSE handle_up_pulse (mode="rise") : a=handle_pos_up_thresh_out -> out=handle_up_pulse_out
+  inst PULSE handle_dn_pulse (mode="rise") : a=handle_pos_dn_thresh_out -> out=handle_dn_pulse_out
+  inst PULSE handle_dn_pulse_both (mode="both") : a=handle_dn_blinker_out -> out=handle_dn_pulse_both_out
+  inst CAPACITOR handle_dn_cap (charge_time=0.3, discharge_time=0) : enable=handle_pos_dn_thresh_out -> out=handle_dn_cap_out
+  inst BLINKER handle_dn_blinker (on_time=0.1, off_time=0.1) : enable=handle_dn_cap_out -> out=handle_dn_blinker_out
+  inst SR_LATCH seat_latch : r=latch_reset_func_out, s=latch_set_func_out -> q=seat_latch_q, not_q=seat_latch_not_q
+  inst BOOL_FUNC_4 notch_dn_func (expression="x|y|z|w") : x=handle_fast_up_out, y=handle_up_pulse_out, z=seat_latch_not_q, w=fwd_fast_while_pos_out -> out=notch_dn_func_out
+  inst COMPOSITE_READ_NUMBER seat_forward_num_read (channel=1) : composite="Seat Input" -> out=seat_forward_num_read_out
+  inst THRESHOLD seat_forward_dn_thresh (min=-1, max=-0.5) : value=seat_forward_num_read_out -> out=seat_forward_dn_thresh_out
+  inst BOOL_FUNC_4 latch_reset_func (expression="x|(!w)") : x=handle_engaged_and_out, w=mascon_key_and_fwd_out -> out=latch_reset_func_out
+  inst AND handle_engaged_and : a=handle_pos_up_thresh_out, b=seat_engaged_bool_read_out -> out=handle_engaged_and_out
+  inst COMPOSITE_READ_BOOLEAN seat_engaged_bool_read (channel=1) : composite="Seat Input" -> out=seat_engaged_bool_read_out
+  inst BOOL_FUNC_4 latch_set_func (expression="x|y|z|w") : x=handle_dn_pulse_out, y=handle_reset_or_out, z=seat_forward_rise_pulse_out -> out=latch_set_func_out
+  inst BOOL_FUNC_4 notch_up_func (expression="(x|y|z)&w") : x=handle_fast_dn_out, y=handle_dn_pulse_out, z=fwd_fast_while_neg_out, w=seat_latch_q -> out=notch_up_func_out
+  inst THRESHOLD seat_forward_up_thresh (min=0.5, max=1) : value=seat_forward_num_read_out -> out=seat_forward_up_thresh_out
+  inst PULSE seat_forward_rise_pulse (mode="rise") : a=seat_forward_up_thresh_out -> out=seat_forward_rise_pulse_out
+  inst LESS_THAN notch_negative : a=handle_notch_out -> out=notch_negative_out
+  inst BOOL_FUNC_4 fwd_fast_while_neg (expression="(x|y)&z") : x=forward_fast_up_out, y=seat_forward_rise_pulse_out, z=notch_negative_out -> out=fwd_fast_while_neg_out
+  inst BOOL_FUNC_4 fwd_fast_while_pos (expression="(x|y)&z") : x=forward_fast_up_out, y=seat_forward_rise_pulse_out, z=notch_positive_out -> out=fwd_fast_while_pos_out
+  inst GREATER_THAN notch_positive : a=handle_notch_out -> out=notch_positive_out
+  inst NUM_SWITCHBOX handle_notch_sw : a=const_notch_disengaged_value, b=handle_notch_out, switch=seat_latch_not_q -> out=handle_notch_sw_out
+  inst CONST const_notch_disengaged (value=-8) : -> value=const_notch_disengaged_value
+  inst TOGGLE handle_sound_toggle : a=handle_sound_thresh_out -> out="Main Handle Sound"
+  inst DELTA handle_notch_delta : a=handle_notch_sw_out -> out=handle_notch_delta_out
+  inst THRESHOLD handle_sound_thresh (min=0, max=0) : value=handle_notch_delta_out -> out=handle_sound_thresh_out
+  inst FUNC_NUM_1 handle_angle_func (expression="(-x-2)/25") : x=handle_notch_sw_out -> out=handle_angle_func_out
+  inst FUNC_NUM_1 power_limit_func (expression="max(x,0)") : x=effective_limit_out -> out=power_limit_func_out
+  inst FUNC_NUM_1 brake_force_func (expression="clamp((-x-min(0,x+6))*4,0,31)") : x=effective_limit_out -> out=brake_force_func_out
+  inst COMPOSITE_READ_NUMBER seat_reverser_num_read (channel=4) : composite="Seat Input" -> out=seat_reverser_num_read_out
+  inst THRESHOLD reverser_up_thresh (min=0.5, max=1) : value=seat_reverser_num_read_out -> out=reverser_up_thresh_out
+  inst THRESHOLD reverser_dn_thresh (min=-1, max=-0.5) : value=seat_reverser_num_read_out -> out=reverser_dn_thresh_out
+  inst PULSE reverser_up_pulse (mode="rise") : a=reverser_up_thresh_out -> out=reverser_up_pulse_out
+  inst PULSE reverser_dn_pulse (mode="rise") : a=reverser_dn_thresh_out -> out=reverser_dn_pulse_out
+  inst COUNTER reverser_counter (reset_value=0, increment=1, min=-1, max=1, m=1) : down=reverser_dn_pulse_out, reset=mascon_key_not_out, up=reverser_up_pulse_out -> out=reverser_counter_out, out="Reverser Position"
+  inst DELTA reverser_delta : a=reverser_counter_out -> out=reverser_delta_out
+  inst THRESHOLD reverser_sound_thresh (min=0, max=0) : value=reverser_delta_out -> out="Reverser Sound"
+  inst COMPOSITE_READ_BOOLEAN simif_rx_ch2_bool_read (channel=2) : composite="Simple Interface RX" -> out=simif_rx_ch2_bool_read_out
+  inst BOOL_FUNC_8 crew_buzzer_func (expression="x|y|z|w|a|b|c|d") : x=simif_rx_ch2_bool_read_out, y=seat_buzzer_read_out, z=settings_ch24_read_out, w=settings_ch29_read_out, a=drive_ch12_read_out, b=crew_right_ch4_read_out, c=crew_left_ch4_read_out, d=crew_buzzer_pulse_out -> out=crew_buzzer_func_out, out="Crew Buzzer"
+  inst COMPOSITE_READ_BOOLEAN seat_buzzer_read (channel=4) : composite="Seat Input" -> out=seat_buzzer_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch24_read (channel=24) : composite="Settings Loop" -> out=settings_ch24_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch29_read (channel=29) : composite="Settings Loop" -> out=settings_ch29_read_out
+  inst COMPOSITE_READ_BOOLEAN drive_ch12_read (channel=12) : composite="Drive Loop" -> out=drive_ch12_read_out
+  inst PULSE crew_buzzer_pulse (mode="rise") : a=crew_buzzer_func_out -> out=crew_buzzer_pulse_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch2_read (channel=2) : composite="Settings Loop" -> out=settings_ch2_read_out
+  inst COMPOSITE_READ_BOOLEAN drive_ch2_read (channel=2) : composite="Drive Loop" -> out=drive_ch2_read_out
+  inst AND handle_fast_dn : a=handle_dn_pulse_both_out, b=handle_pos_dn_thresh_out -> out=handle_fast_dn_out
+  inst PULSE handle_up_pulse_both (mode="both") : a=handle_up_blinker_out -> out=handle_up_pulse_both_out
+  inst CAPACITOR handle_up_cap (charge_time=0.3, discharge_time=0) : enable=handle_pos_up_thresh_out -> out=handle_up_cap_out
+  inst BLINKER handle_up_blinker (on_time=0.1, off_time=0.1) : enable=handle_up_cap_out -> out=handle_up_blinker_out
+  inst AND handle_fast_up : a=handle_up_pulse_both_out, b=handle_pos_up_thresh_out -> out=handle_fast_up_out
+  inst PULSE forward_up_pulse_both (mode="both") : a=forward_up_blinker_out -> out=forward_up_pulse_both_out
+  inst CAPACITOR forward_up_cap (charge_time=0.3, discharge_time=0) : enable=seat_forward_up_thresh_out -> out=forward_up_cap_out
+  inst BLINKER forward_up_blinker (on_time=0.1, off_time=0.1) : enable=forward_up_cap_out -> out=forward_up_blinker_out
+  inst AND forward_fast_up : a=forward_up_pulse_both_out, b=seat_forward_up_thresh_out -> out=forward_fast_up_out
+  inst OR handle_reset_or : a=seat_emergency_read_out, b=seat_forward_dn_thresh_out -> out=handle_reset_or_out
+  inst COMPOSITE_READ_BOOLEAN seat_emergency_read (channel=31) : composite="Seat Input" -> out=seat_emergency_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch7_read (channel=7) : composite="Settings Loop" -> out=settings_ch7_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch8_read (channel=8) : composite="Settings Loop" -> out=settings_ch8_read_out
+  inst PULSE formation_up_pulse (mode="rise") : a=settings_ch13_read_out -> out=formation_up_pulse_out
+  inst PULSE formation_dn_pulse (mode="rise") : a=settings_ch14_read_out -> out=formation_dn_pulse_out
+  inst COUNTER formation_counter (reset_value=-1, increment=1, min=-1, max=1, m=1) : down=formation_dn_pulse_out, up=formation_up_pulse_out -> out=formation_counter_out
+  inst THRESHOLD formation_fwd_thresh (min=1, max=1) : value=formation_counter_out -> out=formation_fwd_thresh_out
+  inst NOT mascon_key_not : a="Mas-con Key" -> out=mascon_key_not_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch13_read (channel=13) : composite="Settings Loop" -> out=settings_ch13_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch14_read (channel=14) : composite="Settings Loop" -> out=settings_ch14_read_out
+  inst FUNC_NUM_1 formation_lever_func (expression="x/4") : x=formation_counter_out -> out="Formation Lever"
+  inst COMPOSITE_READ_BOOLEAN crew_right_ch4_read (channel=4) : composite="Crew Handle Right" -> out=crew_right_ch4_read_out
+  inst COMPOSITE_READ_BOOLEAN crew_left_ch4_read (channel=4) : composite="Crew Handle Left" -> out=crew_left_ch4_read_out
+  inst BOOL_FUNC_8 crew_warning_func (expression="x|y|z|w|a|b|c|d") : x=settings_ch23_read_out, y=settings_ch28_read_out, z=crew_right_ch3_read_out, w=crew_left_ch3_read_out, a=crew_drive_ch10_read_out -> out=crew_warning_func_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch23_read (channel=23) : composite="Settings Loop" -> out=settings_ch23_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch28_read (channel=28) : composite="Settings Loop" -> out=settings_ch28_read_out
+  inst COMPOSITE_READ_BOOLEAN crew_right_ch3_read (channel=3) : composite="Crew Handle Right" -> out=crew_right_ch3_read_out
+  inst COMPOSITE_READ_BOOLEAN crew_left_ch3_read (channel=3) : composite="Crew Handle Left" -> out=crew_left_ch3_read_out
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch10_read (channel=10) : composite=crew_interlock_sw_out -> out=crew_drive_ch10_read_out
+  inst COMPOSITE_SWITCHBOX crew_interlock_sw : b="Drive Loop", switch=settings_ch5_read_out -> out=crew_interlock_sw_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch5_read (channel=5) : composite="Settings Loop" -> out=settings_ch5_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch20_read (channel=20) : composite="Settings Loop" -> out=settings_ch20_read_out
+  inst COMPOSITE_READ_BOOLEAN crew_right_ch1_read (channel=1) : composite="Crew Handle Right" -> out=crew_right_ch1_read_out
+  inst BOOL_FUNC_4 crew_right_door_ok (expression="(x|y|z)&w") : x=settings_ch20_read_out, y=crew_right_ch1_read_out, z=crew_drive_ch6_read_out, w=conductor_speed_ok_or_out -> out=crew_right_door_ok_out
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch6_read (channel=6) : composite=crew_interlock_sw_out -> out=crew_drive_ch6_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch21_read (channel=21) : composite="Settings Loop" -> out=settings_ch21_read_out
+  inst COMPOSITE_READ_BOOLEAN crew_right_ch2_read (channel=2) : composite="Crew Handle Right" -> out=crew_right_ch2_read_out
+  inst BOOL_FUNC_4 crew_right_door_rel (expression="x|y|z|w") : x=settings_ch21_read_out, y=crew_right_ch2_read_out, z=crew_drive_ch7_read_out -> out=crew_right_door_rel_out
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch7_read (channel=7) : composite=crew_interlock_sw_out -> out=crew_drive_ch7_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch25_read (channel=25) : composite="Settings Loop" -> out=settings_ch25_read_out
+  inst COMPOSITE_READ_BOOLEAN crew_left_ch1_read (channel=1) : composite="Crew Handle Left" -> out=crew_left_ch1_read_out
+  inst BOOL_FUNC_4 crew_left_door_ok (expression="(x|y|z)&w") : x=settings_ch25_read_out, y=crew_left_ch1_read_out, z=crew_drive_ch8_read_out, w=conductor_speed_ok_or_out -> out=crew_left_door_ok_out
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch8_read (channel=8) : composite=crew_interlock_sw_out -> out=crew_drive_ch8_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch26_read (channel=26) : composite="Settings Loop" -> out=settings_ch26_read_out
+  inst COMPOSITE_READ_BOOLEAN crew_left_ch2_read (channel=2) : composite="Crew Handle Left" -> out=crew_left_ch2_read_out
+  inst BOOL_FUNC_4 crew_left_door_rel (expression="x|y|z|w") : x=settings_ch26_read_out, y=crew_left_ch2_read_out, z=crew_drive_ch9_read_out -> out=crew_left_door_rel_out
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch9_read (channel=9) : composite=crew_interlock_sw_out -> out=crew_drive_ch9_read_out
+  inst BOOL_FUNC_8 buzzer_no_simif_func (expression="x|y|z|w|a|b|c|d") : y=seat_buzzer_read_out, z=settings_ch24_read_out, w=settings_ch29_read_out, a=drive_ch12_read_out, b=crew_right_ch4_read_out, c=crew_left_ch4_read_out -> out=buzzer_no_simif_func_out
+  inst NUM_SWITCHBOX atc_eb_limit_sw : a=const_atc_eb_notch_value, b=speed_limit_default_sw_out, switch=atc_eb_read_out -> out=atc_eb_limit_sw_out
+  inst FUNC_NUM_8 effective_limit (expression="min(min(x,y),min(z,w))") : x=handle_notch_sw_out, y=atc_eb_limit_sw_out, z=atc_limit1_sw_out, w=atc_limit2_sw_out -> out=effective_limit_out
+  inst NUM_SWITCHBOX atc_limit1_sw : a=const_atc_limit1_notch_value, b=speed_limit_default_sw_out, switch=atc_limit1_read_out -> out=atc_limit1_sw_out
+  inst NUM_SWITCHBOX atc_limit2_sw : a=const_atc_limit2_notch_value, b=speed_limit_default_sw_out, switch=atc_limit2_read_out -> out=atc_limit2_sw_out
+  inst CONST const_atc_eb_notch (value=-8) : -> value=const_atc_eb_notch_value
+  inst CONST const_atc_limit1_notch (value=-8) : -> value=const_atc_limit1_notch_value
+  inst CONST const_atc_limit2_notch (value=-4) : -> value=const_atc_limit2_notch_value
+  inst COMPOSITE_READ_BOOLEAN atc_eb_read (channel=8) : composite="ATS/ATC" -> out=atc_eb_read_out
+  inst COMPOSITE_READ_BOOLEAN atc_limit1_read (channel=7) : composite="ATS/ATC" -> out=atc_limit1_read_out
+  inst COMPOSITE_READ_BOOLEAN atc_limit2_read (channel=9) : composite="ATS/ATC" -> out=atc_limit2_read_out
+  inst CONST const_notch_max (value=100) : -> value=const_notch_max_value
+  inst SR_LATCH front_sign_latch : r=front_sign_reset_or_out, s=front_sign_set_or_out -> q="Front Sign"
+  inst OR front_sign_reset_or : a=front_drive_fall_pulse_out, b=formation_fwd_fall_for_front_out -> out=front_sign_reset_or_out
+  inst OR front_sign_set_or : a=front_drive_rise_pulse_out, b=front_sign_set_and_out -> out=front_sign_set_or_out
+  inst AND front_sign_set_and : a=drive_front_sign_read_out, b=formation_fwd_thresh_out -> out=front_sign_set_and_out
+  inst PULSE formation_fwd_fall_for_front (mode="fall") : a=formation_fwd_thresh_out -> out=formation_fwd_fall_for_front_out
+  inst PULSE front_drive_fall_pulse (mode="fall") : a=drive_front_sign_read_out -> out=front_drive_fall_pulse_out
+  inst PULSE front_drive_rise_pulse (mode="rise") : a=drive_front_sign_read_out -> out=front_drive_rise_pulse_out
+  inst COMPOSITE_READ_BOOLEAN drive_front_sign_read (channel=3) : composite="Drive Loop" -> out=drive_front_sign_read_out
+  inst SR_LATCH tail_sign_latch_unused : r=tail_sign_reset_or_out, s=tail_sign_set_or_out ->
+  inst OR tail_sign_reset_or : a=express_umi_fall_pulse_out, b=formation_fwd_fall_for_tail_out -> out=tail_sign_reset_or_out
+  inst OR tail_sign_set_or : a=express_umi_rise_pulse_out, b=express_umi_set_and_out -> out=tail_sign_set_or_out
+  inst AND express_umi_set_and : a=drive_express_umi_sign_read_out, b=formation_fwd_thresh_out -> out=express_umi_set_and_out
+  inst PULSE formation_fwd_fall_for_tail (mode="fall") : a=formation_fwd_thresh_out -> out=formation_fwd_fall_for_tail_out
+  inst PULSE express_umi_fall_pulse (mode="fall") : a=drive_express_umi_sign_read_out -> out=express_umi_fall_pulse_out
+  inst PULSE express_umi_rise_pulse (mode="rise") : a=drive_express_umi_sign_read_out -> out=express_umi_rise_pulse_out
+  inst COMPOSITE_READ_BOOLEAN drive_express_umi_sign_read (channel=13) : composite="Drive Loop" -> out=drive_express_umi_sign_read_out
+  inst OR tail_sign_or : a=formation_bck_thresh_tail_out, b=drive_tail_on_read_out -> out="Tail Sign"
+  inst THRESHOLD formation_bck_thresh_tail (min=-1, max=-1) : value=formation_counter_out -> out=formation_bck_thresh_tail_out
+  inst COMPOSITE_READ_BOOLEAN drive_tail_on_read (channel=15) : composite="Drive Loop" -> out=drive_tail_on_read_out
+  inst NUM_SWITCHBOX speed_limit_default_sw : a=const_notch_max_value, switch=limit_enable_or_out -> out=speed_limit_default_sw_out
+  inst COMPOSITE_READ_BOOLEAN simif_rx_ch4_bool_read (channel=4) : composite="Simple Interface RX" -> out=simif_rx_ch4_bool_read_out
+  inst OR limit_enable_or : a=simif_not_active_out, b=settings_conductor_override_out -> out=limit_enable_or_out
+  inst NOT simif_not_active : a=simif_active_or_out -> out=simif_not_active_out
+  inst COMPOSITE_READ_BOOLEAN settings_conductor_override (channel=9) : composite="Settings Loop" -> out=settings_conductor_override_out
+  inst OR conductor_speed_ok_or : a=settings_conductor_override_out, b=speed_near_zero_thresh_out -> out=conductor_speed_ok_or_out
+  inst THRESHOLD speed_near_zero_thresh (min=-1.5, max=1.5) : value=physics_speed_read_out -> out=speed_near_zero_thresh_out
+  inst COMPOSITE_WRITE_NUMBER tx_num_write (count=7, offset=1) : in1=brake_force_func_out, in2=power_limit_func_out, in6=ds_ch1_num_read_out, in7=status_num_out -> out=tx_num_write_out
+  inst COMPOSITE_WRITE_BOOLEAN tx_bool_write (count=32, offset=1) : in1=eb_flag_func_out, in2=buzzer_no_simif_func_out, in6=formation_fwd_thresh_out, in7=formation_back_flag_out, in9=settings_ch15_read_out, in10=settings_ch2_read_out, in11=drive_ch2_read_out, in16=reverser_fwd_thresh_out, in17=reverser_bck_thresh_out, in18=drive_ch14_not_out, in19=settings_ch7_rise_pulse_out, in20=settings_ch7_fall_pulse_out, in21=crew_warning_rise_pulse_out, in22=crew_warning_fall_pulse_out, in23=settings_ch8_rise_pulse_out, in24=settings_ch8_fall_pulse_out, in27=crew_right_door_ok_out, in28=crew_right_door_rel_out, in29=crew_left_door_ok_out, in30=crew_left_door_rel_out, in31=formation_not_fwd_delta_out, in32=mascon_key_and_fwd_out, inc=tx_num_write_out -> out="Control Commands TX"
+  inst PULSE settings_ch8_rise_pulse (mode="rise") : a=settings_ch8_read_out -> out=settings_ch8_rise_pulse_out
+  inst PULSE settings_ch8_fall_pulse (mode="fall") : a=settings_ch8_read_out -> out=settings_ch8_fall_pulse_out
+  inst PULSE crew_warning_rise_pulse (mode="rise") : a=crew_warning_func_out -> out=crew_warning_rise_pulse_out
+  inst PULSE crew_warning_fall_pulse (mode="fall") : a=crew_warning_func_out -> out=crew_warning_fall_pulse_out
+  inst THRESHOLD formation_back_flag (min=-1, max=-1) : value=formation_counter_out -> out=formation_back_flag_out
+  inst THRESHOLD reverser_fwd_thresh (min=1, max=1) : value=reverser_counter_out -> out=reverser_fwd_thresh_out
+  inst THRESHOLD reverser_bck_thresh (min=-1, max=-1) : value=reverser_counter_out -> out=reverser_bck_thresh_out
+  inst PULSE settings_ch7_rise_pulse (mode="rise") : a=settings_ch7_read_out -> out=settings_ch7_rise_pulse_out
+  inst PULSE settings_ch7_fall_pulse (mode="fall") : a=settings_ch7_read_out -> out=settings_ch7_fall_pulse_out
+  inst AND mascon_key_and_fwd : a="Mas-con Key", b=formation_fwd_thresh_out -> out=mascon_key_and_fwd_out
+  inst AND eb_and_fwd : a=seat_latch_not_q, b=formation_fwd_thresh_out -> out=eb_and_fwd_out
+  inst COMPOSITE_WRITE_BOOLEAN status_bool_write (count=13, offset=1) : in1=settings_ch4_read_out, in2=settings_ch3_read_out, in3=conductor_ch19_and_out, in4=conductor_ch20_and_out, in5=conductor_ch21_and_out, in6=settings_ch12_key_and_out, in7=settings_ch17_read_out, in8=settings_ch16_read_out, in10=crew_right_door_ok_out, in11=crew_left_door_ok_out, in12=ds_front_enable_out, in13=ds_back_enable_out -> out=status_bool_write_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch4_read (channel=4) : composite="Settings Loop" -> out=settings_ch4_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch3_read (channel=3) : composite="Settings Loop" -> out=settings_ch3_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch12_read (channel=12) : composite="Settings Loop" -> out=settings_ch12_read_out
+  inst AND settings_ch12_key_and : a=settings_ch12_read_out, b=mascon_key_and_fwd_out -> out=settings_ch12_key_and_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch16_read (channel=16) : composite="Settings Loop" -> out=settings_ch16_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch17_read (channel=17) : composite="Settings Loop" -> out=settings_ch17_read_out
+  inst DELTA formation_delta : a=formation_counter_out -> out=formation_delta_out
+  inst THRESHOLD formation_fwd_delta_thresh (min=0, max=1) : value=formation_delta_out -> out=formation_fwd_delta_thresh_out
+  inst NOT formation_not_fwd_delta : a=formation_fwd_delta_thresh_out -> out=formation_not_fwd_delta_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch15_read (channel=15) : composite="Settings Loop" -> out=settings_ch15_read_out
+  inst COMPOSITE_READ_BOOLEAN drive_ch14_read (channel=14) : composite="Drive Loop" -> out=drive_ch14_read_out
+  inst NOT drive_ch14_not : a=drive_ch14_read_out -> out=drive_ch14_not_out
+  inst BOOL_FUNC_4 eb_flag_func (expression="x|y|z|w") : x=eb_and_fwd_out, y="Conductor Em brake 1", z="Conductor Em brake 2", w=atc_eb_read_out -> out=eb_flag_func_out
+  inst COMPOSITE_READ_BOOLEAN drive_ch19_read (channel=19) : composite="Drive Loop" -> out=drive_ch19_read_out
+  inst COMPOSITE_READ_BOOLEAN drive_ch20_read (channel=20) : composite="Drive Loop" -> out=drive_ch20_read_out
+  inst COMPOSITE_READ_BOOLEAN drive_ch21_read (channel=21) : composite="Drive Loop" -> out=drive_ch21_read_out
+  inst COMPOSITE_TO_NUMBER status_num : composite=status_bool_write_out -> out=status_num_out
+  inst COMPOSITE_READ_NUMBER ds_ch1_num_read (channel=1) : composite="Drive Support" -> out=ds_ch1_num_read_out
+  inst COMPOSITE_WRITE_BOOLEAN monitor_bool_write (count=16, offset=1) : in1=drive_ch1_read_out, in2=drive_headlight_read_out, in3=settings_ch6_read_out, in4=seat_latch_not_q, in5=mascon_key_and_fwd_out, in6=simif_rx_ch1_bool_read_out, in7=ds_ch4_bool_read_out, in8=const_true_not_out, in9=const_true_not_out, in10=const_true_not_out, in11=ext_cmd_ch1_read_out, in12=simif_rx_ch4_bool_read_out, in13=simif_rx_ch5_bool_read_out, in14=ext_cmd_ch10_read_out, in15=ext_cmd_ch32_read_out, in16=rolling_stock_ch2_read_out, inc="Extended Commands RX" -> out=monitor_bool_write_out
+  inst COMPOSITE_WRITE_NUMBER monitor_num_write (count=5, offset=9) : in1=simif_rx_ch1_num_read_out, in2=simif_rx_ch2_num_read_out, in3=reverser_counter_out, in4=formation_counter_out, in5=physics_speed_read_out, inc=monitor_bool_write_out -> out="Monitor Status"
+  inst COMPOSITE_READ_BOOLEAN drive_ch1_read (channel=1) : composite="Drive Loop" -> out=drive_ch1_read_out
+  inst COMPOSITE_READ_BOOLEAN drive_headlight_read (channel=4) : composite="Drive Loop" -> out=drive_headlight_read_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch6_read (channel=6) : composite="Settings Loop" -> out=settings_ch6_read_out
+  inst COMPOSITE_READ_BOOLEAN express_umi_direct_read (channel=13) : composite="Drive Loop" -> out="Express Light (UMI)"
+  inst AND ds_gate_and : a=ds_inhibit_not_out, b=mascon_key_and_fwd_out -> out=ds_gate_and_out
+  inst COMPOSITE_READ_BOOLEAN ds_ch2_bool_read (channel=2) : composite="Drive Support" -> out=ds_ch2_bool_read_out
+  inst NOT ds_inhibit_not : a=settings_ch10_read_out -> out=ds_inhibit_not_out
+  inst COMPOSITE_READ_BOOLEAN settings_ch10_read (channel=10) : composite="Settings Loop" -> out=settings_ch10_read_out
+  inst AND ds_front_enable : a=ds_gate_and_out, b=ds_ch2_bool_read_out -> out=ds_front_enable_out
+  inst AND ds_back_enable : a=ds_gate_and_out, b=ds_ch3_bool_read_out -> out=ds_back_enable_out
+  inst COMPOSITE_READ_BOOLEAN ds_ch3_bool_read (channel=3) : composite="Drive Support" -> out=ds_ch3_bool_read_out
+  inst OR simif_active_or : a=simif_rx_ch4_bool_read_out, b=simif_rx_ch5_bool_read_out -> out=simif_active_or_out
+  inst COMPOSITE_READ_BOOLEAN simif_rx_ch5_bool_read (channel=5) : composite="Simple Interface RX" -> out=simif_rx_ch5_bool_read_out
+  inst AND conductor_ch19_and : a=conductor_and_speed_out, b=drive_ch19_read_out -> out=conductor_ch19_and_out
+  inst AND conductor_ch20_and : a=conductor_and_speed_out, b=drive_ch20_read_out -> out=conductor_ch20_and_out
+  inst AND conductor_ch21_and : a=conductor_and_speed_out, b=drive_ch21_read_out -> out=conductor_ch21_and_out
+  inst AND conductor_and_speed : a=limit_enable_or_out, b=conductor_speed_ok_or_out -> out=conductor_and_speed_out
+  inst COMPOSITE_READ_BOOLEAN ds_ch4_bool_read (channel=4) : composite="Drive Support" -> out=ds_ch4_bool_read_out
+  inst COMPOSITE_READ_NUMBER physics_speed_read (channel=9) : composite="Physics Sensor [+Z = front]" -> out=physics_speed_read_out
+  inst NOT high_beam_not : a=drive_headlight_read_out -> out="High beam"
+  inst COMPOSITE_READ_BOOLEAN drive_express_yama_read (channel=16) : composite="Drive Loop" -> out="Express Light (YAMA)"
+  inst NUM_SWITCHBOX handle_output_sw : a=handle_angle_func_out, b=handle_notch_sw_out, switch=handle_output_type_prop_out -> out="Main Handle Angle"
+  inst PROPERTY_TOGGLE handle_output_type_prop (label="", on_label="Angle", off_label="TETSUDAN MOD", n="Handle Output Type", v=true) : -> out=handle_output_type_prop_out
+  inst COMPOSITE_READ_NUMBER simif_rx_ch1_num_read (channel=1) : composite="Simple Interface RX" -> out=simif_rx_ch1_num_read_out
+  inst COMPOSITE_READ_NUMBER simif_rx_ch2_num_read (channel=2) : composite="Simple Interface RX" -> out=simif_rx_ch2_num_read_out
+  inst COMPOSITE_READ_BOOLEAN simif_rx_ch1_bool_read (channel=1) : composite="Simple Interface RX" -> out=simif_rx_ch1_bool_read_out
+  inst NOT const_true_not : a=const_false_bool_out -> out=const_true_not_out
+  inst CONST_BOOL const_false_bool : -> out=const_false_bool_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch1_read (channel=1) : composite="Extended Commands RX" -> out=ext_cmd_ch1_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch10_read (channel=10) : composite="Extended Commands RX" -> out=ext_cmd_ch10_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch32_read (channel=32) : composite="Extended Commands RX" -> out=ext_cmd_ch32_read_out
+  inst PULSE atc_reset_pulse (mode="fall") : a=seat_latch_not_q -> out="ATS/C Reset Signal"
+  inst COMPOSITE_READ_BOOLEAN rolling_stock_ch2_read (channel=2) : composite="Rolling Stock Settings" -> out=rolling_stock_ch2_read_out
+end

@@ -14,130 +14,130 @@ module main
   port in MR : number
   port in "Rolling Stock Settings" : composite
 
-  inst FUNC_NUM_8 traction_force_calc (expression="((x*abs(x))*a+x*b+y*c)*d") : x=velocity, y=brake_notch_lua, a=inertia_a, b=inertia_b, c=inertia_c, d=boost_coef -> out=traction_force
-  inst COMPOSITE_READ_NUMBER motor_current_read (channel=29) : composite=vvvf_data_sw_out -> out=motor_current
-  inst FUNC_NUM_3 lack_brake_calc (expression="(max(y-1.45,0)/3.02)*z/abs(x)") : x=velocity, y=velocity_eff, z=inertia_d -> out=lack_brake
-  inst FUNC_NUM_3 bc_sim_lpf (expression="clamp(x,y*0.6-0.03,6)*0.07+0.93*y") : x=bc_press_calc_out, y=bc_sim -> out=bc_sim
-  inst CONST const_1500 (value=1500) : -> value=v1500_val
-  inst NUM_SWITCHBOX voltage_src_sw : a=v1500_val, b="Voltage", switch=voltage_valid -> out=voltage_src
-  inst THRESHOLD voltage_valid_thr (min=0, max=1) : value="Voltage" -> out=voltage_valid
-  inst FUNC_NUM_3 power_watt_mul (expression="x*y") : x=motor_current, y=enabled_voltage -> out="Output (Watt)"
-  inst COMPOSITE_READ_NUMBER si_n1_brake_read (channel=2) : composite="Simple IF" -> out=brake_notch
-  inst COMPOSITE_READ_NUMBER si_n2_power_read (channel=1) : composite="Simple IF" -> out=power_notch
-  inst COMPOSITE_READ_NUMBER pan_current_read (channel=24) : composite=vvvf_data_sw_out -> out=pan_current
-  inst NUM_SWITCHBOX voltage_enable_sw : a=voltage_src, switch=cutout_enable -> out=enabled_voltage
-  inst DELTA velocity_delta : a=velocity_eff -> out=velocity_delta_out
-  inst FUNC_NUM_1 brake_snd_calc (expression="clamp(-x/0.03,0,1)") : x=velocity_delta_out -> out="Brake sound"
-  inst NUM_SWITCHBOX direction_neg_sw : a=neg1_val, switch=dir_rev -> out=direction_neg
-  inst CONST const_neg1 (value=-1) : -> value=neg1_val
-  inst NUM_SWITCHBOX direction_pos_sw : a=pos1_val, switch=dir_fwd -> out=direction_pos
-  inst CONST const_pos1 (value=1) : -> value=pos1_val
-  inst COMPOSITE_READ_BOOLEAN si_b17_rev_read (channel=17) : composite="Simple IF" -> out=dir_rev
-  inst COMPOSITE_READ_BOOLEAN si_b16_fwd_read (channel=16) : composite="Simple IF" -> out=dir_fwd
-  inst ADD direction_add : a=direction_neg, b=direction_pos -> out=direction
-  inst COMPOSITE_READ_BOOLEAN si_b1_mascon_read (channel=1) : composite="Simple IF" -> out=mascon_active
-  inst COMPOSITE_READ_BOOLEAN si_b18_db_auto_read (channel=18) : composite="Simple IF" -> out=db_auto
-  inst NOT db_auto_not : a=db_auto -> out=db_auto_not_out
-  inst COMPOSITE_WRITE_BOOLEAN rss_bool_build (count=8, offset=1) : in1=mascon_enable, in5=panta_fwd, in6=db_fwd, in7=panta_rev, in8=db_rev, inc=rss_num_out -> out="Rolling Stock Status"
-  inst XOR mascon_init_xor : a=nits_watchdog, b=mascon_init_or_out -> out=mascon_init_xor_out
-  inst OR mascon_init_or : a=nits_watchdog -> out=mascon_init_or_out
-  inst COMPOSITE_READ_BOOLEAN nits_watchdog_read (channel=17) : composite=vvvf_lua_composite -> out=nits_watchdog
-  inst CAPACITOR mascon_enable_cap (charge_time=0.1, discharge_time=0) : enable=mascon_init_not_out -> out=mascon_enable
-  inst NOT mascon_init_not : a=mascon_init_xor_out -> out=mascon_init_not_out
-  inst COMPOSITE_WRITE_NUMBER rss_num_build (count=8, offset=1) : in2=bc_press_kpa, in3=motor_current_4x, in5=pan_voltage, in6=traction_coef_fwd, in7=traction_coef_rev, in8="MR" -> out=rss_num_out
-  inst OR mascon_enable_or : a=mascon_hold, b=mascon_enable -> out=mascon_enable_comb
-  inst CAPACITOR mascon_hold_cap (charge_time=1, discharge_time=0) : enable=mascon_active -> out=mascon_hold
-  inst COMPOSITE_WRITE_BOOLEAN vvvf_lua_in_bool (count=4, offset=1) : in1=mascon_active, in2=high_accel_cmd, in3=db_auto_not_out, in4=is_m_car, inc=momelink_valid -> out=vvvf_lua_in_bool_out
-  inst MEMORY_REGISTER cv_reg (reset_value=0) : reset=cv_reset, set=cv_set, value=velocity_abs_out -> out=cv
-  inst SR_LATCH cv_latch : r=power_notch_zero, s=cv_latch_set -> q=cv_latch_q
-  inst THRESHOLD power_notch_pos_thr (min=0, max=1) : value=power_notch -> out=si_power_pos
-  inst NOT power_notch_zero_not : a=si_power_pos -> out=power_notch_zero
-  inst THRESHOLD brake_notch2_thr (min=2, max=2) : value=brake_notch -> out=brake_at_notch2
-  inst PULSE cv_store_pulse (mode="rise") : a=brake_notch2_cap_out -> out=cv_store_pulse_out
-  inst FUNC_NUM_1 velocity_abs (expression="abs(x)") : x=velocity -> out=velocity_abs_out
-  inst AND cv_set_and : a=cv_store_pulse_out, b=cv_latch_q -> out=cv_set
-  inst THRESHOLD mascon_pos_thr (min=0, max=1) : value=brake_notch -> out=mascon_pos
-  inst AND cv_latch_set_and : a=mascon_pos, b=si_power_pos -> out=cv_latch_set
-  inst OR cv_reset_or : a=brake_notch2_not_out, b=power_notch_zero -> out=cv_reset
-  inst NOT brake_notch2_not : a=brake_at_notch2 -> out=brake_notch2_not_out
-  inst CAPACITOR brake_notch2_cap (charge_time=1, discharge_time=0) : enable=brake_at_notch2 -> out=brake_notch2_cap_out
-  inst FUNC_NUM_1 bc_press_kpa_calc (expression="max((x-1)*101.325,0)") : x=velocity_eff -> out=bc_press_kpa
-  inst SR_LATCH panta_fwd_latch : r=panta_fwd_unlock_cmd, s=panta_fwd_lock_cmd -> q=panta_fwd_q, not_q=panta_fwd_not_q
-  inst SR_LATCH panta_rev_latch : r=panta_rev_unlock_cmd, s=panta_rev_lock_cmd -> q=panta_rev_q, not_q=panta_rev_not_q
-  inst SR_LATCH db_fwd_latch : r=panta_dn_cmd, s=db_fwd_set -> q=db_fwd_q
-  inst SR_LATCH db_rev_latch : r=panta_dn_cmd, s=db_rev_set -> q=db_rev_q
-  inst AND db_fwd_set_and : a=panta_fwd_not_q, b=panta_up_cmd -> out=db_fwd_set
-  inst OR cutout_enable_or : a=db_fwd, b=db_rev -> out=cutout_enable
-  inst AND db_rev_set_and : a=panta_rev_not_q, b=panta_up_cmd -> out=db_rev_set
-  inst COMPOSITE_READ_BOOLEAN ext_b6_panta_up_read (channel=6) : composite="Extended Commands RX" -> out=panta_up_cmd
-  inst COMPOSITE_READ_BOOLEAN ext_b7_panta_dn_read (channel=7) : composite="Extended Commands RX" -> out=panta_dn_cmd
-  inst COMPOSITE_READ_BOOLEAN ext_b4_panta_fwd_lock_read (channel=4) : composite="Extended Commands RX" -> out=panta_fwd_lock_cmd
-  inst COMPOSITE_READ_BOOLEAN ext_b5_panta_fwd_unlock_read (channel=5) : composite="Extended Commands RX" -> out=panta_fwd_unlock_cmd
-  inst COMPOSITE_READ_BOOLEAN ext_b8_panta_rev_lock_read (channel=8) : composite="Extended Commands RX" -> out=panta_rev_lock_cmd
-  inst COMPOSITE_READ_BOOLEAN ext_b9_panta_rev_unlock_read (channel=9) : composite="Extended Commands RX" -> out=panta_rev_unlock_cmd
-  inst COMPOSITE_READ_BOOLEAN ext_b14_high_accel_read (channel=14) : composite="Extended Commands RX" -> out=high_accel_cmd
-  inst LUA vvvf_lua (script_ref="scripts/n485.lua") : composite=vvvf_lua_in_out -> composite=vvvf_lua_composite
-  inst COMPOSITE_WRITE_NUMBER vvvf_lua_in (count=9, offset=1) : in1=velocity, in2=enabled_voltage, in3=brake_notch, in4=power_notch, in5=direction, in6=cv, in7=cv_default_val, in8=traction_param1_val, in9=traction_param2_val, inc=vvvf_lua_in_bool_out -> out=vvvf_lua_in_out
-  inst COMPOSITE_READ_NUMBER brake_notch_lua_read (channel=2) : composite=vvvf_data_sw_out -> out=brake_notch_lua
-  inst COMPOSITE_SWITCHBOX vvvf_data_sw : a=momelink_cv_out, b=vvvf_lua_composite, switch=mascon_enable_comb -> out=vvvf_data_sw_out
-  inst FUNC_NUM_3 bc_press_calc (expression="(x*3.02)+y+1") : x=power_notch_lua, y=bc_offset -> out=bc_press_calc_out, out="BC Target"
-  inst COMPOSITE_READ_NUMBER power_notch_read (channel=1) : composite=vvvf_data_sw_out -> out=power_notch_lua
-  inst GREATER_THAN power_notch_pos_gt : a=power_notch_lua -> out=lua_power_pos
-  inst OR bc_offset_cond_or : a=lua_power_pos, b=regen_brake_flag -> out=bc_offset_cond
-  inst COMPOSITE_READ_BOOLEAN regen_brake_flag_read (channel=20) : composite=vvvf_data_sw_out -> out=regen_brake_flag
-  inst NUM_SWITCHBOX bc_offset_sw : a=bc_offset_val, switch=bc_offset_cond -> out=bc_offset
-  inst CONST const_bc_offset (value=0.45) : -> value=bc_offset_val
-  inst THRESHOLD momelink_id_thr (min=1911, max=1911) : value=momelink_id -> out=momelink_id_match
-  inst COMPOSITE_READ_NUMBER momelink_id_read (channel=15) : composite="Momelink Line from inner Unit" -> out=momelink_id
-  inst COMPOSITE_SWITCHBOX momelink_sw : a="Momelink Line from inner Unit", switch=momelink_id_match -> out=momelink_valid
-  inst COMPOSITE_WRITE_NUMBER momelink_id_build (count=2, offset=30) : in1=traction_param1_val, in2=traction_param2_val, inc=momelink_id_write_out -> out=momelink_id_build_out
-  inst CONST const_momelink_id (value=1911) : -> value=momelink_id_val
-  inst CONST const_traction_param1 (value=1) : -> value=traction_param1_val
-  inst CONST const_traction_param2 (value=3.5) : -> value=traction_param2_val
-  inst NUM_SWITCHBOX cv_src_sw : a=cv_default_val, b=cv_from_brake, switch=mascon_active -> out=cv_src
-  inst CONST const_cv_default (value=1.32) : -> value=cv_default_val
-  inst FUNC_NUM_1 cv_from_brake_calc (expression="x/8/3.6") : x=brake_notch -> out=cv_from_brake
-  inst MEMORY_REGISTER boost_vel_prev (reset_value=0) : set=boost_set, value=velocity_abs2_out -> out=boost_vel_prev_out
-  inst BLINKER boost_blink (on_time=0.5, off_time=0.5) : enable=mascon_active -> out=boost_blink_out
-  inst PULSE boost_blink_pulse (mode="rise") : a=boost_blink_out -> out=boost_blink_tick
-  inst CAPACITOR mascon_active_cap (charge_time=3, discharge_time=0) : enable=mascon_active -> out=mascon_active_latch
-  inst MEMORY_REGISTER boost_vel_snap (reset_value=0) : set=boost_blink_tick, value=boost_vel_prev_out -> out=boost_vel_snap_out
-  inst OR boost_set_or : a=boost_blink_tick -> out=boost_set
-  inst GREATER_THAN boost_accel_gt : a=boost_vel_prev_out, b=boost_vel_snap_out -> out=boost_accel
-  inst CAPACITOR boost_accel_cap (charge_time=0, discharge_time=0.1) : enable=boost_accel -> out=boost_accel_latch
-  inst AND boost_set_and : a=boost_accel_latch, b=mascon_active_latch -> out=boost_set_cond
-  inst NUM_SWITCHBOX boost_enable_sw : b=boost1_val, switch=boost_q -> out=boost_coef
-  inst CONST const_boost1 (value=1) : -> value=boost1_val
-  inst SR_LATCH boost_latch : r=mascon_fall, s=boost_set_cond -> q=boost_q
-  inst PULSE mascon_fall_pulse (mode="fall") : a=mascon_active -> out=mascon_fall
-  inst ABS velocity_abs2 : a=velocity -> out=velocity_abs2_out
-  inst FUNC_NUM_1 motor_current_x4 (expression="x*4") : x=pan_current -> out=motor_current_4x
-  inst NUM_SWITCHBOX traction_coef_fwd_sw : a=coef_hi_val, b=coef_lo_val, switch=db_fwd -> out=traction_coef_fwd
-  inst CONST const_coef_hi (value=0.3) : -> value=coef_hi_val
-  inst CONST const_coef_lo (value=0.02) : -> value=coef_lo_val
-  inst NUM_SWITCHBOX traction_coef_rev_sw : a=coef_hi_val, b=coef_lo_val, switch=db_rev -> out=traction_coef_rev
-  inst AND db_fwd_and : a=db_fwd_q, b=is_m_car -> out=db_fwd
-  inst AND db_rev_and : a=db_rev_q, b=is_m_car -> out=db_rev
-  inst COMPOSITE_READ_NUMBER inertia_a_read (channel=1) : composite="Inertia Composite Input" -> out=inertia_a
-  inst COMPOSITE_READ_NUMBER inertia_b_read (channel=2) : composite="Inertia Composite Input" -> out=inertia_b
-  inst COMPOSITE_READ_NUMBER inertia_c_read (channel=3) : composite="Inertia Composite Input" -> out=inertia_c
-  inst COMPOSITE_READ_NUMBER inertia_d_read (channel=4) : composite="Inertia Composite Input" -> out=inertia_d
-  inst COMPOSITE_READ_BOOLEAN is_m_car_read (channel=1) : composite="Rolling Stock Settings" -> out=is_m_car
-  inst NUM_SWITCHBOX velocity_sw : a=v_init_val, b=bc_input, switch=velocity_real_cond_out -> out=velocity_eff
-  inst AND velocity_real_cond : a=velocity_below_init, b=mascon_hold -> out=velocity_real_cond_out
-  inst CONST const_v_init (value=4) : -> value=v_init_val
-  inst LESS_THAN velocity_below_init_lt : a=bc_input, b=v_init_val -> out=velocity_below_init
-  inst COMPOSITE_READ_NUMBER pan_voltage_read (channel=23) : composite=vvvf_data_sw_out -> out=pan_voltage
-  inst COMPOSITE_SWITCHBOX momelink_out_sw : a=momelink_pv_out, b=momelink_valid, switch=is_m_car -> out=momelink_out
-  inst COMPOSITE_WRITE_NUMBER momelink_cv_build (count=1, offset=1) : in1=cv_src, inc=momelink_id_build_out -> out=momelink_cv_out
-  inst AND unused_and : -> out=unused_out
-  inst COMPOSITE_WRITE_NUMBER momelink_pv_build (count=1, offset=23) : in1=enabled_voltage -> out=momelink_pv_out
-  inst AND panta_fwd_and : a=panta_fwd_q, b=is_m_car -> out=panta_fwd
-  inst AND panta_rev_and : a=panta_rev_q, b=is_m_car -> out=panta_rev
-  inst COMPOSITE_WRITE_NUMBER momelink_id_write (count=1, offset=15) : in1=momelink_id_val, inc=momelink_out -> out=momelink_id_write_out
-  inst COMPOSITE_WRITE_NUMBER momelink_output_build (count=1, offset=1) : in1=normalized_speed, inc=vvvf_data_sw_out -> out="To Momelink Input & Advanced"
-  inst FUNC_NUM_1 normalized_speed_calc (expression="max(x-1.45,0)/3.02") : x=velocity_eff -> out=normalized_speed
-  inst COMPOSITE_READ_NUMBER velocity_read (channel=9) : composite="Physics Input" -> out=velocity
-  inst NUM_SWITCHBOX bc_mode_sw : a=bc_sim, b="BC", switch=bc_mode -> out=bc_input
-  inst PROPERTY_TOGGLE bc_mode_prop (label="", on_label="Simulated", off_label="Real", n="BC Mode") : -> out=bc_mode
+  inst FUNC_NUM_8 traction_effort_calc (expression="((x*abs(x))*a+x*b+y*c)*d") : x=speed_read_out, y=lua_ch2_read_out, a=inertia_coeff_a_read_out, b=inertia_coeff_b_read_out, c=inertia_coeff_c_read_out, d=notch_scale_sw_out -> out=traction_effort_calc_out
+  inst COMPOSITE_READ_NUMBER lua_power_read (channel=29) : composite=ctrl_composite_sw_out -> out=lua_power_read_out
+  inst FUNC_NUM_3 brake_effort_calc (expression="(max(y-1.45,0)/3.02)*z/abs(x)") : x=speed_read_out, y=clamped_bc_sw_out, z=inertia_brake_param_read_out -> out=brake_effort_calc_out
+  inst FUNC_NUM_3 bc_pressure_iir (expression="clamp(x,y*0.6-0.03,6)*0.07+0.93*y") : x=bc_target_calc_out, y=bc_pressure_iir_out -> out=bc_pressure_iir_out
+  inst CONST const_rated_voltage (value=1500) : -> value=const_rated_voltage_value
+  inst NUM_SWITCHBOX voltage_scale_sw : a=const_rated_voltage_value, b="Voltage", switch=voltage_dead_thresh_out -> out=voltage_scale_sw_out
+  inst THRESHOLD voltage_dead_thresh (min=0, max=0) : value="Voltage" -> out=voltage_dead_thresh_out
+  inst FUNC_NUM_3 power_output_calc (expression="x*y") : x=lua_power_read_out, y=power_voltage_sw_out -> out="Output (Watt)"
+  inst COMPOSITE_READ_NUMBER simif_speed_cmd_read (channel=2) : composite="Simple IF" -> out=simif_speed_cmd_read_out
+  inst COMPOSITE_READ_NUMBER simif_notch_read (channel=1) : composite="Simple IF" -> out=simif_notch_read_out
+  inst COMPOSITE_READ_NUMBER lua_ch24_speed_read (channel=24) : composite=ctrl_composite_sw_out -> out=lua_ch24_speed_read_out
+  inst NUM_SWITCHBOX power_voltage_sw : a=voltage_scale_sw_out, switch=notch_active_or_out -> out=power_voltage_sw_out
+  inst DELTA bc_delta : a=clamped_bc_sw_out -> out=bc_delta_out
+  inst FUNC_NUM_1 brake_sound_calc (expression="clamp(-x/0.03,0,1)") : x=bc_delta_out -> out="Brake sound"
+  inst NUM_SWITCHBOX reverse_dir_sw : a=const_reverse_dir_value, switch=simif_reverse_flag_read_out -> out=reverse_dir_sw_out
+  inst CONST const_reverse_dir (value=-1) : -> value=const_reverse_dir_value
+  inst NUM_SWITCHBOX forward_dir_sw : a=const_forward_dir_value, switch=simif_forward_flag_read_out -> out=forward_dir_sw_out
+  inst CONST const_forward_dir (value=1) : -> value=const_forward_dir_value
+  inst COMPOSITE_READ_BOOLEAN simif_reverse_flag_read (channel=17) : composite="Simple IF" -> out=simif_reverse_flag_read_out
+  inst COMPOSITE_READ_BOOLEAN simif_forward_flag_read (channel=16) : composite="Simple IF" -> out=simif_forward_flag_read_out
+  inst ADD direction_sum : a=reverse_dir_sw_out, b=forward_dir_sw_out -> out=direction_sum_out
+  inst COMPOSITE_READ_BOOLEAN simif_power_key_read (channel=1) : composite="Simple IF" -> out=simif_power_key_read_out
+  inst COMPOSITE_READ_BOOLEAN simif_ch18_flag_read (channel=18) : composite="Simple IF" -> out=simif_ch18_flag_read_out
+  inst NOT simif_ch18_flag_not : a=simif_ch18_flag_read_out -> out=simif_ch18_flag_not_out
+  inst COMPOSITE_WRITE_BOOLEAN rs_status_output_write (count=8, offset=1) : in1=driver_watchdog_cap_out, in5=cmd_a_rs_active_out, in6=notch_a_active_out, in7=cmd_b_rs_active_out, in8=notch_b_active_out, inc=rs_status_num_write_out -> out="Rolling Stock Status"
+  inst XOR driver_status_xor : a=lua_driver_flag_read_out, b=driver_status_or_out -> out=driver_status_xor_out
+  inst OR driver_status_or : a=lua_driver_flag_read_out -> out=driver_status_or_out
+  inst COMPOSITE_READ_BOOLEAN lua_driver_flag_read (channel=17) : composite=traction_ctrl_lua_composite -> out=lua_driver_flag_read_out
+  inst CAPACITOR driver_watchdog_cap (charge_time=0.1, discharge_time=0) : enable=driver_xor_not_out -> out=driver_watchdog_cap_out
+  inst NOT driver_xor_not : a=driver_status_xor_out -> out=driver_xor_not_out
+  inst COMPOSITE_WRITE_NUMBER rs_status_num_write (count=8, offset=1) : in2=bc_pressure_kpa_out, in3=speed_ch24_scaled_out, in5=lua_ch23_read_out, in6=threshold_a_sw_out, in7=threshold_b_sw_out, in8="MR" -> out=rs_status_num_write_out
+  inst OR ctrl_active_or : a=power_key_hold_cap_out, b=driver_watchdog_cap_out -> out=ctrl_active_or_out
+  inst CAPACITOR power_key_hold_cap (charge_time=1, discharge_time=0) : enable=simif_power_key_read_out -> out=power_key_hold_cap_out
+  inst COMPOSITE_WRITE_BOOLEAN ctrl_bool_composite_write (count=4, offset=1) : in1=simif_power_key_read_out, in2=ext_cmd_ch14_flag_read_out, in3=simif_ch18_flag_not_out, in4=rs_active_flag_read_out, inc=momelink_gate_sw_out -> out=ctrl_bool_composite_write_out
+  inst MEMORY_REGISTER speed_ref_store (reset_value=0) : reset=speed_ref_reset_or_out, set=speed_ref_store_trigger_out, value=speed_abs_ref_out -> out=speed_ref_store_out
+  inst SR_LATCH idle_state_latch : r=notch_nonzero_out, s=idle_set_cond_out -> q=idle_state_latch_q
+  inst THRESHOLD notch_zero_thresh (min=0, max=0) : value=simif_notch_read_out -> out=notch_zero_thresh_out
+  inst NOT notch_nonzero : a=notch_zero_thresh_out -> out=notch_nonzero_out
+  inst THRESHOLD speed_cmd_2_thresh (min=2, max=2) : value=simif_speed_cmd_read_out -> out=speed_cmd_2_thresh_out
+  inst PULSE speed_cmd_2_rise_pulse (mode="rise") : a=speed_cmd_2_gate_cap_out -> out=speed_cmd_2_rise_pulse_out
+  inst FUNC_NUM_1 speed_abs_ref (expression="abs(x)") : x=speed_read_out -> out=speed_abs_ref_out
+  inst AND speed_ref_store_trigger : a=speed_cmd_2_rise_pulse_out, b=idle_state_latch_q -> out=speed_ref_store_trigger_out
+  inst THRESHOLD speed_cmd_zero_thresh (min=0, max=0) : value=simif_speed_cmd_read_out -> out=speed_cmd_zero_thresh_out
+  inst AND idle_set_cond : a=speed_cmd_zero_thresh_out, b=notch_zero_thresh_out -> out=idle_set_cond_out
+  inst OR speed_ref_reset_or : a=speed_cmd_not_2_out, b=notch_nonzero_out -> out=speed_ref_reset_or_out
+  inst NOT speed_cmd_not_2 : a=speed_cmd_2_thresh_out -> out=speed_cmd_not_2_out
+  inst CAPACITOR speed_cmd_2_gate_cap (charge_time=1, discharge_time=0) : enable=speed_cmd_2_thresh_out -> out=speed_cmd_2_gate_cap_out
+  inst FUNC_NUM_1 bc_pressure_kpa (expression="max((x-1)*101.325,0)") : x=clamped_bc_sw_out -> out=bc_pressure_kpa_out
+  inst SR_LATCH ext_cmd_latch_a : r=ext_cmd_reset_a_read_out, s=ext_cmd_set_a_read_out -> q=ext_cmd_latch_a_q, not_q=ext_cmd_latch_a_not_q
+  inst SR_LATCH ext_cmd_latch_b : r=ext_cmd_reset_b_read_out, s=ext_cmd_set_b_read_out -> q=ext_cmd_latch_b_q, not_q=ext_cmd_latch_b_not_q
+  inst SR_LATCH ext_output_latch_a : r=ext_cmd_reset_read_out, s=ext_set_a_cond_out -> q=ext_output_latch_a_q
+  inst SR_LATCH ext_output_latch_b : r=ext_cmd_reset_read_out, s=ext_set_b_cond_out -> q=ext_output_latch_b_q
+  inst AND ext_set_a_cond : a=ext_cmd_latch_a_not_q, b=ext_cmd_enable_read_out -> out=ext_set_a_cond_out
+  inst OR notch_active_or : a=notch_a_active_out, b=notch_b_active_out -> out=notch_active_or_out
+  inst AND ext_set_b_cond : a=ext_cmd_latch_b_not_q, b=ext_cmd_enable_read_out -> out=ext_set_b_cond_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_enable_read (channel=6) : composite="Extended Commands RX" -> out=ext_cmd_enable_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_reset_read (channel=7) : composite="Extended Commands RX" -> out=ext_cmd_reset_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_set_a_read (channel=4) : composite="Extended Commands RX" -> out=ext_cmd_set_a_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_reset_a_read (channel=5) : composite="Extended Commands RX" -> out=ext_cmd_reset_a_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_set_b_read (channel=8) : composite="Extended Commands RX" -> out=ext_cmd_set_b_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_reset_b_read (channel=9) : composite="Extended Commands RX" -> out=ext_cmd_reset_b_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch14_flag_read (channel=14) : composite="Extended Commands RX" -> out=ext_cmd_ch14_flag_read_out
+  inst LUA traction_ctrl_lua (script_ref="scripts/n485.lua") : composite=traction_lua_input_out -> composite=traction_ctrl_lua_composite
+  inst COMPOSITE_WRITE_NUMBER traction_lua_input (count=9, offset=1) : in1=speed_read_out, in2=power_voltage_sw_out, in3=simif_speed_cmd_read_out, in4=simif_notch_read_out, in5=direction_sum_out, in6=speed_ref_store_out, in7=const_default_speed_value, in8=const_car_count_value, in9=const_gear_ratio_value, inc=ctrl_bool_composite_write_out -> out=traction_lua_input_out
+  inst COMPOSITE_READ_NUMBER lua_ch2_read (channel=2) : composite=ctrl_composite_sw_out -> out=lua_ch2_read_out
+  inst COMPOSITE_SWITCHBOX ctrl_composite_sw : a=fallback_composite_write_out, b=traction_ctrl_lua_composite, switch=ctrl_active_or_out -> out=ctrl_composite_sw_out
+  inst FUNC_NUM_3 bc_target_calc (expression="(x*3.02)+y+1") : x=bc_notch_read_out, y=bc_min_offset_sw_out -> out=bc_target_calc_out, out="BC Target"
+  inst COMPOSITE_READ_NUMBER bc_notch_read (channel=1) : composite=ctrl_composite_sw_out -> out=bc_notch_read_out
+  inst GREATER_THAN bc_notch_positive : a=bc_notch_read_out -> out=bc_notch_positive_out
+  inst OR brake_active_or : a=bc_notch_positive_out, b=eb_flag_read_out -> out=brake_active_or_out
+  inst COMPOSITE_READ_BOOLEAN eb_flag_read (channel=20) : composite=ctrl_composite_sw_out -> out=eb_flag_read_out
+  inst NUM_SWITCHBOX bc_min_offset_sw : a=const_bc_min_offset_value, switch=brake_active_or_out -> out=bc_min_offset_sw_out
+  inst CONST const_bc_min_offset (value=0.45) : -> value=const_bc_min_offset_value
+  inst THRESHOLD momelink_id_match (min=1911, max=1911) : value=momelink_id_read_out -> out=momelink_id_match_out
+  inst COMPOSITE_READ_NUMBER momelink_id_read (channel=15) : composite="Momelink Line from inner Unit" -> out=momelink_id_read_out
+  inst COMPOSITE_SWITCHBOX momelink_gate_sw : a="Momelink Line from inner Unit", switch=momelink_id_match_out -> out=momelink_gate_sw_out
+  inst COMPOSITE_WRITE_NUMBER momelink_params_write (count=2, offset=30) : in1=const_car_count_value, in2=const_gear_ratio_value, inc=momelink_id_write_out -> out=momelink_params_write_out
+  inst CONST const_momelink_id (value=1911) : -> value=const_momelink_id_value
+  inst CONST const_car_count (value=1) : -> value=const_car_count_value
+  inst CONST const_gear_ratio (value=3.5) : -> value=const_gear_ratio_value
+  inst NUM_SWITCHBOX speed_target_sw : a=const_default_speed_value, b=speed_from_cmd_out, switch=simif_power_key_read_out -> out=speed_target_sw_out
+  inst CONST const_default_speed (value=1.32) : -> value=const_default_speed_value
+  inst FUNC_NUM_1 speed_from_cmd (expression="x/8/3.6") : x=simif_speed_cmd_read_out -> out=speed_from_cmd_out
+  inst MEMORY_REGISTER speed_current_memory (reset_value=0) : set=speed_check_set_or_out, value=speed_abs_sample_out -> out=speed_current_memory_out
+  inst BLINKER speed_check_blinker (on_time=0.5, off_time=0.5) : enable=simif_power_key_read_out -> out=speed_check_blinker_out
+  inst PULSE speed_check_pulse (mode="rise") : a=speed_check_blinker_out -> out=speed_check_pulse_out
+  inst CAPACITOR key_hold_timer_cap (charge_time=3, discharge_time=0) : enable=simif_power_key_read_out -> out=key_hold_timer_cap_out
+  inst MEMORY_REGISTER speed_prev_memory (reset_value=0) : set=speed_check_pulse_out, value=speed_current_memory_out -> out=speed_prev_memory_out
+  inst OR speed_check_set_or : a=speed_check_pulse_out -> out=speed_check_set_or_out
+  inst GREATER_THAN speed_increasing : a=speed_current_memory_out, b=speed_prev_memory_out -> out=speed_increasing_out
+  inst CAPACITOR speed_increased_cap (charge_time=0, discharge_time=0.1) : enable=speed_increasing_out -> out=speed_increased_cap_out
+  inst AND notch_cutoff_trigger : a=speed_increased_cap_out, b=key_hold_timer_cap_out -> out=notch_cutoff_trigger_out
+  inst NUM_SWITCHBOX notch_scale_sw : b=const_one_value, switch=notch_cutoff_latch_q -> out=notch_scale_sw_out
+  inst CONST const_one (value=1) : -> value=const_one_value
+  inst SR_LATCH notch_cutoff_latch : r=power_key_fall_pulse_out, s=notch_cutoff_trigger_out -> q=notch_cutoff_latch_q
+  inst PULSE power_key_fall_pulse (mode="fall") : a=simif_power_key_read_out -> out=power_key_fall_pulse_out
+  inst ABS speed_abs_sample : a=speed_read_out -> out=speed_abs_sample_out
+  inst FUNC_NUM_1 speed_ch24_scaled (expression="x*4") : x=lua_ch24_speed_read_out -> out=speed_ch24_scaled_out
+  inst NUM_SWITCHBOX threshold_a_sw : a=const_threshold_high_value, b=const_threshold_low_value, switch=notch_a_active_out -> out=threshold_a_sw_out
+  inst CONST const_threshold_high (value=0.3) : -> value=const_threshold_high_value
+  inst CONST const_threshold_low (value=0.02) : -> value=const_threshold_low_value
+  inst NUM_SWITCHBOX threshold_b_sw : a=const_threshold_high_value, b=const_threshold_low_value, switch=notch_b_active_out -> out=threshold_b_sw_out
+  inst AND notch_a_active : a=ext_output_latch_a_q, b=rs_active_flag_read_out -> out=notch_a_active_out
+  inst AND notch_b_active : a=ext_output_latch_b_q, b=rs_active_flag_read_out -> out=notch_b_active_out
+  inst COMPOSITE_READ_NUMBER inertia_coeff_a_read (channel=1) : composite="Inertia Composite Input" -> out=inertia_coeff_a_read_out
+  inst COMPOSITE_READ_NUMBER inertia_coeff_b_read (channel=2) : composite="Inertia Composite Input" -> out=inertia_coeff_b_read_out
+  inst COMPOSITE_READ_NUMBER inertia_coeff_c_read (channel=3) : composite="Inertia Composite Input" -> out=inertia_coeff_c_read_out
+  inst COMPOSITE_READ_NUMBER inertia_brake_param_read (channel=4) : composite="Inertia Composite Input" -> out=inertia_brake_param_read_out
+  inst COMPOSITE_READ_BOOLEAN rs_active_flag_read (channel=1) : composite="Rolling Stock Settings" -> out=rs_active_flag_read_out
+  inst NUM_SWITCHBOX clamped_bc_sw : a=const_bc_max_value, b=effective_bc_sw_out, switch=bc_use_real_cond_out -> out=clamped_bc_sw_out
+  inst AND bc_use_real_cond : a=bc_below_max_out, b=power_key_hold_cap_out -> out=bc_use_real_cond_out
+  inst CONST const_bc_max (value=4) : -> value=const_bc_max_value
+  inst LESS_THAN bc_below_max : a=effective_bc_sw_out, b=const_bc_max_value -> out=bc_below_max_out
+  inst COMPOSITE_READ_NUMBER lua_ch23_read (channel=23) : composite=ctrl_composite_sw_out -> out=lua_ch23_read_out
+  inst COMPOSITE_SWITCHBOX momelink_select_sw : a=voltage_composite_write_out, b=momelink_gate_sw_out, switch=rs_active_flag_read_out -> out=momelink_select_sw_out
+  inst COMPOSITE_WRITE_NUMBER fallback_composite_write (count=1, offset=1) : in1=speed_target_sw_out, inc=momelink_params_write_out -> out=fallback_composite_write_out
+  inst AND unused_and : -> out=unused_and_out
+  inst COMPOSITE_WRITE_NUMBER voltage_composite_write (count=1, offset=23) : in1=power_voltage_sw_out -> out=voltage_composite_write_out
+  inst AND cmd_a_rs_active : a=ext_cmd_latch_a_q, b=rs_active_flag_read_out -> out=cmd_a_rs_active_out
+  inst AND cmd_b_rs_active : a=ext_cmd_latch_b_q, b=rs_active_flag_read_out -> out=cmd_b_rs_active_out
+  inst COMPOSITE_WRITE_NUMBER momelink_id_write (count=1, offset=15) : in1=const_momelink_id_value, inc=momelink_select_sw_out -> out=momelink_id_write_out
+  inst COMPOSITE_WRITE_NUMBER momelink_output_write (count=1, offset=1) : in1=brake_fraction_calc_out, inc=ctrl_composite_sw_out -> out="To Momelink Input & Advanced"
+  inst FUNC_NUM_1 brake_fraction_calc (expression="max(x-1.45,0)/3.02") : x=clamped_bc_sw_out -> out=brake_fraction_calc_out
+  inst COMPOSITE_READ_NUMBER speed_read (channel=9) : composite="Physics Input" -> out=speed_read_out
+  inst NUM_SWITCHBOX effective_bc_sw : a=bc_pressure_iir_out, b="BC", switch=bc_mode_property_out -> out=effective_bc_sw_out
+  inst PROPERTY_TOGGLE bc_mode_property (label="", on_label="Simulated", off_label="Real", n="BC Mode") : -> out=bc_mode_property_out
 end
