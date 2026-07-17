@@ -1307,3 +1307,443 @@ Type ID）が一切送出されていなかった不具合を修正
   （`momelink_advanced_frame`の`count`修正1行）、`SIGNAL_MAP.md`
   （stateless_out slot3の説明を実態＝Momelink ch2/26向けへ訂正）。
   比較検証に使ったsw-net-simハーネスはスクラッチパッドの使い捨て。
+
+## #26 #23の固着解除ロジックが`DB自動`ON時に直列を誤ってSETし、
+カムが高速域のノッチオフで勝手に前進する回帰バグを修正
+
+- **経緯**：ユーザーから「高速域でノッチオフするとカムが前進してしまい、
+  直列界磁（phase1_latch＋regen_latch同時ON）まで進段してしまう。再力行は
+  並列初段からやり直しになる。固着解除ロジックが誤って発動していないか」
+  との報告を受けた。
+- **再現と切り分け**：フル力行から速度フィードバックを模したシミュレーション
+  でカム位置0・並列＋界磁制御まで到達させ、notchを0に落として`regen_flag`
+  （Simple IF B18＝DB自動）をONにしたまま放置したところ、約50tick後に
+  `phase1_latch`が誤ってtrueになり、以降`phase1_regen_active`
+  （`phase1_latch and notch_fb_ne14 and regen_latch`）が`traction_any_active`
+  を持ち上げ続け、notch=0のままカムが0→1→2→…と際限なく進段することを
+  確認した。ユーザー報告と完全に一致する現象。
+  - **切り分け時の失敗**：当初`sap_pressure_sw=5`を「ゲート側解決済みの
+    最終値」として直接与えて再現を試みたが、これは実際には強い回生
+    ブレーキ要求（`low_bc_with_regen_flag=true`、ECBモードでの1atm≈無制動
+    という前提を誤って無視した値）を注入してしまっており、`stuck_at_top_idle`
+    ではなく既存の`field_current_excess`（界磁電流300A超過、SPEC.md
+    §7.5）の方が実際の引き金になっていた（この経路は#23より前の
+    セッション開始前ベースラインでも同様に発生し、本セッションの変更とは
+    無関係）。`sap_pressure_sw=1.0`（無制動の解決済み値）に修正して
+    再テストしたところ、`regen_flag=false`では正しく中立へ解放される一方、
+    `regen_flag=true`のときだけ`phase1_latch`が誤ってSETされることを確認し、
+    これが#23で追加した`stuck_at_top_idle`固有のバグであると確定させた。
+- **原因**：#23の実装は`stuck_at_top_idle`を既存の
+  `field_current_excess_cond`→`field_current_excess_pulse`チェーンへ
+  合流させていた。この`pulse`は`phase1_set`
+  （`field_current_excess_pulse and phase2_latch`、並列→直列降格用、
+  SPEC.md §7.5）へも**無条件に**配線されており、「なぜpulseが発火したか」
+  を区別しない。一方`phase_reset_cond`（`coasting_cond or
+  (field_current_excess_pulse and (not regen_flag))`）は、`regen_flag`
+  （DB自動）がONの間はpulse由来の項が`not regen_flag`で無効化される
+  設計になっている。このため`regen_flag=true`の間に`stuck_at_top_idle`が
+  pulseを発火させると、同tickで`phase1_set`はマスクされずに素通りする
+  一方、`phase_reset_cond`（延いては`phase1_reset`）は
+  `coasting_cond`（`not regen_latch`を要求、まだ固着中でtrue化できない）も
+  他の項も不成立のためfalseのまま──`phase1_set=true`かつ
+  `phase1_reset=false`という非対称な組み合わせになり、直列が
+  **マスクされずに実際にSETしてしまっていた**。
+- **修正**：`stuck_at_top_idle`を`field_current_excess_cond`/`pulse`
+  チェーンから完全に切り離し、`phase_state_machine`内で直接計算した上で
+  `phase2_reset`へのみ`or`で合流させた（`phase1_set`には一切経路を
+  持たせない）。判定式自体は`current_near_zero(motor_current) and
+  not(notch_ge1 or low_bc_with_regen_flag)`という既存の`neutral_cond`
+  （`coasting_cond`と共用）をそのまま再利用しており、`regen_flag`の値に
+  一切依存しない（これにより`regen_flag`がON/OFFいずれでも同じ経路で
+  中立へ解放される）。`regen_latch`自身のリセットは既存の
+  `traction_all_off`経由で1tick遅れて追従する（`coasting_cond`駆動の
+  通常解放と同じタイミング挙動）。`field_current_excess_block`は
+  #23以前の元の6引数シグネチャへ戻し、`stuck_at_top_idle`関連の引数
+  （`phase2_latch`／`regen_latch`／`notch_fb_ge1`／`motor_current`／
+  `low_bc_with_regen_flag`）は不要になったため削除した。
+- **確認**：上記の`sap_pressure_sw=1.0`・`regen_flag=true`シナリオを
+  修正後コードで再実行し、`phase1_latch`が一切trueにならないまま
+  `phase2_latch`／`regen_latch`が正しく中立へ解放され、カム位置も0の
+  ままであることを確認した。`test/run_all.lua`（15/15）・
+  `test/verify_deploy_artifact.lua`（2件とも pass）で無回帰を確認した。
+- **教訓**：`field_current_excess_pulse`のような「複数の意味を持つ
+  共有パルス」に新しい発火条件を安易に合流させると、その pulse を
+  消費する**すべての**下流ロジック（このケースでは`phase1_set`）に
+  意図しない影響が及ぶ。#22で発見した「co-onマスキング」もこの
+  同じ共有pulseの副作用の一種であり、今回のバグもその類縁。今後
+  同様の共有パルスへ新条件を追加する場合は、まず「そのpulseを
+  消費する全ての下流項」を洗い出し、新条件がそれぞれに対して
+  意図通りかを個別に確認すること。
+- **テスト**：`test/scenarios/stuck_at_top_of_ladder_recovery.lua`に
+  新しいケース（`regen_flag=true`・無制動での固着解除が直列を
+  誤ってSETしないこと、正しく中立へ解放されカム位置も不変であること）
+  を追加し、ヘッダコメントに本エントリへの改訂履歴を追記した。
+- **影響箇所**：`src/chuso1800_core.lua`（`field_current_excess_block`を
+  元のシグネチャへ復元、`phase_state_machine`に`stuck_at_top_idle`を
+  移設）、`deploy/chuso1800_deploy.lua`（`node build.js`で再生成、
+  7,488文字＝8192文字制限内）、
+  `test/scenarios/stuck_at_top_of_ladder_recovery.lua`（新規ケース・
+  ヘッダコメント更新）。
+
+## #27 `stuck_at_top_idle`（#26）が高速巡航中の通常の惰性走行でも
+即座に発火し、並列＋界磁制御の状態を毎回破壊する回帰バグを修正
+
+- **経緯**：#26マージ後、ユーザー指定の実運転想定シナリオ（フルノッチ
+  加速→ノッチオフ→惰性→再加速…という一連の流れをクローズドループ
+  シミュレーション──`physics_tick`自身の出力`accel`/`bcT`を毎tick
+  速度へ積分で足し戻す──で検証）のうち、「60km/hまでフルノッチ加速、
+  ノッチオフ→10秒惰性→85km/hまで再加速（カム回転なしを期待）→20秒
+  惰性→SAP 4atmで制動（回生→回生終了を期待）」というシナリオで、
+  再加速時にカムが並列初段からフルで登り直す（`expect_cam_static`
+  違反21件）現象と、最終制動フェーズで回生が一切発生しない
+  （`regen_latch`が終始false、電流0A、空気ブレーキのみの`bcT`一定値）
+  現象の両方を確認した。ユーザーからも「約40km/h以上で惰性中は、
+  界磁制御モードによって電機子電流が0Aになるよう制御されるモードです」
+  という仕様確認があり、この状態（並列＋界磁制御・電流0A）こそが
+  高速惰性走行での**正しい定常状態**であり、それを毎回失うことがバグだと
+  確定した。
+- **原因**：#26の`stuck_at_top_idle`は`neutral_cond`
+  （`current_near_zero(motor_current) and not(notch_ge1 or
+  low_bc_with_regen_flag)`）だけを条件にしていた。しかし
+  `neutral_cond`は速度を一切見ておらず、界磁制御自体がノッチオフ後
+  数秒で電機子電流を0A近辺へ収束させる（＝ユーザー確認済みの正常
+  動作）ため、60km/hのような通常の巡航速度で数秒惰性走行しただけで
+  `neutral_cond`が真になり、`stuck_at_top_idle`が発火して
+  `phase2_latch`/`regen_latch`を中立へ解放してしまっていた。#23の
+  バグ報告が本来指していたのは「ほぼ完全に停止した状態で、並列の
+  全短絡ステップ（`PR[1]=0Ω`）に固着したまま動けなくなる」ケースだけ
+  だったが、#26の条件はそれより遥かに広い「巡航中の一時的な電流ゼロ」
+  も等しく拾ってしまっていた。
+- **検討した代替案**：ユーザーから「速度条件ではなく界磁電流条件と
+  すべきでは」「正確には予想される界磁電流条件では」という提案が
+  あったが、条件の詳細（どの閾値を使うか、実際に再接続した場合の
+  予測電流をどう計算するか等）を詰める前にユーザー自身が撤回し、
+  「Claudeさんの計画通り進めてください」と当初案（速度条件）の続行を
+  指示された。
+- **修正**：`STUCK_RELEASE_SPEED_THRESHOLD = 3`（m/s）という定数を
+  新設し、`phase_state_machine`に`speed`を追加の引数として渡した上で
+  `stuck_at_top_idle`の条件に`math.abs(speed) < STUCK_RELEASE_SPEED_
+  THRESHOLD`を`and`で追加した。閾値は、並列の全短絡ステップへ
+  再接続した場合の電流を診断的に速度掃引した結果（8m/s以上では
+  定常電流が自己制御域（約200A、`POWER_LIMIT_CURRENT`未満）へ収束する
+  ことを確認）に基づき、それより十分低い値として選んだ──「巡航中の
+  短い惰性走行では絶対に解放しない」ことを優先した保守的なマージン。
+- **確認**：`test/run_all.lua`・`test/verify_deploy_artifact.lua`を
+  再実行して無回帰を確認した上で、上記の実運転シナリオを修正後コードで
+  再実行し、再加速時のカム回転が解消されたことを確認した（回生の
+  完全な確認は#28修正後、後述）。
+- **教訓**：「電流がほぼゼロ」は「停止している」の十分条件ではない
+  ──界磁制御を持つ車両では、走行中でも意図的に電流をゼロへ制御する
+  モードが存在しうる。状態解放の条件に電流ゼロだけを使うと、その
+  正常モードを異常（固着）と誤認する。速度（または「本当に再接続の
+  危険がある状況か」を直接表す別の物理量）を必ず組み合わせること。
+- **影響箇所**：`src/chuso1800_core.lua`（`STUCK_RELEASE_SPEED_
+  THRESHOLD`定数を新設、`phase_state_machine`に`speed`引数を追加、
+  `stuck_at_top_idle`に速度条件を追加）、`test/scenarios/stuck_at_top_
+  of_ladder_recovery.lua`（idle解放系サブテストの前提を「本当に
+  ほぼ停止」寄りに調整、高速巡航中は解放されないことを検証する
+  新規ネガティブケースを追加）。
+
+## #28 `field_current_excess_pulse`経由の`phase_reset_cond`も同じ理由で
+高速巡航中に並列＋界磁制御を破壊していたことが判明、`near_stop`
+条件を共有して修正
+
+- **経緯**：#27の速度条件を検証する過程で、`stuck_at_top_idle`とは
+  別に、`phase_reset_cond`が持つ`field_current_excess_pulse and
+  (not regen_flag)`という**#23より前から存在する**既存の項も、通常の
+  高速巡航中に発火して並列＋界磁制御を中立へ全解放してしまうことを
+  発見した。速度15m/s→0m/sへ30秒かけて緩やかに減速させる診断
+  シミュレーションで、`stuck_at_top_idle`が速度条件でブロックされている
+  （`near_stop`=false）にもかかわらず、速度9.275m/s・電流8A程度という
+  「明らかに巡航中で全く危険でない」状態で並列(phase2)・界磁制御(regen)
+  が両方とも中立へ落ちることを確認し、`DEBUG_TRACE`一時計装で
+  `field_current_excess_pulse=true`かつ`phase_reset_cond=true`が
+  同tickで発火していることを特定した。
+- **原因**：`field_current_excess_block`が算出する`iF_a`
+  （界磁電流相当値）の更新式は、`notch_ge1=false`（ノッチオフ）の
+  coasting分岐で`target_i`を`math.max(math.min(0, OLD_I + 20),
+  OLD_I - 20)`とクランプしており、`OLD_I`（電機子電流）が正である限り
+  常に`target_i=0`になる。このため`iF_a = OLD_IF_A + (OLD_I -
+  target_i) * 0.1 = OLD_IF_A + OLD_I * 0.1`となり、**電機子電流が
+  どれほど小さくても正である限りiF_aは際限なく増加し続ける**。並列の
+  全短絡ステップ（`PR[1]=0Ω`）に接続されたまま速度が下がっていく
+  巡航シナリオでは、逆起電力の低下に伴い電機子電流がわずかずつ
+  増え続けるため（速度9.275m/sの時点でもまだ8A程度）、`OLD_I`が
+  完全に0へ収束しない限りこの上昇は止まらず、走行開始から数秒〜
+  十数秒後には必ず`BRAKE_LIMIT_300`（300A）を超えて
+  `field_current_excess_pulse`が発火する。この`pulse`が
+  `phase_reset_cond`の`(not regen_flag)`項を素通りすると
+  （`regen_flag`＝DB自動がOFFの間）、`coasting_cond`を経由せず
+  直接、並列＋界磁制御を中立へ全解放してしまう──#27で修正した
+  `stuck_at_top_idle`とは別経路で、同じ「巡航中の正常な0A制御状態を
+  誤って破壊する」症状を引き起こしていた。ユーザーからの
+  「惰性走行中は、すべてつなげた状態で、界磁制御によって電機子電流を
+  0Aに保つのがこの車両の制御上の特徴です」という確認により、この
+  巡航中の全解放が仕様違反であることが確定した。
+- **修正**：`stuck_at_top_idle`と`phase_reset_cond`の両方で使う
+  `near_stop = math.abs(speed) < STUCK_RELEASE_SPEED_THRESHOLD`という
+  共有ローカル変数を導入し、`phase_reset_cond`の
+  `field_current_excess_pulse and (not regen_flag)`項に`and
+  near_stop`を追加した。これにより、`regen_flag=false`での
+  「界磁電流超過→中立へ全解放」という既存の降格ショートカットは
+  「本当にほぼ停止していて再接続の危険がある」場合（#23の元々の
+  バグ報告が指していた状況）だけに限定される。巡航中に
+  `field_current_excess_pulse`が発火した場合は、`phase1_set`の
+  `field_current_excess_pulse and phase2_latch`項だけが素通りし、
+  `phase1_reset`側はこの項からは発生しなくなるため、SPEC.md §7.5が
+  本来意図する「並列→直列への正しい降格」（`phase2`は次tickに
+  `phase1_latch and not(...)`項経由で自然にリセットされる）が
+  `regen_flag`の値に関わらず一貫して起こるようになった──ユーザーの
+  指示「速度条件での界磁制御モード解放が優先されるようにしてください」
+  と、実運転シナリオ3・4が想定する「外部抵抗による緩やかな減速で
+  直列界磁制御へ切り替わる」という仕様の双方に合致する。
+- **確認**：同じ速度掃引診断で、9m/s付近において以前の「中立への
+  全解放」ではなく「並列→直列（Series）への正しい降格」（カムが
+  直列の抵抗表を登りながら進段）に変わったことを確認した。
+  `test/run_all.lua`（15/15）を再実行し、本修正で前提が崩れた
+  `field_current_excess_pulse_reset_masking.lua`（#22由来、
+  `regen_flag=false`時のマスキングは`near_stop`時のみ有効という
+  前提へ更新）・`stuck_at_top_of_ladder_recovery.lua`（DB自動系
+  サブテストを、巡航速度で`stuck_at_top_idle`自体が`phase1_set`へ
+  漏れていないことだけを検証する形へ整理）を更新して無回帰を確認した。
+  ユーザー指定の実運転シナリオ2（60km/h加速→10秒惰性→85km/h再加速
+  →20秒惰性→SAP4制動）を再実行し、`expect_cam_static`違反が0件、
+  かつ最終制動フェーズで速度31km/h付近から回生ブレーキが正しく作動し
+  （電流が負に転じ`accel`がマイナス、カムが直列抵抗表を登りながら
+  減速）、13km/h付近で回生が正しく終了する（空気ブレーキのみへ
+  切り替わる）ことを確認した。
+- **教訓**：#27と同型のバグが、`stuck_at_top_idle`という単一の新設
+  ロジックだけでなく、**既存の**`field_current_excess_pulse`消費経路
+  にも独立に存在していた。「電流に基づく判定は、電流を押し上げる
+  側の式（ここでは`iF_a`の更新式）が本当に有界か」を確認しないと、
+  一見無関係な既存ロジックが同じ落とし穴（巡航中の正常状態を異常と
+  誤認）にはまる。速度条件（`near_stop`）を`phase_state_machine`内の
+  共有ローカルへ切り出したことで、今後同種の「本当にほぼ停止している
+  ときだけ許可すべき」ロジックを追加する際の再利用点にもなる。
+- **影響箇所**：`src/chuso1800_core.lua`（`near_stop`共有ローカルを
+  導入、`phase_reset_cond`の`field_current_excess_pulse`項に
+  `near_stop`を追加）、`test/scenarios/field_current_excess_pulse_
+  reset_masking.lua`（`regen_flag=false`時の期待値を`near_stop`の
+  有無で分岐、巡航速度でのSeries正常降格を検証する新規ケースを追加）、
+  `test/scenarios/stuck_at_top_of_ladder_recovery.lua`（DB自動系
+  サブテストを巡航速度基準へ再構成）。
+
+## #29 PR #7レビューコメントによる2件の安全要件を追加：非常制動時の
+無条件全解放、DB自動OFF中の直列界磁制御の禁止（#28の前提を一部修正）
+
+- **経緯**：PR #7に対するリポジトリオーナー（実機のドメイン専門家）から
+  のレビューコメントで、以下2件の安全要件が明示的に追加された。
+  1. 「非常制動条件を受けたら無条件で界磁制御フラグを倒してください。
+     ノッチオフ時の急加速防止が目的です」
+  2. 「『ダイナミックブレーキ自動』フラグが倒れている/倒れたとき、直列
+     界磁制御への移行中/開始、直列界磁制御中のいずれかであれば、界磁
+     制御フラグを倒し、架線-モータ間を開放してください。これも運転士が
+     意図しない加速を防止するためです」
+- **要件1の実装範囲の検討**：要件1を文字通り「界磁制御ラッチ
+  (`regen_latch`)だけを倒す」と実装すると、`phase2_latch`（並列）は
+  ラッチされたままになる。この状態でEB解除後にnotchを再投入すると、
+  `phase1_set`の`power_with_regen and (not phase2_latch)`項が
+  `phase2_latch`でブロックされ、直列（抵抗あり）を経由せず並列の現在の
+  カム位置（低抵抗〜全短絡）へ直結してしまう──#23が元々問題にした
+  「低速で抵抗ゼロへ再接続し電流が跳ね上がる」危険パターンと同型になる。
+  ユーザーに確認したところ「phase1/phase2/regenを全解放（架線-モータ間
+  を完全開放）」が意図どおりであることが確認された。
+- **要件2の実装方針の確認**：要件2は#28で「`field_current_excess_pulse`
+  経由のParallel→Series降格は`regen_flag`に関わらず正しく発生すべき」と
+  した変更の前提を覆す。ユーザーへ改めて説明を試みたところ、こちらが
+  使った用語（"gate"・"phase"等、sw-net由来の語彙）が伝わらなかったため、
+  無印`CHUSO1800_Traction_Controller/SPEC.md`（ユーザー自身の語彙に近い、
+  GPTが起こした仕様書）を読み直して裏付けを取った。§7.5に次の記述がある：
+  「ノッチOFF時に界磁電流が選択閾値を超えると、0.1秒ON／0.4秒OFFの周期
+  パルスを生成する。このパルスは並列から直列への切替、直列の解除、または
+  DB自動OFF時の接続解除に使用される。」──すなわちこのパルスの働きは
+  DB自動の状態で分岐する（ON: 直列へ切替／OFF: 接続解除）ことが原典の
+  時点で明記されており、#28の「`regen_flag`に関わらずSeriesへ降格」は
+  誤りだったと確定した。
+- **原因**：#28は、`near_stop`（ほぼ停止状態）の速度条件を`phase_reset_
+  cond`の`field_current_excess_pulse and (not regen_flag)`項に追加して
+  「巡航中はDB自動OFFでも中立へ全解放されない」ようにしていた。しかし
+  正しくは、DB自動OFF中に直列界磁制御へ入る／留まること自体が「運転士が
+  意図しない加速」のリスクであり、速度に関わらず接続解除すべきだった。
+- **修正**：
+  1. `phase_reset_cond`から`near_stop`条件を削除し、`field_current_
+     excess_pulse and (not regen_flag)`を無条件（#28以前の挙動）へ戻した。
+  2. `phase1_set`の`field_current_excess_pulse and phase2_latch`項に
+     `regen_flag`を追加し、パルスによるParallel→Series降格そのものを
+     DB自動ON時限定にした（これにより上記1のリセット項と競合しなくなり、
+     DB自動OFF時はSR優先順位に頼らず構造的にSeriesへ入れない）。
+  3. `phase_state_machine`に`eb_condition`を新規引数として渡し、
+     `phase1_reset`/`phase2_reset`/`regen_latch`のリセット条件すべてに
+     `eb_condition`をOR項として追加（要件1：非常制動時の無条件全解放）。
+  4. `db_auto_off_in_series_field_control = (not regen_flag) and
+     phase1_latch and regen_latch`という毎tick監視する条件を新設し、同様に
+     3つのリセット条件へOR項として追加（要件2：DB自動が運転中にOFFへ
+     切り替わった場合も含めて継続的に監視・解放する）。
+- **確認**：新規テスト`test/scenarios/eb_and_db_auto_off_force_disconnect.
+  lua`で、(a) 並列＋界磁制御の「固着」状態から巡航速度でEBを受けたら
+  即座に全ラッチが解放されEB継続中は解放され続けること、(b) 直列界磁
+  制御中にDB自動がOFFへ切り替わったら次のtickで即座に全ラッチが解放
+  されること、(c) DB自動ONの直列界磁制御はこの修正で意図せず解除されない
+  こと、をそれぞれ確認した。既存の`field_current_excess_pulse_reset_
+  masking.lua`は、`regen_flag=false`が速度に関わらず常に中立へマスクされる
+  よう更新した（#28の`near_stop`限定を撤回）。ユーザー提案の実運転
+  シナリオ2〜4・6（回生が発生する想定のもの）は、いずれも`db_auto=true`
+  を明示しないと本来SPEC.md §7.5の意味で回生が発生しえないことが判明した
+  ため、全て`db_auto=true`を設定するよう修正した（シナリオ1・5は回生を
+  伴わないため変更不要）。`test/run_all.lua`（22/22）・`test/verify_
+  deploy_artifact.lua`（2件ともpass）で無回帰を確認した。
+- **教訓**：#28は「ユーザーの実運転シナリオでの検証」という強い裏付けが
+  あったが、それでも実装の勢いで`regen_flag`という既存の安全条件を
+  安易に無効化してしまった。ドメイン固有の安全要件（本件では「DB自動が
+  運転士の明示的な同意を表す」という設計思想）は、動作ログや物理
+  シミュレーションだけでは検出できず、原典の仕様書やドメイン専門家の
+  レビューでしか裏付けが取れない場合がある。またコミュニケーション面
+  でも、自分（Claude）が採用した独自の説明語彙（"gate"・"phase"等）が
+  ユーザー本来の語彙とズレていたため、原典SPEC.mdの言葉遣いに立ち返る
+  ことで初めて正確な意思疎通ができた。今後、状態機械の安全条件について
+  ユーザーと認識を合わせる際は、まず既存の一次資料（SPEC.md等）の語彙を
+  優先して使うこと。
+- **影響箇所**：`src/chuso1800_core.lua`（`phase_state_machine`に
+  `eb_condition`引数を追加、`phase_reset_cond`の`near_stop`を削除、
+  `phase1_set`に`regen_flag`を追加、`db_auto_off_in_series_field_control`
+  を新設し3つのリセット条件へ合流）、`deploy/chuso1800_deploy.lua`
+  （再生成、7,617文字＝8192文字制限内）、`test/scenarios/eb_and_db_auto_
+  off_force_disconnect.lua`（新規）、`test/scenarios/field_current_
+  excess_pulse_reset_masking.lua`（`regen_flag=false`の期待値を無条件
+  マスクへ更新）、`test/scenarios/realistic_scenario_{2,3,4,6}_*.lua`
+  （`db_auto=true`を明示するよう更新）、`test/run_all.lua`（新規テスト
+  登録）。
+- **追記（PR #7フォローアップ質問への回答）**：ユーザーから「DB自動が
+  OFFでも並列界磁制御（弱め界磁巡航）自体は実施され回生電流は発生しない
+  か、速度低下による直列界磁への移行タイミングでDB自動OFFなら回路を
+  全開放するか」との確認質問を受けた。クローズドループの実走行
+  シミュレーション（60km/hまで加速→ノッチオフ→外部抵抗で15km/hまで
+  緩やかに減速、db_auto=falseで一貫）で直接検証し、(a) 並列＋界磁制御
+  （`phase2_latch`＋`regen_latch`）へ正常に到達し巡航中も維持される、
+  (b) 電機子電流が負（回生方向）になることは一度もない、(c) `phase1_latch`
+  （直列）は瞬間的にも一度もSETされない（`regen_flag`によるphase1_set側の
+  構造的なゲートが機能している）、(d) 界磁電流超過パルス発火のtickで
+  3ラッチ同時に解放され電流も直後に0Aになる、の全てを確認した。この
+  検証を`test/scenarios/realistic_scenario_7_db_auto_off_no_regen.lua`
+  として恒久的な回帰テストに追加した（23/23 pass）。
+- **追記2（フォローアップ指摘：出力torqueの精密検証）**：上記の回答に
+  対し、ユーザーから「『直後に0になる』は不適当な可能性を感じる表現。
+  1tickたりとも異常電流を出力してはならない。加速側が危険。出力トルク
+  （加速度換算）を見て0.1 m/s^2以内であることを確認せよ（非常ブレーキ
+  からのニュートラル・再力行等でも同様に）」との指摘を受けた。
+  - **調査**：`chuso1800_core.lua`のtickモデル（ファイル冒頭コメント）は
+    「`physics_tick`は常にOLDのphase1/phase2/regenで今tickの電気出力を
+    計算する」設計になっている。そのため、EBは`eb_substitute`が
+    `eb_condition`単独で（`phase_state_machine`を待たず）同tick内に出力を
+    0へ強制するため実際に瞬時ゼロだが（`motor_current`/`W`とも
+    0.000000を直接確認）、`force_full_disconnect`
+    （EB以外のDB自動OFF系）や`phase_reset_cond`（界磁電流超過パルス等）に
+    よる全解放は、ラッチの解放自体は同tickで起こる一方、その**tickの電気
+    出力自体はまだOLDの（接続されたままの）状態で計算済み**という
+    ギャップがあることが判明した。一時的な計装
+    （`elec_accel`の生値を出力するデバッグprint）で実測したところ、
+    DB自動OFF・巡航中に界磁電流超過パルスが発火する瞬間のtickで
+    電機子電流49.346A・生の加速度換算0.23973 m/s^2が1tickだけ出力される
+    ことを確認した（指摘どおり0.1 m/s^2を超過）。またSIGNAL_MAP.mdと
+    `main.sw-net`を突き合わせ、`stateless_out[2]`（"W"）が出力ポート`W`
+    に直結し実際の車両物理を駆動する値である一方、`stateless_out[3]`
+    （`bc_target_smooth`）はMomelink-A送出専用（自車の物理には無関係、
+    DESIGN_LOG.md #25参照）であることも確認し、検証対象を`motor_current`/
+    `W`に正しく絞り込んだ。
+  - **修正**：`phase_state_machine`の戻り値に`output_zero_this_tick`
+    （直前まで直列・並列のいずれかが接続されていたが今tickで両方とも
+    解放される、を検出する真偽値）を追加した。`core_tick`側でこれを
+    受け取り、真であれば今tickの`motor_current`/`elec_W`（架線-モータ間へ
+    実際に出力される値）を事後的に0へ上書きする。`debounce_block`／
+    `field_current_excess_block`は上書き前の値で既に評価済みのため、
+    判定タイマー自体への影響はない。この上書きはEB・界磁電流超過パルス・
+    DB自動OFF中の直列界磁制御のいずれが引き金でも一律に効く（原因を
+    個別に列挙せず「両ラッチが新規に全解放される」という結果だけを見る
+    設計にしたため、将来同種の解放条件を追加しても自動的にカバーされる）。
+  - **確認**：同じ計装で実測し直したところ、該当tickの`motor_current`/
+    `W`とも厳密に0.000（生の`elec_accel`ではなく最終出力そのもの）に
+    なったことを確認した。巡航速度30/45/60/80/100km/hの掃引でも
+    同様に全て0.000であることを確認した。
+  - **テスト方針の転換**：ユーザーから「新しいシナリオを追加するより、
+    以前提示したシナリオ（実運転を模擬した6つ）を修正して使うのが今後の
+    方針として妥当」との指摘を受け、この検証を専用の新規シナリオとして
+    追加するのではなく、`test/realistic_driving.lua`（全シナリオ共有の
+    ハーネス）へ「直列・並列ともOFFなら`motor_current`/`W`は厳密に0で
+    なければならない」という恒常的な不変条件チェックを追加した。これに
+    より既存の実運転シナリオ1〜7すべてが自動的にこの検証を再実行する
+    （個別シナリオファイルの追加は不要）。従来の`CURRENT_SPIKE_A=1000`
+    しきい値だけでは今回の49A級のリークを検出できていなかった点も
+    あわせて是正された。加えて、単体テスト`test/scenarios/eb_and_db_auto_
+    off_force_disconnect.lua`にも、EB・DB自動OFF系・界磁電流超過パルス系
+    それぞれの解放tickで`motor_current`/`W`が厳密に0であることを直接
+    検証する新規サブテストとアサーションを追加した。
+  - **教訓**：「ラッチが解放された」ことと「その出力が安全になった」こと
+    は、tickモデル上イコールではない。状態機械の意思決定と、その意思
+    決定を反映した電気出力の反映先が異なるtickになりうる設計
+    （`physics_tick`が常にOLD状態を読む設計）では、遷移の安全性を
+    ラッチ値だけでなく実際の出力値（今回のように生の物理量まで遡って）
+    で直接検証する必要がある。またテスト戦略としては、個別の状況ごとに
+    新規シナリオを増やすより、共有ハーネスに不変条件を追加して既存
+    シナリオ群に横展開する方が、同種の見落としを将来にわたって
+    継続的に検出できる。
+  - **影響箇所**：`src/chuso1800_core.lua`（`phase_state_machine`に
+    `output_zero_this_tick`の算出・返却を追加、`core_tick`で
+    `motor_current`/`elec_W`を事後上書き）、`deploy/chuso1800_deploy.lua`
+    （再生成、7,711文字＝8192文字制限内）、`test/realistic_driving.lua`
+    （不変条件チェックを追加）、`test/scenarios/eb_and_db_auto_off_
+    force_disconnect.lua`（出力ゼロを直接検証するアサーション・新規
+    サブテストを追加）。
+- **追記3（さらなる訂正：実際の車両制御はMomelink-A経由、`W`出力ポートは
+  別系統）**：追記2への対応をユーザーへ報告したところ、根本的な訂正を
+  受けた。「実際の車両制御はMomelink-Aを使っており、2番出力（`W`）は
+  別のシステム向け。今のところ2番の単位は仕事率（電力）のWだが今後変わる
+  可能性がある。したがって車両シミュレーションはMomelink-Aを使うのが
+  妥当。Momelink-AのN1が速度絶対値を減らす量、N2は単に速度に加算する量で
+  どちらも単位はm/s^2」との説明を受けた。
+  - **影響**：追記2で「`motor_current`/`W`（`stateless_out[2]`）が実際に
+    車両を駆動する値」と誤認していたことが判明した。実際に車両を駆動する
+    のはMomelink-AのN2＝`stateless_out[3]`（このコードベースでの名称
+    `bc_target_smooth`。実体は自車の加速度。DESIGN_LOG.md #20/#25の
+    「Momelink-A送出専用」という理解自体は正しかったが、それこそが実車の
+    物理を駆動する値であり「Momelink-A送出専用＝自車の物理に無関係」と
+    早合点していたのが誤りだった）。追記2で最初に検出した`bc_target_
+    smooth`のEMA平滑化による遅延（EB直後0.39 m/s^2、0.1 m/s^2を下回る
+    まで約7tick）は、`motor_current`/`W`の1tickラグとは独立した、**本来
+    最優先で修正すべきだった実車物理側の不具合**だったと判明した。
+  - **修正**：`smooth_bc`に`force_bc_target_zero`
+    （`eb_condition or output_zero_this_tick`）を追加し、真の間はEMA式
+    （`accel*0.2 + bc_target_smooth*0.8`）自体をバイパスして、出力にも
+    次tickへ持ち越す平滑化状態にも直接0を書き込むようにした。EMAは
+    「直前までの記憶」を状態として持ち越す性質上、accel入力を0にするだけ
+    では記憶が残ってしまうため、状態そのものを0へ書き換える必要がある。
+  - **確認**：同じ計装で再測定し、EB直後・界磁電流超過パルス発火直後の
+    いずれも、`bc_target_smooth`（Momelink-A N2）が該当tickで厳密に
+    0.00000になることを確認した（従来は0.39 m/s^2・0.34 m/s^2程度が
+    1tick出力されていた）。
+  - **テスト**：`test/realistic_driving.lua`の不変条件チェックに
+    `bc_target_smooth`も追加（全解放中は`motor_current`/`W`/
+    `bc_target_smooth`いずれも厳密に0であることを検証）。
+    `test/scenarios/eb_and_db_auto_off_force_disconnect.lua`の各サブ
+    テストに、EMA遅延バグを実際に踏むよう`bc_target_smooth`の初期状態を
+    意図的に非ゼロ（0.4〜0.5）でシードした上で、解放tickでの
+    `stateless_out[3]`が厳密に0であることを検証するアサーションを追加した。
+    `test/run_all.lua`（23/23）・`test/verify_deploy_artifact.lua`
+    （2件ともpass）で無回帰を確認した。
+  - **教訓**：「どの出力チャンネルが実際に車両を駆動するか」という
+    アーキテクチャ上の前提を、コード内のコメントやテーブル名（`W`という
+    出力ポート名、"実体は自車平滑加速度"という既存コメント）から**類推**
+    してしまい、ドメイン専門家（PR作成者）への確認を後回しにしたことが
+    誤りの原因だった。特に安全に関わる「どの信号が実際の物理を駆動するか」
+    という前提は、コードの内部的な名前付けやコメントの言い回しだけでは
+    確定できない場合がある——今回のように、名前は"W"（Watts、電力の意）
+    でありながら実は別系統向けで、逆に一見「送出専用」に見えた`bc_target_
+    smooth`こそが本命だった、という逆転が起こり得る。安全上重要な判断を
+    伴う検証では、早い段階でドメイン専門家に一次情報を確認すべきだった。
+  - **影響箇所**：`src/chuso1800_core.lua`（`smooth_bc`に
+    `force_bc_target_zero`引数を追加しEMAをバイパス、呼び出し側で
+    `eb_condition or output_zero_this_tick`を渡すよう変更）、
+    `deploy/chuso1800_deploy.lua`（再生成、7,747文字＝8192文字制限内）、
+    `test/realistic_driving.lua`（不変条件チェックに`bc_target_smooth`を
+    追加）、`test/scenarios/eb_and_db_auto_off_force_disconnect.lua`
+    （各サブテストに`bc_target_smooth`の非ゼロ初期シードと出力ゼロ
+    アサーションを追加）。

@@ -83,6 +83,14 @@ local BRAKE_LIMIT_400 = 400
 local REGEN_BC_MIN = -0.1
 local BC_TARGET_MIN = -0.05
 
+-- 「固着カムからの脱出」（DESIGN_LOG.md #23/#26/#27）の発動をほぼ停止状態
+-- （並列の全短絡ステップへ再接続しても実害が出ない速度域）だけに限定する
+-- しきい値。8m/s以上では定常電流が自己制御域（200A、POWER_LIMIT_CURRENT
+-- 未満）へ収束することを確認済みだが、この値は「巡航中の短い惰性走行では
+-- 絶対に解放しない」ための保守的なマージンを取ってある（経緯は
+-- `DESIGN_LOG.md` #27）。
+local STUCK_RELEASE_SPEED_THRESHOLD = 3 -- m/s
+
 -- tick数由来のタイマー定数（Stormworksは60tick/秒前提、SPEC §0.2）。
 local CAP_DEBOUNCE_TICKS = 6              -- 0.1sデバウンス、無効化で即0
 local CAM_ADVANCE_PERIOD_TICKS = 12       -- 0.1s+0.1s（traction_blinker周期）
@@ -475,28 +483,15 @@ end
 -- （n409.luaの"brake_current_fb"/channel=6と同じ値）。「notchは0に落ちたが
 -- iF_aがまだ300/400A閾値を超えている」を検知し、coasting_condの自然な
 -- 電流減衰を待たずphase1/phase2を早期に畳む（改名の経緯は
--- `DESIGN_LOG.md` #10）。
---
--- 「固着カムからの脱出」検知もこの同じcond/pulseチェーンに合流させてある
--- （DESIGN_LOG.md #23）：カム0で並列(phase2)＋界磁制御(regen_latch)だけが
--- 立ったまま直列(phase1)が一度も立たない状態は、coasting_condが要求する
--- `not regen_latch`が恒久的に満たせないため、界磁電流が閾値を超えない限り
--- 自然には解けない。しかしnotch/回生要求ともに無く電流もほぼ0まで
--- 収束しているなら「単に停止している」だけであり、この場合も同じ
--- field_current_excess_pulse経由でphase1_set／phase_reset_condへ合流させ、
--- 通常のtop-of-ladder脱出経路を再利用する。戻り値: brake_current_high_phase1,
+-- `DESIGN_LOG.md` #10）。戻り値: brake_current_high_phase1,
 -- field_current_excess_cond, field_current_excess_counter_next,
 -- field_current_excess_pulse。
-local function field_current_excess_block(phase1_latch, phase2_latch, regen_latch, regen_bc_smooth,
-    field_current_excess_counter, iF_a, notch_ge1, notch_fb_ge1, motor_current, low_bc_with_regen_flag,
-    phase1_cap_charged)
+local function field_current_excess_block(phase1_latch, regen_bc_smooth, field_current_excess_counter,
+    iF_a, notch_ge1, phase1_cap_charged)
     local phase1_low_bc = phase1_latch and regen_bc_smooth < REGEN_BC_MIN
     local brake_limit_sw = phase1_low_bc and BRAKE_LIMIT_400 or BRAKE_LIMIT_300
     local brake_current_above_300 = iF_a > BRAKE_LIMIT_300
-    local field_current_excess = iF_a > brake_limit_sw
-    local stuck_at_top_idle = regen_latch and phase2_latch and (not phase1_latch) and notch_fb_ge1
-        and current_near_zero(motor_current) and (not low_bc_with_regen_flag)
-    local field_current_excess_cond = (field_current_excess or stuck_at_top_idle) and (not notch_ge1)
+    local field_current_excess_cond = (iF_a > brake_limit_sw) and (not notch_ge1)
     local counter_next, pulse = periodic_pulse_step(
         field_current_excess_counter, field_current_excess_cond, FIELD_CURRENT_EXCESS_PERIOD_TICKS)
     return brake_current_above_300 and phase1_cap_charged, field_current_excess_cond, counter_next, pulse
@@ -507,38 +502,121 @@ end
 local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
     notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1, notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14,
     motor_current, low_bc_with_regen_flag, field_current_excess_pulse, regen_flag,
-    phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged)
+    phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged, speed, eb_condition)
     local phase1_notch_active = phase1_latch and notch_ge1
     local phase1_regen_active = phase1_latch and notch_fb_ne14 and regen_latch
     local power_with_regen = notch_ge1 and notch_fb_ge1
 
+    -- ほぼ停止状態（STUCK_RELEASE_SPEED_THRESHOLD未満）かどうか。
+    -- stuck_at_top_idleが使う（#28/#29）。
+    local near_stop = math.abs(speed) < STUCK_RELEASE_SPEED_THRESHOLD
     local neutral_cond = current_near_zero(motor_current) and not (notch_ge1 or low_bc_with_regen_flag)
     local coasting_cond = neutral_cond and (not regen_latch)
+    -- 【#28で導入し#29で復元】`field_current_excess_pulse and (not regen_flag)`
+    -- は「DB自動OFF中に界磁電流超過を検知したら架線-モータ間を切断する」
+    -- というSPEC.md §7.5の記述どおりの経路（「このパルスは並列から直列への
+    -- 切替、直列の解除、またはDB自動OFF時の接続解除に使用される」）。#28では
+    -- これに`near_stop`を追加して「巡航中は発火しない」よう制限したが、
+    -- これは誤りだった：ユーザー（PR #7コメント）から、DB自動OFF中に
+    -- 直列界磁制御へ移行・滞在すること自体が「運転士が意図しない加速」の
+    -- リスクなので速度に関わらず切断すべきだ、との明示的な訂正を受けた。
+    -- #28が本来解決すべきだった問題（iF_aの際限ない増加によるpulseの
+    -- 巡航中の誤発火）は、DB自動ONの間はそもそも実害がない（下のphase1_set
+    -- が正しくParallel→Seriesへ降格するだけ）ため、`near_stop`は不要だった。
+    -- 詳細はDESIGN_LOG.md #29参照。
     local phase_reset_cond = coasting_cond or (field_current_excess_pulse and (not regen_flag))
+
+    -- 「固着カムからの脱出」（DESIGN_LOG.md #23/#26/#27/#28）：カム0で並列
+    -- (phase2)＋界磁制御(regen_latch)だけが立ったまま直列(phase1)が一度も
+    -- 立たない状態は、coasting_condが要求する`not regen_latch`が恒久的に
+    -- 満たせないため、界磁電流が閾値を超えない限り自然には解けない。
+    -- しかしnotch/回生要求ともに無く電流もほぼ0まで収束しているなら
+    -- 「単に停止している」だけなので、phase2_resetへ直接合流させて中立へ
+    -- 解放する。
+    -- 【#26で修正】当初はこれをfield_current_excess_pulse経由で
+    -- phase1_set（並列→直列の降格SET）にも合流させていたが、
+    -- `regen_flag`（DB自動）がONの間はphase_reset_condのpulse項が
+    -- `not regen_flag`で無効化されるため、phase1_setだけが素通りして
+    -- 直列が誤ってSETされ、その後`phase1_regen_active`
+    -- （phase1_latch and notch_fb_ne14 and regen_latch）がtraction_any_active
+    -- を持ち上げカムが勝手に回り出す実機バグを引き起こした。phase1_setには
+    -- 一切合流させず、直接phase2_resetにのみ作用させることでこの経路自体を
+    -- 断つ。
+    -- 【#27で修正】`neutral_cond`（電流ほぼ0・notch/回生要求なし）だけを
+    -- 条件にすると、高速巡航中の数秒程度の通常の惰性走行（電流は界磁制御
+    -- 自体によってすぐ0Aへ収束する─ユーザー確認済みの仕様）でも即座に解放
+    -- してしまい、並列＋界磁制御まで積み上げた進行状態を毎回失っていた
+    -- （再力行のたび直列0から登り直しになり、かつ回生制動の前提となる
+    -- `regen_latch`も失われ回生が一切発生しなくなる実機バグ）。実際に
+    -- 再接続が危険なのは、並列の全短絡ステップ（`PR[1]=0Ω`）へほぼ停止
+    -- 状態から再接続する場合だけ（`STUCK_RELEASE_SPEED_THRESHOLD`＝3m/s
+    -- 未満、経緯は同定数のコメント参照）なので、速度条件を追加して
+    -- 高速巡航中は解放しないようにした。
+    local stuck_at_top_idle = regen_latch and phase2_latch and (not phase1_latch) and notch_fb_ge1
+        and neutral_cond and near_stop
 
     local phase1_set_cond = notch_ge2 and notch_fb_range_low
         and phase1_cap_charged and current_below_limit_cap_charged
+    -- 【#29】界磁電流超過パルスによる並列→直列の降格SETは、SPEC.md §7.5の
+    -- 記述どおりDB自動ON時のみ行う（DB自動OFF時は上のphase_reset_cond経由で
+    -- 切断されるので、こちらは合流させない）。
     local phase1_set = (power_with_regen and (not phase2_latch))
-        or (field_current_excess_pulse and phase2_latch)
+        or (field_current_excess_pulse and phase2_latch and regen_flag)
 
     local phase2_blinker_cond = notch_ge3 and notch_fb_range_high
         and phase2_cap_charged and current_below_limit_cap_charged
     local phase2_set_cond = notch_ge3 and notch_fb_eq14 and current_below_limit_cap_charged
+
+    -- 【#29】PR #7コメントによる2件の安全要件：
+    -- (1) 非常制動(EB, `eb_condition`)を受けたら無条件で直列・並列・
+    --     界磁制御の全ラッチを解放し架線-モータ間を開放する。ノッチOFF後の
+    --     再力行時に、抵抗の入った直列を経由せず現在のカム位置（並列の
+    --     低抵抗～全短絡ステップ）へ直結して電流が跳ね上がる、#23と同型の
+    --     危険を防ぐ。
+    -- (2) 「DB自動」(`regen_flag`)がOFFの間、直列界磁制御（直列ラッチ＋
+    --     界磁制御ラッチが同時にON、移行中を含む）であってはならない。
+    --     phase1_setは上でregen_flagにより既にガードしているので新規に
+    --     入ることはないが、DB自動が運転中にOFFへ切り替わった場合に
+    --     備えて毎tick監視し、該当すれば同様に全ラッチを解放する。
+    local db_auto_off_in_series_field_control = (not regen_flag) and phase1_latch and regen_latch
+    local force_full_disconnect = eb_condition or db_auto_off_in_series_field_control
+
     local phase2_reset = phase_reset_cond or (phase1_latch and not (notch_ge3 and notch_fb_eq14))
+        or stuck_at_top_idle or force_full_disconnect
 
     -- phase2_set_condは追加のphase1リセットトリガも兼ねる（直列→並列の
     -- 遷移で、phase2がセットされる同tickにphase1をリセットする）。
     local phase1_reset = phase_reset_cond
         or (field_current_excess_pulse and phase1_cap_charged)
         or phase2_set_cond
+        or force_full_disconnect
 
     local traction_all_off = (not phase1_latch) and (not phase2_latch)
     local regen_off_all = (not notch_fb_ge1) and traction_all_off
 
-    return sr_latch(phase1_latch, phase1_set, phase1_reset),
-        sr_latch(phase2_latch, phase2_set_cond, phase2_reset),
-        sr_latch(regen_latch, phase2_latch and notch_fb_ge1, phase1_notch_active or traction_all_off),
-        phase1_set_cond or phase2_blinker_cond or regen_off_all or phase1_regen_active
+    local phase1_latch_next = sr_latch(phase1_latch, phase1_set, phase1_reset)
+    local phase2_latch_next = sr_latch(phase2_latch, phase2_set_cond, phase2_reset)
+
+    -- 【#29フォローアップ】PR #7レビューで「1tickたりとも異常な出力トルク
+    -- (加速度換算)を出してはならない」との指摘を受けた。physics_tickは
+    -- 常にOLDのphase1/phase2/regenで今tickの電気出力を計算する（ファイル
+    -- 冒頭「tickモデル」参照）ため、`force_full_disconnect`（EB／DB自動OFF
+    -- 中の直列界磁制御）や`phase_reset_cond`（coasting_cond／DB自動OFF時の
+    -- 界磁電流超過）がまさにこのtickで両ラッチを新規に全解放へ倒しても、
+    -- 今tickの電気出力自体はまだOLDの（接続されたままの）状態で計算済み
+    -- ─ 実測で電機子電流49A・生の加速度換算0.24 m/s²相当が1tickだけ
+    -- 出力される事例を確認した（`0.1 m/s^2`の閾値を超過）。
+    -- `output_zero_this_tick`は「直前まで（phase1かphase2の）どちらかは
+    -- 接続されていたが、このtickで両方とも解放される」ケースを検出し、
+    -- `core_tick`側で今tickの`motor_current`/`elec_W`（架線-モータ間へ
+    -- 実際に出力される値）を事後的に0へ上書きするために使う。
+    local output_zero_this_tick = (phase1_latch or phase2_latch) and (not phase1_latch_next) and (not phase2_latch_next)
+
+    return phase1_latch_next,
+        phase2_latch_next,
+        sr_latch(regen_latch, phase2_latch and notch_fb_ge1, phase1_notch_active or traction_all_off or force_full_disconnect),
+        phase1_set_cond or phase2_blinker_cond or regen_off_all or phase1_regen_active,
+        output_zero_this_tick
 end
 
 -- SPEC §3.2 カム進段（traction_any_active中の周期パルス）。戻り値:
@@ -553,13 +631,24 @@ end
 
 -- SPEC §3.8 BC／regen-BC平滑化。戻り値: bc_target_smooth,
 -- regen_bc_smooth, regen_delay_level, regen_delay_active。
+-- 【#29フォローアップ2】`bc_target_smooth`はMomelink-A N2として実際の
+-- 車両を駆動する値だとPRレビューで判明した（`W`出力ポートは別系統向け）。
+-- 元々のEMA式（`accel*0.2 + bc_target_smooth*0.8`）は、EBや#29の全解放
+-- 条件でaccel入力（`eb_substitute`済みの`elec_accel`）自体は同tickで0に
+-- なっても、直前までの正の加速度の記憶を平滑化状態が引きずるため、
+-- 0.1 m/s^2を下回るまで最大十数tick（実測：EB直後0.39 m/s^2からの減衰で
+-- 約7tick）かかってしまう。`force_bc_target_zero`（EBまたは
+-- `output_zero_this_tick`）が真の間はEMAそのものをバイパスし、出力にも
+-- 次tickへ持ち越す状態にも0を直接書き込むことで、記憶を残さず即座に0へ
+-- 揃える。
 local function smooth_bc(bc_target_smooth, regen_bc_smooth, regen_delay_level, regen_delay_active,
-    accel, regen_bc_target, regen_flag, brake_current_high_phase1)
+    accel, regen_bc_target, regen_flag, brake_current_high_phase1, force_bc_target_zero)
     local regen_bc_enable = regen_delay_active or (not regen_flag)
     local regen_bc_sw = regen_bc_enable and 0 or regen_bc_target
     local regen_delay_level_next, regen_delay_active_next =
         regen_delay_step(regen_delay_level, regen_delay_active, brake_current_high_phase1)
-    return accel * 0.2 + bc_target_smooth * 0.8,
+    local bc_target_smooth_next = force_bc_target_zero and 0 or (accel * 0.2 + bc_target_smooth * 0.8)
+    return bc_target_smooth_next,
         math.min(clamp(regen_bc_sw, regen_bc_smooth - 0.1, regen_bc_smooth + 0.02), 0),
         regen_delay_level_next, regen_delay_active_next
 end
@@ -604,21 +693,31 @@ function core_tick(stateless_in, state_in)
 
     local brake_current_high_phase1, field_current_excess_cond,
         field_current_excess_counter_next, field_current_excess_pulse =
-        field_current_excess_block(st_phase1_latch, st_phase2_latch, st_regen_latch, st_regen_bc_smooth,
-            st_field_current_excess_counter, iF_a, notch_ge1, notch_fb_ge1, motor_current,
-            low_bc_with_regen_flag, phase1_cap_charged)
+        field_current_excess_block(st_phase1_latch, st_regen_bc_smooth, st_field_current_excess_counter,
+            iF_a, notch_ge1, phase1_cap_charged)
 
-    local phase1_latch, phase2_latch, regen_latch, traction_any_active = phase_state_machine(
+    local phase1_latch, phase2_latch, regen_latch, traction_any_active, output_zero_this_tick = phase_state_machine(
         st_phase1_latch, st_phase2_latch, st_regen_latch,
         notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1, notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14,
         motor_current, low_bc_with_regen_flag, field_current_excess_pulse, regen_flag,
-        phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged)
+        phase1_cap_charged, phase2_cap_charged, current_below_limit_cap_charged, speed, eb_condition)
+
+    -- 【#29フォローアップ】`output_zero_this_tick`（`phase_state_machine`
+    -- 内で算出、コメント参照）が真の場合、今tickの実出力（架線-モータ間へ
+    -- 実際に流れる`motor_current`と出力ポート`W`直結の`elec_W`）を事後的に
+    -- 0へ上書きする。debounce_block／field_current_excess_blockは既に
+    -- 上書き前の値で評価済みのためこの上書きの影響を受けない（意図通り、
+    -- 判定タイマー自体は実電流に基づかせる）。
+    if output_zero_this_tick then
+        motor_current, elec_W = 0, 0
+    end
 
     local position_counter, cam_pulse, traction_advance_counter_next =
         advance_cam(st_position_counter, st_traction_advance_counter, traction_any_active)
     local bc_target_smooth, regen_bc_smooth, regen_delay_level, regen_delay_active =
         smooth_bc(st_bc_target_smooth, st_regen_bc_smooth, st_regen_delay_level, st_regen_delay_active,
-            elec_accel, regen_bc_target, regen_flag, brake_current_high_phase1)
+            elec_accel, regen_bc_target, regen_flag, brake_current_high_phase1,
+            eb_condition or output_zero_this_tick)
 
     ----------------------------------------------------------------
     -- 出力の組み立て
