@@ -21,9 +21,9 @@
 -- phase_reset_cond term catches up and resets both latches.
 --
 -- This is the same category of accepted "combinational compression"
--- shrinkage as H7 (see h7_cam_overshoot_homing.lua): SPEC.md §0.2 permits
--- shorter transients as long as the converged state matches, and it does
--- here -- both the literal gate net and this module land on
+-- shrinkage as the old SPEC.md's H7 corner (see h7_cam_overshoot_homing.lua):
+-- SPEC.md permits shorter transients as long as the converged state matches,
+-- and it does here -- both the literal gate net and this module land on
 -- Series=false/Parallel=false (full neutral) a handful of ticks later.
 --
 -- The masking is DB-auto-dependent: with regen_flag ON, `phase_reset_cond`

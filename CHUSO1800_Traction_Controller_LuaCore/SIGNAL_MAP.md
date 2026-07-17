@@ -139,7 +139,7 @@ main.sw-net の `BLINKER`+`PULSE(rise)` ペア（`traction_blinker`＋
 Stormworks CAPACITORは満充電で一度ONになったら、放電ランプの間ずっとONを
 保持し、完全放電（0）に達して初めてOFFに戻るヒステリシス動作をする
 （`NITS_Simple_Bridge/SPEC.md`の`CAPACITOR(0, 0.1)`をパルスストレッチャーとして
-使う用法、新SPEC.md §3.8参照）。`regen_delay_level`だけでは
+使う用法、新SPEC.md §10.3参照）。`regen_delay_level`だけでは
 「599」が「充電中でまだ未ON」なのか「満充電から放電中でまだON」なのか
 区別できないため、専用の状態bit `regen_delay_active` を追加した：
 ONになるのは`level`が600に達した瞬間のみ、OFFに戻るのは`level`が0に
@@ -242,14 +242,14 @@ Fable 5によるレビューで指摘された実バグ（旧実装は`level >= 
 
 | 信号 | sw-net上の由来 | SPEC節 |
 |---|---|---|
-| `position_counter`（0-20） | `FUNC_NUM_3 position_counter`、`(x+y)%21` の自己ループ | §3.2 |
-| `phase1_latch` | `SR_LATCH traction_phase1_latch` | §3.6 |
-| `phase2_latch` | `SR_LATCH traction_phase2_latch` | §3.6 |
-| `regen_latch` | `SR_LATCH regen_latch` | §3.6 |
-| `traction_phase1_cap`／`traction_phase2_cap`／`current_below_limit_cap` | `CAPACITOR(0.1, 0)` ×3 | §3.6／§3.7 |
-| `regen_delay_cap` | `CAPACITOR(0.5, 10)` | §3.8 |
-| `traction_blinker`+`position_tick_pulse`（0.1/0.1） | `BLINKER`+`PULSE(rise)` | §3.2 |
-| `field_current_excess_blinker`+`field_current_excess_pulse`（0.1/0.4） | `BLINKER`+`PULSE(rise)` | §3.6 |
+| `position_counter`（0-20） | `FUNC_NUM_3 position_counter`、`(x+y)%21` の自己ループ | §6.2 |
+| `phase1_latch`（新SPEC.mdでは`series_connection_latch`＝直列） | `SR_LATCH traction_phase1_latch` | §7.1／§7.2 |
+| `phase2_latch`（新SPEC.mdでは`parallel_connection_latch`＝並列） | `SR_LATCH traction_phase2_latch` | §7.1／§7.2 |
+| `regen_latch`（新SPEC.mdでは`field_control_latch`＝界磁制御。力行・回生の両方で使う） | `SR_LATCH regen_latch` | §7.1／§7.2 |
+| `traction_phase1_cap`／`traction_phase2_cap`／`current_below_limit_cap` | `CAPACITOR(0.1, 0)` ×3 | §7.2／§7.3 |
+| `regen_delay_cap` | `CAPACITOR(0.5, 10)` | §10.3 |
+| `traction_blinker`+`position_tick_pulse`（0.1/0.1） | `BLINKER`+`PULSE(rise)` | §6.2 |
+| `field_current_excess_blinker`+`field_current_excess_pulse`（0.1/0.4） | `BLINKER`+`PULSE(rise)` | §7.5 |
 
 2組の `BLINKER`+`PULSE(rise)` ペアは、それぞれ単一の経過tickカウンタ
 （`traction_advance_counter`／`field_current_excess_counter`）として
@@ -259,11 +259,12 @@ Fable 5によるレビューで指摘された実バグ（旧実装は`level >= 
 意図的にステートとして持たせていないもの：
 
 - `power_cut_latch_q`／`startup_delay`／`motor_current_oor` 系
-  ─ SPEC §4.4 の通り死コードであることが証明できる。常時 `false` の
+  ─ SPEC §11（牽引故障ラッチ）末尾および §15（現状未消費・保留事項）の
+  通り死コードであることが証明できる。常時 `false` の
   ステータスビットとしてのみ残してある（README.md「意図的な簡略化」1項、
   経緯は `DESIGN_LOG.md` #9）。
 - **パンタグラフ4ラッチ**（`panta1_latch`／`panta2_latch`／
-  `panta1_en_latch`／`panta2_en_latch`、SPEC §3.9）─ ゲート側に残す
+  `panta1_en_latch`／`panta2_en_latch`、SPEC §12）─ ゲート側に残す
   （下記「ゲートに残すもの」参照、経緯は `DESIGN_LOG.md` #2）。
 
 ### 分類(b) — 準ステート（自己参照して減衰する生double）
@@ -285,11 +286,14 @@ Fable 5によるレビューで指摘された実バグ（旧実装は`level >= 
 
 ### 分類(c) — ステートレス（毎tick再計算）
 
-`notch_eff`、`notch_ge1..4`、`eb_condition`（実機の値である
-`direction == 0` のみを用いる ─ SPEC §4.2。storm-mclのシリアライズ不具合と
-される sw-net 字面上の `(0,1)` のしきい値は再現しない）、`power_with_regen`、
+`notch_eff`、`notch_ge1..4`、`eb_condition`（新SPEC.mdでは`traction_inhibit`、
+§11。実機の値である`direction == 0`〔新SPEC.mdの`direction_neutral`〕のみを
+用いる ─ 旧sw-net生成処理のTHRESHOLDパース不具合により字面上は`(0,1)`と
+出力されていたが、実機は`(0,0)`。新SPEC.md §2の6ノードのTHRESHOLD修正
+リストの1つ、経緯は`LEGACY_SPEC_CORRECTIONS.md` §3）、`power_with_regen`、
 `coasting_cond`／`neutral_cond`／`phase_reset_cond`、`current_below_limit`
-（デバウンス前）、`regen_available`、`brake_below_min`、`overspeed`、
+（デバウンス前）、`regen_available`（新SPEC.mdの`field_control_cam_ready`、
+同じくTHRESHOLD修正対象）、`brake_below_min`、`overspeed`、
 `regen_bc_target`、`current_limit_sw`、`traction_any_active`（周期パルス
 反映前）。
 

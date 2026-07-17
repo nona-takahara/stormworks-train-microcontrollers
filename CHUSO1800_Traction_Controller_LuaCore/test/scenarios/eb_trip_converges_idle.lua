@@ -1,6 +1,10 @@
--- SPEC.md §4.5/H4: EB (eb_condition) must drive the state machine cleanly to
+-- SPEC.md §11 (traction_inhibit; originally analyzed under the old SPEC.md's
+-- now-removed H4): EB (eb_condition) must drive the state machine cleanly to
 -- Idle (phase1=phase2=regen=false), zero the electrical outputs except bcT
--- (which takes over regen_current), and freeze the cam.
+-- (which takes over regen_current), and freeze the cam. Since DESIGN_LOG.md
+-- #29, this is additionally guaranteed on the very same tick by an explicit
+-- force_full_disconnect path rather than relying solely on natural
+-- convergence through coasting_cond.
 
 
 return function(h)

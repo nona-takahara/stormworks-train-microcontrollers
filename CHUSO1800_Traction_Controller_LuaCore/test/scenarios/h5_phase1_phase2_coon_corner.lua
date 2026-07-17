@@ -1,12 +1,17 @@
--- SPEC.md §4.6/H5: at cam==14, notch>=3, if motor current is at/above the
+-- SPEC.md §7.2 (steps 3-4; originally analyzed under the old SPEC.md's
+-- now-removed H5): at cam==14, notch>=3, if motor current is at/above the
 -- limit (current_below_limit_cap not charged), phase2_set_cond is false, so
 -- the phase1_reset term that depends on it is inactive; phase2_reset's
 -- "phase1 AND NOT(notch>=3 AND cam==14)" term is also inactive since cam==14
 -- AND notch>=3 both hold. Neither latch has a live reset path, so if both
 -- happen to be On simultaneously, they stay On together until the current
--- drops back below the limit. SPEC.md marks this itself as an unresolved
--- "要確認" corner (not a proven-intentional design) -- this test verifies
--- the mechanical sustaining behavior as ported, not that it is desirable.
+-- drops back below the limit. This corner is unaffected by the THRESHOLD
+-- parsing fix (LEGACY_SPEC_CORRECTIONS.md §3) since it doesn't involve any
+-- of the 6 corrected nodes. LEGACY_SPEC_CORRECTIONS.md §5 explicitly leaves
+-- the series/parallel simultaneous-latch corner as an open question to be
+-- re-evaluated against current naming/thresholds, not a resolved-safe design
+-- -- this test verifies the mechanical sustaining behavior as ported, not
+-- that it is desirable.
 
 
 return function(h)

@@ -12,12 +12,14 @@
 -- tickモデル（詳細はREADME.md「tickモデル」）：フィードバック経路を持つ
 -- ノード（SRラッチ・デバウンス・周期パルス・物理準ステート・BC平滑化）は
 -- OLD値（state_in）を今tickの判断に使い、NEW値をstate_outへ書く。それ以外の
--- 純粋な組み合わせ論理は同tick内で即座に確定させる（元のゲートネットの
--- 「全ゲート1tick遅延」モデルより単純化しているが、SPEC.md自身が許容する
--- 簡略化 ─ 8ステートスロットに収めるために必要）。
+-- 純粋な組み合わせ論理は同tick内で即座に確定させる。ゲート1個ごとに
+-- 入力から1tick遅延するという事実（SPEC.md §2）自体は変わらないが、それを
+-- 多段の組合せゲート連鎖にそのまま適用すると段数分のステートスロットが
+-- 必要になり8本に収まらないため、連鎖の総伝搬tick数を切り詰めて定常状態の
+-- 結論だけを保存する簡略化（SPEC.md自身が許容する近似）。
 --
 -- 元のゲート名をそのままローカル変数へ機械移植した1枚の巨大関数にはせず、
--- SPEC.md §3.x各節にほぼ対応する小関数へ分割し、core_tick（末尾）が順に
+-- SPEC.md各節にほぼ対応する小関数へ分割し、core_tick（末尾）が順に
 -- 呼び出す。periodic_pulse_step・regen_delay_stepは、逐語移植より意図的に
 -- 単純化した箇所（コーナーケースのtick数がズレる場合があるが定常状態の
 -- 挙動は変わらない）。経緯は各関数のコメントと `DESIGN_LOG.md` #6/#7。
@@ -91,7 +93,7 @@ local BC_TARGET_MIN = -0.05
 -- `DESIGN_LOG.md` #27）。
 local STUCK_RELEASE_SPEED_THRESHOLD = 3 -- m/s
 
--- tick数由来のタイマー定数（Stormworksは60tick/秒前提、SPEC §0.2）。
+-- tick数由来のタイマー定数（Stormworksは60tick/秒前提、SPEC §2）。
 local CAP_DEBOUNCE_TICKS = 6              -- 0.1sデバウンス、無効化で即0
 local CAM_ADVANCE_PERIOD_TICKS = 12       -- 0.1s+0.1s（traction_blinker周期）
 local FIELD_CURRENT_EXCESS_PERIOD_TICKS = 30     -- 0.1s+0.4s（同ブリンカ周期）
@@ -168,7 +170,7 @@ function put_bit(b, shift)
     return bit << shift
 end
 
--- リセット優先SRラッチ（SPEC.md §0.1）。
+-- リセット優先SRラッチ（SPEC.md §2、SR_LATCHは状態を持つとの記述）。
 function sr_latch(old_q, set, reset)
     if reset then return false end
     if set then return true end
@@ -396,7 +398,8 @@ function decode_stateless_out(stateless_out)
 end
 
 --------------------------------------------------------------------------
--- tickサブステップ群。それぞれおおむねSPEC.md §3.x各節1つに対応。
+-- tickサブステップ群。それぞれおおむねSPEC.md各節1つに対応（各関数の
+-- コメントに個別の§を記載）。
 -- 位置引数・多値返却である理由は `DESIGN_LOG.md` #13（storm-lua-minifyは
 -- テーブルキー文字列を短縮できないため）。test/harness.luaの名前付き
 -- テーブルラッパーはテスト境界だけの変換で、deployビルドには含まれない。
@@ -414,7 +417,7 @@ local function decode_inputs(stateless_in)
         (stateless_in[8] or 0) ~= 0
 end
 
--- SPEC §3.5（EB／power-cut条件）。`power_cut`自体は死コードと証明済み
+-- SPEC §11（traction_inhibit／牽引故障ラッチ）。`power_cut`自体は死コードと証明済み
 -- （`DESIGN_LOG.md` #9）でここでは折り畳んで扱わない。
 local function eb_and_brake_pressure(speed, brake_pressure_sw, direction, controller_stop)
     local overspeed = math.abs(speed) > OVERSPEED_THRESHOLD
@@ -422,7 +425,7 @@ local function eb_and_brake_pressure(speed, brake_pressure_sw, direction, contro
     return controller_stop or (direction == 0) or overspeed or brake_below_min
 end
 
--- SPEC §3.3（notch処理）＋§3.2のカム位置echo（notch_fb）。
+-- SPEC §6.1（notch処理）＋§6.2のカム位置echo（notch_fb）。
 -- 戻り値: notch_eff, notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1,
 -- notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14。
 local function notch_and_cam_feedback(notch_pos, position_counter, eb_condition)
@@ -440,7 +443,7 @@ local function notch_and_cam_feedback(notch_pos, position_counter, eb_condition)
         notch_fb ~= 14
 end
 
--- SPEC §3.8（regen-BCターゲット、毎tick再計算）。sap_pressure_swはゲート側で
+-- SPEC §10.1（regen-BCターゲット、毎tick再計算）。sap_pressure_swはゲート側で
 -- 解決済み（decode_inputs参照）。戻り値: regen_bc_target,
 -- low_bc_with_regen_flag, regen_current。
 local function brake_demand(sap_pressure_sw, regen_flag)
@@ -458,7 +461,7 @@ local function eb_substitute(motor_current, W, accel, iF_a, bcT, eb_condition, r
     return motor_current, W, accel, iF_a, bcT
 end
 
--- SPEC §3.6/§3.7のデバウンスタイマー（電流リミット、phase1/phase2自身の
+-- SPEC §7.2/§7.3のデバウンスタイマー（電流リミット、phase1/phase2自身の
 -- 「0.1s継続でON」ゲート）。`*_charged`はOLDカウンタ（今tickの判断用）、
 -- `*_next`は次tick保存用。戻り値: current_below_limit_cap_charged,
 -- current_below_limit_cap_counter_next, phase1_cap_charged,
@@ -472,13 +475,16 @@ local function debounce_block(phase1_latch, phase2_latch, current_below_limit_ca
         debounce_charged(phase2_cap_counter), debounce_step(phase2_cap_counter, phase2_latch)
 end
 
--- motor_currentがほぼ0とみなせるか（SPEC §4.6 neutral_cond由来のしきい値、
--- phase_state_machineと共有。DESIGN_LOG.md #23）。
+-- motor_currentがほぼ0とみなせるか（旧SPEC.mdのneutral_cond定義
+-- `current_near_zero(±50)`由来のしきい値。新SPEC.md §7はこの±50Aという
+-- 具体値を明記していないが、coasting_cond相当の惰行判定として §7.2 の
+-- 進段停止条件と同じ枠組みに属する。phase_state_machineと共有。
+-- DESIGN_LOG.md #23）。
 local function current_near_zero(motor_current)
     return motor_current >= -50 and motor_current <= 50
 end
 
--- SPEC §3.6 界磁電流超過検知チェーン。main.sw-netでは"regen_warning"と
+-- SPEC §7.5 界磁電流超過検知チェーン。main.sw-netでは"regen_warning"と
 -- 誤命名されていたが回生ブレーキ警告ではない ─ iF_aはここでは界磁電流
 -- （n409.luaの"brake_current_fb"/channel=6と同じ値）。「notchは0に落ちたが
 -- iF_aがまだ300/400A閾値を超えている」を検知し、coasting_condの自然な
@@ -497,7 +503,8 @@ local function field_current_excess_block(phase1_latch, regen_bc_smooth, field_c
     return brake_current_above_300 and phase1_cap_charged, field_current_excess_cond, counter_next, pulse
 end
 
--- SPEC §3.6 中核の状態機械：phase1/phase2/regenのSRラッチ。戻り値:
+-- SPEC §7 中核の状態機械：phase1/phase2/regen（新SPEC.mdでは直列/並列/
+-- 界磁制御）のSRラッチ。戻り値:
 -- phase1_latch, phase2_latch, regen_latch, traction_any_active。
 local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
     notch_ge1, notch_ge2, notch_ge3, notch_fb_ge1, notch_fb_range_low, notch_fb_range_high, notch_fb_eq14, notch_fb_ne14,
@@ -619,7 +626,7 @@ local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
         output_zero_this_tick
 end
 
--- SPEC §3.2 カム進段（traction_any_active中の周期パルス）。戻り値:
+-- SPEC §6.2/§7.4 カム進段（traction_any_active中の周期パルス）。戻り値:
 -- position_counter, cam_pulse, traction_advance_counter_next。
 local function advance_cam(position_counter, traction_advance_counter, traction_any_active)
     local counter_next, pulse = periodic_pulse_step(
@@ -629,7 +636,7 @@ local function advance_cam(position_counter, traction_advance_counter, traction_
     return new_position, delta ~= 0, counter_next -- cam_pulseはカム位置が変化した(通常の+1進段も20->0の折返しも)tickでtrue
 end
 
--- SPEC §3.8 BC／regen-BC平滑化。戻り値: bc_target_smooth,
+-- SPEC §10.1/§10.3 BC／regen-BC平滑化。戻り値: bc_target_smooth,
 -- regen_bc_smooth, regen_delay_level, regen_delay_active。
 -- 【#29フォローアップ2】`bc_target_smooth`はMomelink-A N2として実際の
 -- 車両を駆動する値だとPRレビューで判明した（`W`出力ポートは別系統向け）。

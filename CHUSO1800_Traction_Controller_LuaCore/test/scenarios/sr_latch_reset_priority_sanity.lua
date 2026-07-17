@@ -1,4 +1,5 @@
--- SPEC.md §0.1/H6: every SR latch is reset-priority (simultaneous set+reset
+-- SPEC.md §2 (originally analyzed under the old SPEC.md's now-removed H6):
+-- every SR latch is reset-priority (simultaneous set+reset
 -- -> Off) and must not oscillate when re-evaluated with unchanged inputs.
 -- Exercised directly against the global sr_latch (exposed for testing only)
 -- rather than through a specific latch in core_tick: phase1/phase2/regen are

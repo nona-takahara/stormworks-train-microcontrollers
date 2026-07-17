@@ -1,16 +1,20 @@
--- Traversal of SPEC.md §3.6's core state diagram: Idle -> Series -> Parallel
--- -> Regen, driven purely by holding notch=3 forward continuously.
+-- Traversal of SPEC.md §7's core state diagram (Series/Parallel/Field-control,
+-- formerly phase1/phase2/regen under the old SPEC.md): Idle -> Series ->
+-- Parallel -> Field-control, driven purely by holding notch=3 forward
+-- continuously.
 --
--- Derivation of the Parallel->Regen transition (not obvious from the
+-- Derivation of the Parallel->Field-control transition (not obvious from the
 -- mermaid diagram alone -- confirmed here by simulation, not by assumption):
 -- phase2 only ever SETS with cam exactly == 14 (traction_phase2_set_cond),
--- so at the instant Parallel begins, cam is far from <=1. Continuing to hold
+-- so at the instant Parallel begins, cam is far from ==0. Continuing to hold
 -- notch>=3 keeps phase2_blinker_cond driving the cam upward through the
 -- weak-field range 15..20 (phase2 stays latched throughout, since nothing
 -- resets it while current stays non-zero and notch stays >=3). When the cam
 -- RING WRAPS from 20 back to 0 (position_counter's `%21`), notch_fb becomes
--- 0 <= 1 while phase2 is still latched -- regen_set_cond fires at exactly
--- that wrap tick.
+-- exactly 0 while phase2 is still latched -- regen_set_cond fires at exactly
+-- that wrap tick (per the corrected THRESHOLD(0,0) semantics -- cam==0 is
+-- the only value that satisfies this, not any of cam<=1;
+-- LEGACY_SPEC_CORRECTIONS.md §3).
 
 
 return function(h)
@@ -64,5 +68,5 @@ return function(h)
     h.assert_true(regen_set_tick ~= nil, "regen latches at some point")
     h.assert_true(regen_set_tick > phase2_set_tick, "regen latches after phase2")
     h.assert_true(st.phase2_latch, "phase2 still latched when regen sets")
-    h.assert_true(st.position_counter <= 1, "cam has wrapped to <=1 when regen sets")
+    h.assert_eq(st.position_counter, 0, "cam has wrapped to exactly 0 when regen sets")
 end

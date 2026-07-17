@@ -84,7 +84,9 @@ module main
   inst PROPERTY_NUMBER brake_current_limit_scale (value=290, n="Brake Limit@320kPa [A]") : -> out=brake_current_limit_scale_out
 
   # --- Core program: state_sync + chuso1800_core Luaブリッジ ---
-  # 8本のstateless入力それぞれをゲート1段（=1tick、SPEC.md §0.2）だけ遅延させ、ch9-16の
+  # 8本のstateless入力それぞれをゲート1段（=1tick、SPEC.md §2の通りゲート1個は
+  # 入力から1tick遅延する。自己ループなしの単段通過のみなので伝搬段数=1が確定する）
+  # だけ遅延させ、ch9-16の
   # i1（lib/state_sync.lua参照）として複製する。自己ループは不要。
   inst FUNC_NUM_1 vehicle_speed_delay (expression="x") : x=vehicle_speed_out -> out=vehicle_speed_out_delay
   inst FUNC_NUM_1 traction_supply_voltage_delay (expression="x") : x=traction_supply_voltage_out -> out=traction_supply_voltage_out_delay

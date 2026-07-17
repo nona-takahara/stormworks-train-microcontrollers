@@ -19,23 +19,24 @@
 | このREADME | 概要・契約・設計判断（現在の姿） |
 | [`SIGNAL_MAP.md`](./SIGNAL_MAP.md) | 全信号→スロット/ビット割付の**一次情報源** |
 | [`DESIGN_LOG.md`](./DESIGN_LOG.md) | 「なぜそうなったか」の意思決定ログ（当初案と変更経緯） |
-| `../CHUSO1800_Traction_Controller/SPEC.md` | 元のゲート網の仕様。本文中の `§x.y` はこれを指す |
+| `../CHUSO1800_Traction_Controller/SPEC.md` | 元のゲート網の仕様（2026-07-12 ChatGPT再検証版）。本文中の `§x.y` はこれを指す |
 | `../../lib/state_sync.lua` | リポジトリ共通の汎用ステート同期ドライバ（本モジュール専用ではない） |
 
 ## スコープ：Lua化したもの／ゲート側に残したもの
 
 **Lua化した範囲**（本モジュールが実装）：
 
-- phase1/phase2/regen の状態機械（SRラッチ、§3.6）
-- カム進段・ホーミング（`position_counter`、§3.2）
-- ノッチ処理（`notch_eff`/`notch_ge*`、§3.3）
-- 力行カット条件（`eb_condition`、§3.5）
-- BC/回生BC平滑化と回生遅延タイマー（§3.8）
+- series/parallel/field-control（旧phase1/phase2/regen、新SPEC.mdの命名では
+  直列・並列・界磁制御）の状態機械（SRラッチ、§7）
+- カム進段・ホーミング（`position_counter`、§6.2／§7.4）
+- ノッチ処理（`notch_eff`/`notch_ge*`、§6.1）
+- 力行カット条件（`eb_condition`、新SPEC.mdでは`traction_inhibit`、§11）
+- BC/回生BC平滑化と回生遅延タイマー（§9／§10）
 - 電流物理演算（`n409.lua` のNewton法を逐語移植）
 
 **ゲート側に残した範囲**（本モジュールは関知しない）：
 
-- パンタグラフ4ラッチ一式（§3.9）。本モジュールはExtended IFのパンタ関連
+- パンタグラフ4ラッチ一式（§12）。本モジュールはExtended IFのパンタ関連
   信号も `property.getBool("M type")` も一切参照しない
 - 架線電圧セレクタ一式（`panta*_1800_active` はゲート側計算値をそのまま使う）
 - SAP/ECBブレーキ圧解決と direction 合成（「入力の前提」参照）
@@ -70,9 +71,14 @@ local stateless_out, state_out = core.calculateTick(stateless_in, state_in)
 
 ## tickモデル
 
-sw-net の字面通りのモデル（SPEC.md §0.2）では全ゲート出力が1tick遅延するが、
-それを再現すると中間信号ごとにステートスロットが必要になり8本に収まらない。
-そこで本モジュールは：
+sw-net の字面通りのモデルでは、ゲート1個ごとの出力が入力から1tick遅延する
+（Stormworks実機の実際の評価方式であり、旧SPEC.md §0.2の時点から現行
+SPEC.md §2まで変わっていない事実。§2の「組合せゲートが一律に1 tick遅延
+するとは仮定しない」という一文は、この事実そのものを否定するものではない
+─ 現行SPEC.mdの当該箇所はこの前提を踏まえずに書かれた記述で、正確性が
+やや怪しい）。これを多段の組合せゲート連鎖にそのまま適用すると、連鎖の
+段数だけtickが積み上がり、中間信号ごとにステートスロットが必要になって
+8本に収まらない。そこで本モジュールは：
 
 - **真にtickをまたぐもの**（SRラッチ、デバウンス/タイマーCAPACITOR、
   周期パルス、電流物理の準ステート、BC平滑化）だけを遅延ありとして扱う。
@@ -80,19 +86,34 @@ sw-net の字面通りのモデル（SPEC.md §0.2）では全ゲート出力が
 - **それ以外**（ノッチ処理、力行カット条件、BC目標値の式など）はすべて
   純粋な組合せ論理として、1回の `calculateTick` 内で完結させる。
 
-この「同tick内への圧縮」はSPEC.md自身が§0.2末尾で許容しているもの
-（過渡のtick数は短縮されうるが、定常状態の結論は不変）。既知の帰結として、
-SPEC.md のH7（カムのオーバーシュート）はゲート段の追加遅延1tickに依存する
-現象であり本モデルでは再現しない。これは黙って見過ごさず
-`test/scenarios/h7_cam_overshoot_homing.lua` で明示的に検証・記述している。
+この「同tick内への圧縮」は、多段の組合せゲート連鎖の総伝搬tick数を
+1つの`calculateTick`呼び出しへ切り詰める簡略化であり、SPEC.md自身が
+これを許容している（過渡のtick数は短縮されうるが定常状態の結論は不変、
+という留保）。tick単位の厳密な評価順序が必要な場合はStormworks実機または
+変換前XMLを確認すること。
+
+旧SPEC.mdはこの圧縮の既知の帰結として「H7（カムホーミングのオーバー
+シュート）」を過渡の一例に挙げていたが、現行SPEC.mdは異常ステート分析
+の章ごと廃止しており、H7という識別子自体は現存しない。現象自体
+（`enable`が1tick遅れて確定するため、ホーミング完了直前にもう1パルス
+入りカム段が想定位置を超えて進んでしまう可能性）はカム位置カウンタの
+一般的なティック挙動として現行SPEC.md §6.2／§7.4のもとでも成立し得るが、
+「ホーム位置は0または1」という旧解析の前提はTHRESHOLDパース不具合の
+修正によりもう成立しない（現行の`cam_at_zero`はTHRESHOLD(0,0)で位置0の
+みが対象、旧`notch_fb_ge1`のTHRESHOLD(0,1)表記は誤り。
+`LEGACY_SPEC_CORRECTIONS.md` §3）。本モデルではこの圧縮によりこの種の
+1tick過渡自体を再現しないため、`test/scenarios/h7_cam_overshoot_homing.lua`
+で「起きないこと」自体を明示的に検証・記述している。
 
 ### コードの構成
 
 `src/chuso1800_core.lua` は、ゲート名を同名ローカル変数へ機械置換した
-1枚の巨大関数にはしていない。SPEC.md §3.x 各節にほぼ対応する小関数
-（`eb_and_brake_pressure`／`notch_and_cam_feedback`／`brake_demand`／
-`debounce_block`／`field_current_excess_block`／`phase_state_machine`／
-`advance_cam`／`smooth_bc` 等）に分割し、`calculateTick` はそれらを
+1枚の巨大関数にはしていない。SPEC.md各節にほぼ対応する小関数
+（`eb_and_brake_pressure`〔§9・§11〕／`notch_and_cam_feedback`〔§6.1・§6.2〕／
+`brake_demand`〔§10.1〕／`debounce_block`〔§7.3〕／
+`field_current_excess_block`〔§7.5〕／`phase_state_machine`〔§7〕／
+`advance_cam`〔§6.2・§7.4〕／`smooth_bc`〔§9・§10.1・§10.3〕等）に分割し、
+`calculateTick` はそれらを
 順に呼び出すオーケストレータ。観測される挙動はこの分割で変わらない
 （純粋なリファクタリング）。
 
@@ -131,7 +152,7 @@ tickオーケストレータ本体。`calculateTick`という名前は
    （`phase1_cap` 等）は「Ntick連続enableで確定」の0-6カウンタ、
    `regen_delay`（0.5秒充電/10秒放電）は0-600のスケール済み整数
    （enable時+20/tick、disable時-1/tick。整数演算のみで浮動小数点誤差なし）。
-   SPEC.md §0.1 のCAPACITOR記述に基づくが、**Stormworks実機の内部実装とは
+   SPEC.md §2（CAPACITORは状態を持つ旨の記述）に基づくが、**Stormworks実機の内部実装とは
    突き合わせていない**。境界値テスト：
    `test/scenarios/regen_delay_cap_timing.lua`。
    ビット割付の詳細は `SIGNAL_MAP.md`、生double案を却下した経緯は
@@ -201,8 +222,12 @@ lua test/run_all.lua
 - **未変更の** `../CHUSO1800_Traction_Controller/scripts/n409.lua` に対する
   数値回帰（小さな `input`/`output` シム経由で `loadfile` するため、同ファイル
   が変更されていないことの受動的な再確認にもなる）
-- SPEC.md §3.6 状態遷移図の完全な走査
-- SPEC.md記載のコーナーケース（H4/H5/H6/H7）の検証
+- SPEC.md §7 状態遷移図の完全な走査
+- 旧SPEC.md（着手時点の版）が記載していたコーナーケース分析（EB収束・
+  直並列同時On・SRラッチ競合・カムホーミングのオーバーシュート）の検証。
+  現行SPEC.mdはこの異常ステート分析章を廃止しているため、現在は
+  `LEGACY_SPEC_CORRECTIONS.md` §5 で扱いが整理されている（詳細は各
+  `test/scenarios/*.lua` のヘッダコメント）
 - `test/realistic_driving.lua`（クローズドループ速度シミュレーション
   ハーネス）を使った、実運転を想定した加減速シナリオ（`test/scenarios/
   realistic_scenario_*.lua`。DESIGN_LOG.md #27/#28参照）
