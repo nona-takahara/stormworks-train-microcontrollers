@@ -1,6 +1,8 @@
--- SPEC.md §3.6/§3.8: bc_target_smooth is a 0.2/0.8 EMA of physics `accel`;
--- regen_bc_smooth is an asymmetric ramp (+0.02/tick rising, -0.1/tick
--- falling), clamped <= 0.
+-- SPEC.md: bc_target_smooth is a 0.2/0.8 EMA of physics `accel` (the smoothed
+-- acceleration field described at §8.5/§13.2; the new SPEC.md doesn't restate
+-- the 0.2/0.8 EMA constant itself, that's carried over from the original gate
+-- network). regen_bc_smooth is an asymmetric ramp (+0.02/tick rising,
+-- -0.1/tick falling), clamped <= 0, matching §10.1.
 
 
 return function(h)

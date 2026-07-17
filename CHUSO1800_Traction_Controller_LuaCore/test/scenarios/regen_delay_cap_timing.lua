@@ -1,4 +1,4 @@
--- SPEC.md §3.8: regen_delay was CAPACITOR(charge_time=0.5s, discharge_time=10s)
+-- SPEC.md §10.3: regen_delay was CAPACITOR(charge_time=0.5s, discharge_time=10s)
 -- in main.sw-net. This module models it as a packed integer level 0-600:
 -- +20/tick while enabled (600/30 ticks = 0.5s to full), -1/tick while
 -- disabled (600/600 ticks = 10s to empty). Both rates are exact integers by

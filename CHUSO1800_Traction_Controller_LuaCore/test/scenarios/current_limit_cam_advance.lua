@@ -1,4 +1,4 @@
--- SPEC.md §3.7: cam only advances once motor current has stayed below the
+-- SPEC.md §7.3: cam only advances once motor current has stayed below the
 -- limit for the full debounce window (current_below_limit_cap, 0.1s = 6
 -- ticks). While current is at/above the limit, the cam must stay put no
 -- matter how long we wait.
