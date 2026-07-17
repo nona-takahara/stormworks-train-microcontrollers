@@ -12,12 +12,14 @@
 -- tickモデル（詳細はREADME.md「tickモデル」）：フィードバック経路を持つ
 -- ノード（SRラッチ・デバウンス・周期パルス・物理準ステート・BC平滑化）は
 -- OLD値（state_in）を今tickの判断に使い、NEW値をstate_outへ書く。それ以外の
--- 純粋な組み合わせ論理は同tick内で即座に確定させる（元のゲートネットの
--- 「全ゲート1tick遅延」モデルより単純化しているが、SPEC.md自身が許容する
--- 簡略化 ─ 8ステートスロットに収めるために必要）。
+-- 純粋な組み合わせ論理は同tick内で即座に確定させる。ゲート1個ごとに
+-- 入力から1tick遅延するという事実（SPEC.md §2）自体は変わらないが、それを
+-- 多段の組合せゲート連鎖にそのまま適用すると段数分のステートスロットが
+-- 必要になり8本に収まらないため、連鎖の総伝搬tick数を切り詰めて定常状態の
+-- 結論だけを保存する簡略化（SPEC.md自身が許容する近似）。
 --
 -- 元のゲート名をそのままローカル変数へ機械移植した1枚の巨大関数にはせず、
--- SPEC.md §3.x各節にほぼ対応する小関数へ分割し、core_tick（末尾）が順に
+-- SPEC.md各節にほぼ対応する小関数へ分割し、core_tick（末尾）が順に
 -- 呼び出す。periodic_pulse_step・regen_delay_stepは、逐語移植より意図的に
 -- 単純化した箇所（コーナーケースのtick数がズレる場合があるが定常状態の
 -- 挙動は変わらない）。経緯は各関数のコメントと `DESIGN_LOG.md` #6/#7。
@@ -91,7 +93,7 @@ local BC_TARGET_MIN = -0.05
 -- `DESIGN_LOG.md` #27）。
 local STUCK_RELEASE_SPEED_THRESHOLD = 3 -- m/s
 
--- tick数由来のタイマー定数（Stormworksは60tick/秒前提、SPEC §0.2）。
+-- tick数由来のタイマー定数（Stormworksは60tick/秒前提、SPEC §2）。
 local CAP_DEBOUNCE_TICKS = 6              -- 0.1sデバウンス、無効化で即0
 local CAM_ADVANCE_PERIOD_TICKS = 12       -- 0.1s+0.1s（traction_blinker周期）
 local FIELD_CURRENT_EXCESS_PERIOD_TICKS = 30     -- 0.1s+0.4s（同ブリンカ周期）
@@ -168,7 +170,7 @@ function put_bit(b, shift)
     return bit << shift
 end
 
--- リセット優先SRラッチ（SPEC.md §0.1）。
+-- リセット優先SRラッチ（SPEC.md §2、SR_LATCHは状態を持つとの記述）。
 function sr_latch(old_q, set, reset)
     if reset then return false end
     if set then return true end
@@ -396,7 +398,8 @@ function decode_stateless_out(stateless_out)
 end
 
 --------------------------------------------------------------------------
--- tickサブステップ群。それぞれおおむねSPEC.md §3.x各節1つに対応。
+-- tickサブステップ群。それぞれおおむねSPEC.md各節1つに対応（各関数の
+-- コメントに個別の§を記載）。
 -- 位置引数・多値返却である理由は `DESIGN_LOG.md` #13（storm-lua-minifyは
 -- テーブルキー文字列を短縮できないため）。test/harness.luaの名前付き
 -- テーブルラッパーはテスト境界だけの変換で、deployビルドには含まれない。
