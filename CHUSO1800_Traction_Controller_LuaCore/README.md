@@ -32,7 +32,8 @@
 - ノッチ処理（`notch_eff`/`notch_ge*`、§6.1）
 - 力行カット条件（`eb_condition`、新SPEC.mdでは`traction_inhibit`、§11）
 - BC/回生BC平滑化と回生遅延タイマー（§9／§10）
-- 電流物理演算（`n409.lua` のNewton法を逐語移植）
+- 電流物理演算（`n409.lua` のNewton法を逐語移植。ただし弱め界磁力行の
+  電機子電流目標値のみ意図的に修正 ─ 「意図的な簡略化」節4参照）
 
 **ゲート側に残した範囲**（本モジュールは関知しない）：
 
@@ -165,6 +166,14 @@ tickオーケストレータ本体。`calculateTick`という名前は
    **挙動差あり**：最初のパルスが有効化から `period_ticks` 後に来る
    （元設計は最短で `off_ticks` 後）。詳細は `src/chuso1800_core.lua` の
    `periodic_pulse_step` のコメントと `DESIGN_LOG.md` #7。
+
+4. **弱め界磁力行（マスコンノッチ4以上）の電機子電流フィードバック目標値を、
+   `n409.lua`のCONST(200)固定値ではなく`POWER_LIMIT_CURRENT`プロパティに
+   変更。** `physics_tick`のこの1箇所のみ`n409.lua`との逐語一致を意図的に
+   崩している。ノッチ1〜3（界磁電流が電機子電流へクランプ付きで追従する行）
+   は無変更。テスト：
+   `test/scenarios/field_weakening_notch4_target_current.lua`。経緯は
+   `DESIGN_LOG.md` #31。
 
 ## チューニング可能なプロパティ（property.getNumber）
 

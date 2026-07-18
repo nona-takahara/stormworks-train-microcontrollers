@@ -1828,3 +1828,68 @@ Type ID）が一切送出されていなかった不具合を修正
   `field_current_excess_pulse_reset_masking.lua`／
   `current_limit_cam_advance.lua`／`regen_delay_cap_timing.lua`／
   `bc_smoothing_ramp_rates.lua`）。
+
+## #31 弱め界磁力行（マスコンノッチ4以上）の電機子電流フィードバック目標値を
+`POWER_LIMIT_CURRENT`プロパティへ変更
+
+- **背景**：ユーザーから「弱め界磁力行の電機子電流目標値を、抵抗制御の限流値に
+  合わせるか、それにオフセットを加えた値とすべき」との指摘を受け、
+  `physics_tick`（`n409.lua`のNewton法逐語移植）の界磁制御(`regen_latch`＝
+  `field_control_latch`)力行行を調べた。
+- **最初の思い違い（変数名に釣られた誤診断）**：`target_i`（目標電機子電流の
+  つもりの変数）に`OLD_IF_A`（前tickの界磁電流）が代入されている
+  （`if notch_ge1 and notch_eff <= 3 then target_i = OLD_IF_A end`）のを見て
+  「単位の取り違えバグ」と即断し、`debounce_block`の`current_limit_sw`
+  （`POWER_LIMIT_CURRENT`、並列時-20A）をそのままここに当てはめる修正を
+  最初に作った。しかしユーザーから「界磁制御ではノッチ1〜3は界磁電流を
+  電機子電流へクランプ付きで追従させるのが正しく（本ソルバでは界磁電流を
+  電機子電流換算しているため`target_i=OLD_IF_A`は狙い通り）、電機子電流への
+  本来のフィードバック制御が働くのはノッチ4以上だけ」との訂正を受け、
+  この最初の修正は撤回・再検討した（教訓：変数名の字面（`target_i`は
+  「目標電流」だろう、`OLD_IF_A`は「界磁電流」だから無関係だろう、という
+  推測）だけで判断せず、`iF_a = OLD_IF_A + (OLD_I - target_i) * 0.1`という
+  更新式が実際にどの誤差を検出しているかを追跡すべきだった。ノッチ1〜3の
+  `target_i = OLD_IF_A`は、`regen`が偽の非界磁制御行と全く同じ更新式に
+  帰着するため一見「界磁制御が無効化されている」ように見えるが、これは
+  ユーザーの説明通り意図した挙動）。
+- **本当の問題**：`notch_ge1`かつ`notch_eff > 3`のとき、`target_i`はどの`if`
+  にも該当せず、関数冒頭で初期化された`NEWTON_SEED`（=200）がそのまま
+  使われてしまう。`main.sw-net`でこの値の由来を確認したところ、
+  `sim_input`のch6（N6、SPEC.md §8.2「電機子電流初期値・基準値。既定200A」）
+  は`CONST current_offset_200 (value=200)`という**ゲーム内で調整不可能な
+  固定値**で、`POWER_LIMIT_CURRENT`（"Power Limit Current [A]"
+  PROPERTY_NUMBER、既定210A）とは別物だった。`src/chuso1800_core.lua`冒頭の
+  コメント（55-60行目）が指摘する通り、`n409.lua`では同じ`input.getNumber(6)`
+  （同一のCONST(200)）がNewton法の反復シードと電機子電流フィードバック目標の
+  両方に流用されているだけで、両者が同じ値であるべき根拠は元々ない。
+- **決定**：ユーザーの最終判断で、並列時オフセット（-20A）は今回のスコープ外
+  とし、ノッチ4以上の`target_i`は単純に`POWER_LIMIT_CURRENT`（既定210A）と
+  する。ノッチ1〜3の`target_i = OLD_IF_A`は無変更。
+- **実装**：
+  ```lua
+  if notch_ge1 and notch_eff <= 3 then target_i = OLD_IF_A end
+  if notch_ge1 and notch_eff > 3 then target_i = POWER_LIMIT_CURRENT end
+  if not notch_ge1 then target_i = 0 end
+  ```
+  `NEWTON_SEED`自体（Newton法の反復シードとしての用途）は無変更 ─
+  収束後の解に影響しないことは既存コメントの通り。
+- **検証**：`test/scenarios/field_weakening_notch4_target_current.lua`を新設。
+  `h.physics_tick`を600tick回し、(a) ノッチ2（<=3）では`iF_a`が
+  `POWER_LIMIT_CURRENT`ではなく`OLD_I`と自己無矛盾な値（実測95A程度、
+  210Aより十分小さい）へ収束すること、(b) ノッチ5（>3）では`OLD_I`が正確に
+  210Aへ収束することを確認。`lua test/run_all.lua`で24/24 pass
+  （既存23本はこの分岐を元々一切カバーしていなかったため無回帰）。
+- **deployアーティファクトの非決定性**：`node build.js`を無変更のソースで
+  再実行しただけで、コミット済み`chuso1800_deploy.lua`と無関係な
+  約300行の差分が出ることを発見した（`storm-lua-minify`の変数名短縮の
+  割り当てが実行ごとに変わる模様）。ユーザーに確認の上、今回は
+  再生成後の出力（7,225文字、8192文字制限内）でそのまま更新した。
+  `test/verify_deploy_artifact.lua`はpassを確認。非決定性の原因調査自体は
+  今回のスコープ外として見送った。
+- **確認**：`lua test/run_all.lua`（24/24）・`lua test/verify_deploy_artifact.lua`
+  （2/2）ともにpass。
+- **影響箇所**：`src/chuso1800_core.lua`（`physics_tick`）、
+  `test/run_all.lua`（新規シナリオ登録）、
+  `test/scenarios/field_weakening_notch4_target_current.lua`（新規）、
+  `README.md`（スコープ節・意図的な簡略化節4）、
+  `deploy/chuso1800_deploy.lua`・`deploy/chuso1800_deploy.lua.map`（再生成）。

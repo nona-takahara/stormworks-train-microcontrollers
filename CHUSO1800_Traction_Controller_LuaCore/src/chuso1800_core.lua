@@ -266,7 +266,14 @@ function physics_tick(speed, vl, position_counter, direction, notch_eff, phase1,
             iF_a = OLD_IF_A + (oldtrq - regen_bc_smooth_seed) * 20
             iF_a = iF_a * math.min(1, (470 / (K * math.abs(rpm))) / calc_phi(iF_a + OLD_I * 0.15))
         else
+            -- 弱め界磁力行：ノッチ1〜3は界磁電流を電機子電流へクランプ付きで
+            -- 追従させる（target_i=OLD_IF_Aのままでよい）。ノッチ4以上は
+            -- 電機子電流そのものへのフィードバック制御であり、目標値は
+            -- 抵抗制御の限流値（POWER_LIMIT_CURRENT）を使う。main.sw-netでは
+            -- ここがCONST(200)固定だったが、これは抵抗制御限流と同じ性質の
+            -- 値である以上プロパティで持つべき、との判断（DESIGN_LOG.md #31）。
             if notch_ge1 and notch_eff <= 3 then target_i = OLD_IF_A end
+            if notch_ge1 and notch_eff > 3 then target_i = POWER_LIMIT_CURRENT end
             if not notch_ge1 then target_i = 0 end
             if target_i == 0 then target_i = math.max(math.min(0, OLD_I + 20), OLD_I - 20) end
             iF_a = OLD_IF_A + (OLD_I - target_i) * 0.1

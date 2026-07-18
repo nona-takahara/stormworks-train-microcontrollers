@@ -50,6 +50,7 @@ local scenario_names = {
     "field_current_excess_pulse_reset_masking",
     "stuck_at_top_of_ladder_recovery",
     "eb_and_db_auto_off_force_disconnect",
+    "field_weakening_notch4_target_current",
     "realistic_scenario_1_low_speed_no_regen",
     "realistic_scenario_2_highway_coast_reaccel_regen",
     "realistic_scenario_3_gradual_decel_series_demotion",
