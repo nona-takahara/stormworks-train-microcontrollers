@@ -1,60 +1,7 @@
--- DESIGN_LOG.md #29 (PR #7 review comment from the repo owner, two safety
--- requirements):
---
--- 1. Receiving emergency braking (EB, `eb_condition`) must unconditionally
---    force ALL THREE latches (series/phase1, parallel/phase2, field-control/
---    regen) off, regardless of speed or how the state was reached. A literal
---    reading that only drops the field-control flag would leave Parallel
---    latched; re-notching after EB clears would then reconnect straight to
---    Parallel's current (low-resistance-to-zero) cam step instead of
---    restarting through Series -- the same "reconnect at zero resistance,
---    current spikes" danger #23 was originally about. `eb_trip_converges_
---    idle.lua` already covers the ordinary EB case, but starts from a state
---    where `regen_latch` is already false (so `coasting_cond` alone already
---    resolves it); this test specifically starts from the Parallel+field-
---    control "stuck" configuration (`stuck_at_top_of_ladder_recovery.lua`'s
---    `stuck_state()`) at a cruising speed, where nothing but the new
---    unconditional EB override can release it.
---
--- 2. Whenever "DB automatic" (`regen_flag`) is OFF, the vehicle must never
---    remain in series field control (series/phase1 latch AND field-control/
---    regen latch both on) -- entering it is already prevented structurally
---    (the field-current-excess pulse's Parallel->Series SET now requires
---    `regen_flag`, see field_current_excess_pulse_reset_masking.lua), but
---    this test covers the case where DB-auto is switched OFF *while already
---    in* series field control (e.g. entered while DB-auto was ON, then the
---    driver turns it off mid-brake) -- the controller must disconnect from
---    the catenary on the very next tick, not wait for some other condition.
---
--- **Follow-up (still #29)**: a PR reviewer follow-up pointed out that
--- "released on the state-machine tick" is not the same as "output zero on
--- that same tick" -- `physics_tick` always computes the current tick's
--- electrical output from the *previous* tick's latch state (see the file's
--- own "tickモデル" header note), so a naive reading of these two
--- requirements could still leave real output nonzero for one tick even
--- though the latches already read as released. Two distinct channels
--- turned out to matter here, per further PR discussion:
---   - `motor_current` / `stateless_out[2]` ("W", output port) -- confirmed
---     by the PR author to go to a *separate* system, not this vehicle's own
---     physics. Measured ~49A for one tick during a field-current-excess-
---     triggered disconnect before the fix.
---   - `stateless_out[3]` ("bc_target_smooth" in this codebase's naming) --
---     confirmed by the PR author to be Momelink-A's N2, which *is* what
---     actually drives this vehicle's real acceleration. Its EMA smoothing
---     carries forward pre-disconnect history even once the accel feeding it
---     is correctly zeroed, measured at ~0.39 m/s^2 immediately after EB,
---     taking ~7 ticks to fall under the reviewer's 0.1 m/s^2 bound.
--- Both are now fixed at the source: `phase_state_machine` returns
--- `output_zero_this_tick` (true exactly when at least one of phase1/phase2
--- was connected coming in and both are released this same tick), which
--- `core_tick` uses to retroactively zero `motor_current`/`elec_W`, and also
--- passes into `smooth_bc` (as `force_bc_target_zero`, alongside
--- `eb_condition`) to bypass the EMA and zero both `bc_target_smooth`'s
--- output and its carried-forward state in one step. So every sub-test below
--- asserts `stateless_out[1]` (motor_current), `stateless_out[2]` (W), and
--- `stateless_out[3]` (bc_target_smooth / Momelink-A N2, the real drive
--- signal) are all exactly zero on the disconnect tick itself, not just the
--- latch state.
+-- Safety regressions for forced disconnect (SPEC.md §7.7, DESIGN_LOG.md #29).
+-- EB and DB-auto OFF during Series+field-control must release all three latches immediately.
+-- On that same tick, motor_current, W, and the Momelink-A acceleration output must be zero;
+-- this verifies outputs, not merely the resulting latch state.
 
 return function(h)
     -- --- requirement 1: EB forces full disconnect from a stuck Parallel+
