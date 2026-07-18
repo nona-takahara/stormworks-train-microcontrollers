@@ -285,7 +285,7 @@
 					<in1/>
 					<in2 component_id="391"/>
 					<in3 component_id="526"/>
-					<in4/>
+					<in4 component_id="18"/>
 					<in5 component_id="569"/>
 					<in6 component_id="527"/>
 					<in7 component_id="533"/>
@@ -862,7 +862,7 @@ end">
 			<c type="45">
 				<object id="508" e="x/8/3.6">
 					<pos x="-2.5" y="5.5"/>
-					<in1 component_id="203"/>
+					<in1 component_id="204"/>
 				</object>
 			</c>
 			<c type="13">
@@ -2103,4 +2103,3 @@ end">
 		<group_states/>
 	</group>
 </microprocessor>
-

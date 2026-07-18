@@ -4,7 +4,7 @@ UNIT_CURRENT_MAX_P = 720 -- A
 UNIT_CURRENT_MAX_B = 1200 -- A
 REG_BRAKE = false
 MOTOR_PER_UNIT = 4 -- Number of motors(REAL) controlled from this microcontroller(SW)
-CONST_VF = 0.0256 -- V/f constant V/(km/h)
+CONST_VF = 0.0256 -- V/f constant kV/(km/h); panV and motorV are kV internally
 BOOST = 1.25
 
 MAX_LINE_VOLTAGE = 1.82 -- kV
