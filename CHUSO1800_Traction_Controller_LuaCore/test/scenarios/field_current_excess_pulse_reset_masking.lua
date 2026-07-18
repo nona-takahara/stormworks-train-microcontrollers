@@ -1,61 +1,6 @@
--- SPEC.md §7.5: a field-current-excess periodic pulse while Parallel is
--- latched is supposed to demote Parallel->Series (SET traction_phase1,
--- RESET traction_phase2). Cross-checked against tools/sw-net-sim running
--- the literal (原稿) gate network for CHUSO1800_Traction_Controller/main.sw-net:
--- when DB auto (regen_flag) is OFF, the literal gate net shows a brief
--- (1-2 tick) Series SET before phase_reset_cond also fires and resets BOTH
--- latches back to neutral -- Series is visibly, if fleetingly, engaged.
---
--- This module never shows that transient. `phase1_reset`'s `phase_reset_cond`
--- term already folds in `field_current_excess_pulse and (not regen_flag)`
--- (see `phase_state_machine`'s `phase_reset_cond`), and it is evaluated in
--- the SAME `calculateTick` as `phase1_set`'s `field_current_excess_pulse and
--- phase2_latch` term -- both read the identical pulse value this tick, so
--- `sr_latch`'s reset-priority (`if reset then return false`) masks the SET
--- before it is ever observable. In the literal gate net this collision does
--- NOT happen on the same tick: `traction_phase1_set`'s pulse input is one
--- gate-hop from the pulse, but `traction_phase1_reset`'s pulse-derived term
--- is two hops away (`field_current_excess_pulse -> regen_pulse_regen_flag_off
--- -> phase_reset_cond -> traction_phase1_reset`), so the 1-tick-per-gate
--- model lets the SET surface for one tick before the (now-current)
--- phase_reset_cond term catches up and resets both latches.
---
--- This is the same category of accepted "combinational compression"
--- shrinkage as the old SPEC.md's H7 corner (see h7_cam_overshoot_homing.lua):
--- SPEC.md permits shorter transients as long as the converged state matches,
--- and it does here -- both the literal gate net and this module land on
--- Series=false/Parallel=false (full neutral) a handful of ticks later.
---
--- The masking is DB-auto-dependent: with regen_flag ON, `phase_reset_cond`
--- drops its pulse-derived term entirely, so nothing masks the SET and Series
--- visibly engages (and stays engaged) exactly as the gate net does.
---
--- **DESIGN_LOG.md #28 update (superseded by #29, see below)**: #28 initially
--- gated the regen_flag=false masking behind a `near_stop` speed check, on the
--- theory that iF_a's unbounded upward drift during coasting made it fire too
--- readily and that a clean Parallel->Series demotion (matching the
--- regen_flag=true behavior) was the correct response at speed regardless of
--- regen_flag.
---
--- **DESIGN_LOG.md #29 correction**: that theory was wrong. Per SPEC.md §7.5
--- ("このパルスは並列から直列への切替、直列の解除、またはDB自動OFF時の接続
--- 解除に使用される" -- this pulse is used to switch Parallel->Series, release
--- Series, or disconnect entirely when DB-auto is OFF) and explicit correction
--- from the PR author, the masking-to-neutral behavior for regen_flag=false is
--- the *intended* one regardless of speed -- entering or remaining in series
--- field control while DB-auto (dynamic-brake-auto) is OFF risks an
--- unintended-acceleration surprise for the driver, so the controller must
--- disconnect from the catenary instead of quietly demoting to Series. The fix
--- reverts #28's `near_stop` gate on `phase_reset_cond`'s pulse term (masking
--- is unconditional again, matching the original gate-net-derived behavior)
--- and instead gates `phase1_set`'s pulse-driven Parallel->Series term with
--- `regen_flag` directly, so the demotion path structurally cannot fire at all
--- while DB-auto is OFF -- masking is therefore the only possible outcome,
--- not a race resolved by reset-priority.
---
--- This test locks down all three branches so a future refactor of
--- `phase_state_machine` cannot silently reorder these terms and change which
--- one wins.
+-- Field-current-excess transition policy (SPEC.md §7.5, DESIGN_LOG.md #22/#28/#29).
+-- DB-auto OFF must disconnect to neutral at every speed without a visible Series SET.
+-- DB-auto ON must demote Parallel to Series. The test locks down both branches.
 
 return function(h)
     local function make_state()
