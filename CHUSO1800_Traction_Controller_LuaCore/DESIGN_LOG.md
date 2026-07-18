@@ -1865,6 +1865,12 @@ Type ID）が一切送出されていなかった不具合を修正
 - **決定**：ユーザーの最終判断で、並列時オフセット（-20A）は今回のスコープ外
   とし、ノッチ4以上の`target_i`は単純に`POWER_LIMIT_CURRENT`（既定210A）と
   する。ノッチ1〜3の`target_i = OLD_IF_A`は無変更。
+- **見過ごされていた経緯についてのユーザーの推測**：main.sw-net側で
+  この種の固定値をCONSTからPROPERTY_NUMBER（`POWER_LIMIT_CURRENT`）へ
+  切り替える作業が行われた時期と、本プロジェクト（Lua Core移植）に
+  着手した時期の前後関係がずれており、着手時点でユーザー自身がその
+  切替の存在を失念していたため、仕様レビュー時にこの箇所の食い違いが
+  チェックから漏れていたと推測される、とのこと。
 - **実装**：
   ```lua
   if notch_ge1 and notch_eff <= 3 then target_i = OLD_IF_A end
