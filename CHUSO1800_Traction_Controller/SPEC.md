@@ -358,17 +358,17 @@ BC target [atm abs] = pneumatic_demand * 3.6 + 1
 
 ### 13.1 共通値
 
-実測BC絶対圧からBC作動比を生成する。
+実測BC絶対圧から摩擦制動減速度[m/s²]を生成する。
 
 ```text
-bc_application_ratio = max(BC_abs - 1.45, 0) / 3.02
+friction_brake_decel = max(BC_abs - 1.45, 0) / 3.02
 ```
 
 ### 13.2 Advancedフレーム
 
 | Number ch | 値 |
 |---:|---|
-| 1 | 自車BC作動比 |
+| 1 | 自車の摩擦制動減速度[m/s²] |
 | 2 | inner unit N26 |
 | 15 | Type ID 1911 |
 | 22 | 35。Luaの車両質量と一致するため車両質量[t]と推定 |
@@ -379,7 +379,7 @@ bc_application_ratio = max(BC_abs - 1.45, 0) / 3.02
 
 ### 13.3 1800形フレーム
 
-Advancedフレームを引き継ぎ、N1を自車BC作動比、N2を自車平滑加速度で上書きする。
+Advancedフレームを引き継ぎ、N1を自車の摩擦制動減速度[m/s²]、N2を自車平滑加速度で上書きする。
 
 ### 13.4 出力選択
 
