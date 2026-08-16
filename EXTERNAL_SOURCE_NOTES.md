@@ -21,7 +21,7 @@ Dropbox `Chuso_Electric_Railroad/Series2000/sys3000/out.txt`（`generate_lua.py`
 
 | legacyセクション | 内容 | repo対応状況 |
 |---|---|---|
-| `driver_support_2000.lua` | 行路探索・ARC番号算出 | `CHUSO2000_Driver_Assistance_IV/scripts/n141.lua`・`n61.lua` が対応（詳細は同ディレクトリの`DESIGN_LOG.md`参照） |
+| `driver_support_2000.lua` | 行路探索・ARC番号算出 | `CHUSO2000_Driver_Assistance_IV/scripts/n141.lua`・`n61.lua` が対応。データソースは`tools/route-data-sync/`経由でTeinishi氏`route_data.json`（コミットSHA固定）に一本化済み（Dropbox版は参照しない）。詳細は同ディレクトリの`DESIGN_LOG.md`参照 |
 | `location_update.lua` | 座標ベースの自列車位置更新 | 未着手 |
 | `passenger_guidance_data.lua` | 車内放送・旅客案内の内容データ | 未着手（`SignalComposite.md`にビット名〔旅客案内オン/オフ〕はあるが、内容生成ロジックは無し） |
 | `lcd_control.lua` | 車内LCD表示の駅別データ | 未着手 |
@@ -48,11 +48,11 @@ Dropbox `CER/Series2000/sys2000-25/CommonControl-old.md`（2000系NITS仕様の�
 ## 5. スコープ外と判断した事項
 
 - **N-TRACS（連動装置）**：`storm-n-tracs-editor`という別リポジトリが正本（Dropbox `build.json`のパス記述から確認）。このリポジトリの対象外。
-- **CHUSO3000**：wiki `NITS-C3000`ページによれば、3000系のビークルデータ・Luaは別作者（Teinishi氏）が別GitHubリポジトリ（`github.com/Teinishi/soya_chuso_train_vehicle`）で管理している。現状JSMS対応仕様のみ。このリポジトリでの新規ディレクトリ作成は対象外。
+- **CHUSO3000のビークルデータ・Lua本体**：wiki `NITS-C3000`ページによれば、3000系のビークルデータ・Luaは別作者（Teinishi氏）が別GitHubリポジトリ（`github.com/Teinishi/soya_chuso_train_vehicle`）で管理している。現状JSMS対応仕様のみ。このリポジトリでの新規ディレクトリ作成は対象外（ただし同リポジトリの`route_data.json`は上記2節の通りデータソースとして利用している）。同リポジトリにLICENSEファイルが無いことを記録しておく（同じ制作者コミュニティ内のデータ利用として運用上の問題にはしないが、事実として記録）。
 - **CHUSO2500**：repo内に存在せず、Dropbox調査でも独立した設計資料は見つからなかった。
 - **Series1000のATC計算式**（`declen`/`getOrpPattern`等、Dropbox `SoyaExpressATCATS/atc_old.lua`・`CER/Series1000/atc.lua`由来）：このリポジトリにATC実装が無いため、移植は時期尚早。`CHUSO1000_SAP_Cab_Controller/SPEC.md`から本節へのポインタのみ置く。
 - **wav/mp4/画像アセット、Dropbox内のファイル整理自体**：このリポジトリと無関係。
-- **`route_data.json`の駅座標データそのものの移植**：マイコンロジックのdocumentationが目的のrepoであり、路線データの管理は対象外（上記2節で存在のみ記録）。
+- **~~`route_data.json`の駅座標データそのものの移植~~**：2026-08-16、`tools/route-data-sync/`として実施済み（Teinishi氏`route_data.json`をコミットSHA固定でフェッチし、`n61.lua`/`n141.lua`向けのdofileモジュールを生成。詳細は`CHUSO2000_Driver_Assistance_IV/DESIGN_LOG.md` #2参照）。
 
 ## 6. NITS Emergency Brake Converter（計画段階）
 
