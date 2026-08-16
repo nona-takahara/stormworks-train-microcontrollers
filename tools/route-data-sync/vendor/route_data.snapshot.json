@@ -1,0 +1,469 @@
+{
+    "types": [
+        {
+            "id": 1,
+            "arc": [3],
+            "fullName": "回　送",
+            "shortName": "回送",
+            "color": "gray"
+        },
+        {
+            "id": 2,
+            "arc": [1],
+            "fullName": "試運転",
+            "shortName": "試運",
+            "color": "gray"
+        },
+        {
+            "id": 3,
+            "arc": [2],
+            "fullName": "臨　時",
+            "shortName": "臨時",
+            "color": "gray"
+        },
+        {
+            "id": 4,
+            "fullName": "団　体",
+            "shortName": "団体",
+            "color": "gray"
+        },
+        {
+            "id": 5,
+            "arc": {"min": 10, "max": 19},
+            "fullName": "各　停",
+            "shortName": "各停",
+            "color": "gray"
+        },
+        {
+            "id": 6,
+            "arc": {"min": 30, "max": 39},
+            "fullName": "準　急",
+            "shortName": "準急",
+            "color": "green"
+        },
+        {
+            "id": 7,
+            "arc": {"min": 50, "max": 59},
+            "fullName": "急　行",
+            "shortName": "急行",
+            "color": "red"
+        },
+        {
+            "id": 8,
+            "arc": {"min": 70, "max": 79},
+            "fullName": "特　急",
+            "shortName": "特急",
+            "color": "orange"
+        },
+        {
+            "id": 9,
+            "arc": {"min": 70, "max": 79},
+            "fullName": "秋特急",
+            "shortName": "特急",
+            "color": "orange"
+        },
+        {
+            "id": 10,
+            "arc": {"min": 20, "max": 29},
+            "fullName": "通　準",
+            "shortName": "通準",
+            "color": "blue"
+        },
+        {
+            "id": 11,
+            "arc": {"min": 40, "max": 49},
+            "fullName": "区　急",
+            "shortName": "区急",
+            "color": "yellow"
+        }
+    ],
+    "lcdTypes": [
+        {
+            "lcdId": 1,
+            "typeIds": [1],
+            "color": [21, 21, 21]
+        },
+        {
+            "lcdId": 2,
+            "typeIds": [5],
+            "color": [21, 21, 21]
+        },
+        {
+            "lcdId": 3,
+            "typeIds": [6],
+            "color": [0, 42, 0]
+        },
+        {
+            "lcdId": 4,
+            "typeIds": [7],
+            "color": [255, 0, 0]
+        },
+        {
+            "lcdId": 5,
+            "typeIds": [8, 9],
+            "color": [255, 24, 0]
+        }
+    ],
+    "stations": [
+        {
+            "name": "掘戸町",
+            "stationIndex": 2,
+            "stopTypes": [5, 6, 7, 8, 9, 10, 11],
+            "tracks": [
+                {
+                    "id": 1,
+                    "notForService": true,
+                    "name": "掘戸町引上",
+                    "displayName": "掘戸町引上",
+                    "arc": [29],
+                    "outbound": [2],
+                    "coordinate": [1168, -4430],
+                    "meterage": -1670
+                },
+                {
+                    "id": 2,
+                    "name": "掘戸町",
+                    "displayName": " 掘 戸 町 ",
+                    "arc": { "min": 20, "max": 28 },
+                    "inbound": [1],
+                    "outbound": [3],
+                    "door": {
+                        "inbound": "right",
+                        "outbound": "left"
+                    },
+                    "coordinate": [158, -4590],
+                    "meterage": -1610,
+                    "stopPosition": {
+                        "inbound": [154.6, -4607.5],
+                        "outbound": {
+                            "default": [160.4, -4566.5],
+                            "1": [157.5, -4587.0]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "北港",
+            "stationIndex": 3,
+            "stopTypes": [5, 6, 7, 8, 9, 10, 11],
+            "tracks": [
+                {
+                    "id": 3,
+                    "name": "北港3",
+                    "displayName": " 北 港 ３ ",
+                    "arc": [33],
+                    "inbound": [2],
+                    "outbound": [5, 6],
+                    "door": {
+                        "inbound": "right",
+                        "outbound": "left"
+                    },
+                    "coordinate": [1355, -3762],
+                    "meterage": 0,
+                    "stopPosition": {
+                        "inbound": [1329.1, -3762.0],
+                        "outbound": {
+                            "default": [1370.6, -3762.7],
+                            "1": [1351.8, -3762.4]
+                        }
+                    }
+                },
+                {
+                    "id": 4,
+                    "name": "北港4",
+                    "displayName": " 北 港 ４ ",
+                    "arc": [34],
+                    "outbound": [5, 6],
+                    "door": {
+                        "inbound": "left"
+                    },
+                    "coordinate": [1355, -3751],
+                    "meterage": 0,
+                    "stopPosition": {
+                        "inbound": [1342.5, -3750.9]
+                    }
+                },
+                {
+                    "id": 5,
+                    "notForService": true,
+                    "name": "北港引上",
+                    "displayName": " 北港引上 ",
+                    "arc": [39],
+                    "inbound": [3, 4],
+                    "coordinate": [1656, -3770],
+                    "meterage": 300,
+                    "stopPosition": {
+                        "inbound": [1635.6, -3770.4],
+                        "outbound": [1677.1, -3770.4]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "赤土",
+            "stationIndex": 4,
+            "stopTypes": [5, 10, 11],
+            "tracks": [
+                {
+                    "id": 6,
+                    "name": "赤土",
+                    "displayName": " 赤    土 ",
+                    "inbound": [3, 4],
+                    "outbound": [7],
+                    "door": {
+                        "inbound": "left",
+                        "outbound": "left"
+                    },
+                    "doorcut": {
+                        "inbound": { "inbound": 6, "middle": 6 },
+                        "outbound": { "outbound": 0, "middle": 6 }
+                    },
+                    "coordinate": [2976, -3930],
+                    "meterage": 1635,
+                    "stopPosition": {
+                        "inbound": {
+                            "default": [2956.0, -3924.4],
+                            "1": [2973.3, -3931.6]
+                        },
+                        "outbound": [2996.1, -3936.6]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "高見が丘",
+            "stationIndex": 5,
+            "stopTypes": [5, 6, 7, 11],
+            "tracks": [
+                {
+                    "id": 7,
+                    "name": "高見が丘",
+                    "displayName": " 高見が丘 ",
+                    "arc": { "min": 40, "max": 48 },
+                    "inbound": [6],
+                    "outbound": [8, 9],
+                    "door": {
+                        "inbound": "left",
+                        "outbound": "left"
+                    },
+                    "coordinate": [3743, -4888],
+                    "meterage": 2925,
+                    "stopPosition": {
+                        "inbound": [3736.8, -4868.6],
+                        "outbound": [3749.1, -4907.9]
+                    }
+                },
+                {
+                    "id": 8,
+                    "notForService": true,
+                    "name": "高見が丘引上",
+                    "displayName": "高見丘引上",
+                    "arc": [ 49 ],
+                    "inbound": [7],
+                    "coordinate": [3768, -5270],
+                    "meterage": 3500
+                }
+            ]
+        },
+        {
+            "name": "尾根留",
+            "stationIndex": 6,
+            "stopTypes": [5, 6, 10, 11],
+            "tracks": [
+                {
+                    "id": 9,
+                    "name": "尾根留",
+                    "displayName": " 尾 根 留 ",
+                    "inbound": [7],
+                    "outbound": [10],
+                    "door": {
+                        "inbound": "left",
+                        "outbound": "left"
+                    },
+                    "coordinate": [4362, -5935],
+                    "meterage": 4190,
+                    "stopPosition": {
+                        "inbound": {
+                            "default": [4317.3, -5897.2],
+                            "1": [4321.6, -5901.0]
+                        },
+                        "outbound": {
+                            "default": [4356.2, -5926.5],
+                            "1": [4342.3, -5913.9]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "大熊",
+            "stationIndex": 7,
+            "stopTypes": [5],
+            "tracks": [
+                {
+                    "id": 10,
+                    "name": "大熊",
+                    "displayName": " 大    熊 ",
+                    "inbound": [9],
+                    "outbound": [11],
+                    "door": {
+                        "inbound": "left",
+                        "outbound": "left"
+                    },
+                    "doorcut": {
+                        "inbound": { "inbound": 6, "middle": 6 },
+                        "outbound": { "outbound": 0, "middle": 6 }
+                    },
+                    "coordinate": [5390, -6653],
+                    "meterage": 5570,
+                    "stopPosition": {
+                        "inbound": {
+                            "default": [5385.5, -6633.2],
+                            "1": [5387.7, -6651.5]
+                        },
+                        "outbound": [5394.4, -6674.3]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "鏡が池",
+            "stationIndex": 8,
+            "stopTypes": [5, 6, 9],
+            "tracks": [
+                {
+                    "id": 11,
+                    "name": "鏡が池",
+                    "displayName": " 鏡 が 池 ",
+                    "inbound": [10],
+                    "outbound": [12],
+                    "door": {
+                        "inbound": "left",
+                        "outbound": "left"
+                    },
+                    "coordinate": [6584, -8240],
+                    "meterage": 7810,
+                    "stopPosition": {
+                        "inbound": {
+                            "default": [6562.7, -8238.7],
+                            "1": [6581.3, -8241.3]
+                        },
+                        "outbound": [6604.3, -8240.2]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "潮凪浜",
+            "stationIndex": 9,
+            "stopTypes": [5, 6, 7, 8, 9, 10, 11],
+            "tracks": [
+                {
+                    "id": 12,
+                    "name": "潮凪浜",
+                    "displayName": " 潮 凪 浜 ",
+                    "arc": { "min": 50, "max": 58 },
+                    "inbound": [11],
+                    "outbound": [13, 14],
+                    "door": {
+                        "inbound": "left",
+                        "outbound": "left"
+                    },
+                    "coordinate": [6991, -9184],
+                    "meterage": 9030,
+                    "stopPosition": {
+                        "inbound": {
+                            "default": [6998.4, -9164.3],
+                            "1": [6990.0, -9181.1]
+                        },
+                        "outbound": [6983.9, -9203.3]
+                    }
+                },
+                {
+                    "id": 13,
+                    "notForService": true,
+                    "name": "潮凪浜引上",
+                    "displayName": "潮凪浜引上",
+                    "arc": [ 59 ],
+                    "inbound": [12],
+                    "coordinate": [6915, -9346],
+                    "meterage": 9220,
+                    "stopPosition": {
+                        "outbound": [6902.9, -9369.4]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "南江街道",
+            "stationIndex": 10,
+            "stopTypes": [5, 10, 11],
+            "tracks": [
+                {
+                    "id": 14,
+                    "name": "南江街道",
+                    "displayName": " 南江街道 ",
+                    "meterage": 10370,
+                    "coordinate": [5910, -9310],
+                    "inbound": [12],
+                    "outbound": [15, 16],
+                    "door": {
+                        "inbound": "left",
+                        "outbound": "left"
+                    },
+                    "doorcut": {
+                        "inbound": { "inbound": 6, "middle": 6 },
+                        "outbound": { "outbound": 0, "middle": 6 }
+                    },
+                    "stopPosition": {
+                        "inbound": {
+                            "default": [5928.0, -9323.4],
+                            "1": [5914.0, -9313.0]
+                        },
+                        "outbound": [5893.8, -9300.4]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "南江町",
+            "stationIndex": 11,
+            "stopTypes": [5, 6, 7, 10, 11],
+            "tracks": [
+                {
+                    "id": 15,
+                    "name": "南江町",
+                    "displayName": " 南江町１ ",
+                    "meterage": 12320,
+                    "coordinate": [4330, -8210],
+                    "arc": [ 61 ],
+                    "inbound": [14],
+                    "door": {
+                        "inbound": "right",
+                        "outbound": "right"
+                    },
+                    "stopPosition": {
+                        "outbound": [4335.5, -8205.4]
+                    }
+                },
+                {
+                    "id": 16,
+                    "name": "南江町",
+                    "displayName": " 南江町３ ",
+                    "meterage": 12320,
+                    "coordinate": [4330, -8210],
+                    "arc": [ 63 ],
+                    "inbound": [14],
+                    "door": {
+                        "inbound": "left",
+                        "outbound": "right"
+                    },
+                    "stopPosition": {
+                        "outbound": [4325.2, -8214.9]
+                    }
+                }
+            ]
+        }
+    ]
+}
