@@ -5,9 +5,10 @@
   "type": "module",
   "packageManager": "pnpm@10.28.2",
   "scripts": {
+    "microcontroller": "node tools/microcontroller/cli.mjs",
     "sync:route-data": "node tools/route-data-sync/fetch.mjs",
     "gen:route-data": "node tools/route-data-sync/generate.mjs",
-    "build:driver-assistance": "node CHUSO2000_Driver_Assistance_IV/deploy/build.js"
+    "build:driver-assistance": "node tools/microcontroller/cli.mjs build driver-assistance"
   },
   "devDependencies": {
     "storm-lua-minify": "^0.2.0",

@@ -12,23 +12,24 @@ Stormworksの1つのLUAノードには**最大8192文字**までしかスクリ�
 これはゲーム側の固定制限であり、交渉の余地がない。少し複雑な制御ロジックは
 素朴に書くとすぐこれを超える。
 
-## ビルドパイプライン：`storm-lua-minify` + Node.jsビルドスクリプト
+## ビルドパイプライン：`storm-lua-minify` + 統合支援コマンド
 
 スクリプトのフラット化・minifyは手書きではなく
 [`storm-lua-minify`](https://www.npmjs.com/package/storm-lua-minify)
-（npm、リポジトリ作者自身のツール）に行わせる。各マイコンのディレクトリに
-`deploy/build.js`（Node.js、`import`/ESM）を置き、`node build.js`一発で
-`deploy/*_deploy.lua`（Stormworksへ貼り付ける最終成果物）を生成する
-構成にする。bashスクリプトにしないのは、開発者がWindows上で作業するため。
+（npm、リポジトリ作者自身のツール）に行わせる。対象固有のentry、出力、
+一時ステージング依存、XML生成時のsidecar差し替え先は
+`microcontrollers.local.json`へ宣言し、リポジトリ共通のNode.js製CLIを使う。
+`pnpm microcontroller build <name>`で`deploy/`以下の最終成果物を生成し、
+`export`時だけ一時DSLツリーへ差し込む。編集用や再取り込み用の`scripts/`へ
+ビルドが直接書き込むことはない。
 
 `storm-lua-minify`（0.2.0）は`dofile(...)`/`require(...)`によるマルチファイル
 構成をAST上で解決する。仕様・制約は以下の通り：
 
 - モジュール名の解決は**entryファイル自身のディレクトリからの下り専用**。
   `..`による親ディレクトリ参照はできない。複数マイコンで共有する
-  `lib/*.lua`を使う場合、ビルドスクリプト側で一時的に`deploy/`直下へ
-  コピーしてから`storm-lua-minify`を呼び、終わったら消す、という
-  ステージング処理が必要。
+  `lib/*.lua`を使う場合、設定の`stage`へ依存元とentry直下での一時ファイル名を
+  宣言する。統合CLIがコピー、minify、後始末を行う。
 - `dofile(...)`は常に生の文としてその場にインライン展開される
   （文位置でも式位置でも）。
 - `-m`（`--module-like-lua`）フラグを付けると`require(...)`は、実際に
@@ -107,5 +108,4 @@ AST上のdofileインライン展開）でも、素の`lua`によるユニット
   適用する。
 
 参考実装：`CHUSO1800_Traction_Controller_LuaCore/`
-（`src/chuso1800_core.lua`・`deploy/main.lua`・`deploy/build.js`・
-`test/run_all.lua`）。
+（`src/chuso1800_core.lua`・`deploy/main.lua`・`test/run_all.lua`）。

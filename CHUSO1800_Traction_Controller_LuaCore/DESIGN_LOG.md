@@ -79,7 +79,7 @@
 
 ## #12 ビルドをstorm-lua-minifyへ委譲
 
-- `deploy/build.js`が依存ファイルを一時コピーし、`deploy/main.lua`を入口に
+- リポジトリ共通のLuaビルダーが依存ファイルを一時コピーし、`deploy/main.lua`を入口に
   `deploy/chuso1800_deploy.lua`を生成する。
 - 親ディレクトリ参照を扱えない制約への回避策である。
 - 読み込み方式は#15で全面的な`dofile`へ更新した。
