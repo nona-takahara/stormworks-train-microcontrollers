@@ -32,6 +32,10 @@
 
 **`src/`・`deploy/`分離を導入した理由**：`scripts/n61.lua`・`scripts/n141.lua`は`reimport.sh`（`pnpm exec storm-mcl xml2dsl ... --out-dir CHUSO2000_Driver_Assistance_IV`）が書き込む対象そのものであることを`git log --follow`で確認した（コミットは一括インポート1回のみ、以後の手編集なし）。minifyビルドの出力を`scripts/`に直接書くと、`reimport.sh`と書き込み先が競合し、どちらを後に実行したかでビルド結果かゲーム側の変更のどちらかがサイレントに消える。そのため、手書きロジックは`src/n61.lua`・`src/n141.lua`（`dofile("route_data_position")`・`dofile("route_data_arc")`を使用）に置き、`deploy/build.js`（CHUSO1800の`deploy/build.js`に準拠）でstorm-lua-minifyを実行し、`deploy/n61_deploy.lua`・`deploy/n141_deploy.lua`へ出力する構成にした。
 
+その後、個別の`deploy/build.js`とXML再取り込みスクリプトはリポジトリ共通の
+`microcontroller` CLIへ統合した。生成物は引き続き`deploy/`へ置き、Stormworksへ
+書き出す際だけ一時DSLツリーのsidecarへ差し込むため、二つの書き手を作らない。
+
 **`scripts/n61.lua`・`scripts/n141.lua`は今回変更していない。** `deploy/`の生成結果とのdiffはtrack 2（掘戸町）の座標のみで、他の全テーブル値は一致していた（`coord_tbl`が`{303,-4819}`→`{158,-4590}`。Teinishi氏側でこの駅の座標が更新されたもので、追従して問題ないとユーザーに確認済み）。`scripts/`への反映は、この記録とは別の明示的な作業として行う。
 
 **影響箇所**：`tools/route-data-sync/`（新規）、`CHUSO2000_Driver_Assistance_IV/src/`（新規）、`CHUSO2000_Driver_Assistance_IV/deploy/`（新規）、`package.json`（`scripts`ブロック新設）、`EXTERNAL_SOURCE_NOTES.md`（§2・§5更新）。

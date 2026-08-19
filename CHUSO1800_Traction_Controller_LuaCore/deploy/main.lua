@@ -1,9 +1,8 @@
 -- Stormworks deployment entry point for the CHUSO1800 traction controller.
 --
 -- NOT meant to be pasted into a Stormworks LUA node as-is: this file is the
--- storm-lua-minify build input (run `node build.js` from this directory --
--- see that file for why a plain `dofile` with relative paths doesn't work
--- directly).
+-- storm-lua-minify build input (run the repository-wide
+-- `pnpm microcontroller build <name>` command; see LUA_CODING_GUIDE.md).
 --
 -- Neither ../../lib/state_sync.lua nor ../src/chuso1800_core.lua is a Lua
 -- module: both define plain top-level functions/globals with no

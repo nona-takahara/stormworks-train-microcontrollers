@@ -21,7 +21,7 @@ CHUSO1800牽引制御の状態機械、カム進段、電流モデル、回生�
 
 - `src/chuso1800_core.lua`: 純関数`core_tick(stateless_in, state_in)`と補助関数
 - `deploy/main.lua`: `state_sync.lua`とのfloat/integer境界
-- `deploy/build.js`: storm-lua-minifyによる単一ファイル生成
+- リポジトリ共通の`pnpm microcontroller build <name>`: storm-lua-minifyによる単一ファイル生成
 - `deploy/chuso1800_deploy.lua`: Stormworksへ貼り付ける生成物
 - `main.sw-net`: Lua Coreと、ゲート側に残した処理の結線
 - `test/`: ソースと生成物の回帰テスト
@@ -83,10 +83,10 @@ lua test/verify_deploy_artifact.lua
 `CHUSO1800_Traction_Controller_LuaCore/deploy`で実行します。
 
 ```sh
-node build.js
+pnpm microcontroller build <microcontrollers.local.jsonで登録したname>
 ```
 
-`build.js`は`lib/state_sync.lua`と`src/chuso1800_core.lua`を一時的に同じ
+共通ビルダーは`lib/state_sync.lua`と`src/chuso1800_core.lua`を一時的に同じ
 ディレクトリへ置き、`deploy/main.lua`を入口にフラット化・minifyします。
 生成後は次を確認してください。
 
