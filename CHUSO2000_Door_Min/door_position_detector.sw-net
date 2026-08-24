@@ -1,0 +1,20 @@
+module door_position_detector
+  port in "phys_a" : composite
+  port in "phys_b" : composite
+  port out "phys_door_open_out" : boolean
+
+  inst PROPERTY_NUMBER door_detect_length (value=1.25, n="Length") : -> out=door_detect_length_out
+  inst PROPERTY_NUMBER door_detect_width (value=0.1, n="Width") : -> out=door_detect_width_out
+  inst COMPOSITE_READ_NUMBER phys_a_pos_x (channel=1) : composite="phys_a" -> out=phys_a_pos_x_out
+  inst COMPOSITE_READ_NUMBER phys_a_pos_y (channel=2) : composite="phys_a" -> out=phys_a_pos_y_out
+  inst COMPOSITE_READ_NUMBER phys_a_pos_z (channel=3) : composite="phys_a" -> out=phys_a_pos_z_out
+  inst COMPOSITE_READ_NUMBER phys_b_pos_x (channel=1) : composite="phys_b" -> out=phys_b_pos_x_out
+  inst COMPOSITE_READ_NUMBER phys_b_pos_y (channel=2) : composite="phys_b" -> out=phys_b_pos_y_out
+  inst COMPOSITE_READ_NUMBER phys_b_pos_z (channel=3) : composite="phys_b" -> out=phys_b_pos_z_out
+  inst FUNC_NUM_8 sensor_dist_sq (expression="(x-a)^2+(y-b)^2+(z-c)^2") : x=phys_a_pos_x_out, y=phys_a_pos_y_out, z=phys_a_pos_z_out, a=phys_b_pos_x_out, b=phys_b_pos_y_out, c=phys_b_pos_z_out -> out=sensor_dist_sq_out
+  inst FUNC_NUM_3 closed_dist_min_sq (expression="(x-y)^2") : x=door_detect_length_out, y=door_detect_width_out -> out=closed_dist_min_sq_out
+  inst FUNC_NUM_3 closed_dist_max_sq (expression="(x+y)^2") : x=door_detect_length_out, y=door_detect_width_out -> out=closed_dist_max_sq_out
+  inst GREATER_THAN dist_above_closed_min : a=sensor_dist_sq_out, b=closed_dist_min_sq_out -> out=dist_above_closed_min_out
+  inst LESS_THAN dist_below_closed_max : a=sensor_dist_sq_out, b=closed_dist_max_sq_out -> out=dist_below_closed_max_out
+  inst NAND phys_door_open : a=dist_below_closed_max_out, b=dist_above_closed_min_out -> out="phys_door_open_out"
+end

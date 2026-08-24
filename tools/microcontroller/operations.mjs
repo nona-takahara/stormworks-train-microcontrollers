@@ -41,7 +41,7 @@ export function checkProject(config, project, adapter) {
 
 function copyOverlays(config, project, stagedRoot) {
     // deploy成果物はリポジトリ内のscriptsへ直接戻さない。export用に複製した
-    // DSLツリーだけを書き換え、再インポート側とLuaビルド側の書込先を分離する。
+    // DSLツリーだけを書き換え、XML同期とLuaビルドの書込先を分離する。
     for (const build of project.luaBuilds) {
         const source = path.resolve(config.repoRoot, build.output);
         if (!fs.existsSync(source)) throw new Error(`Lua build output not found: ${source}`);
@@ -136,8 +136,8 @@ export async function importProject(config, project, adapter, dependencies = {})
     const importedXml = path.join(tempRoot, project.stormworksFile);
     try {
         fs.copyFileSync(source, importedXml);
-        // 実際の同期・差分表示・atomicな適用はstorm-mcl #63対応アダプターの責務。
-        // この層は入出力場所と確認関数だけを渡し、旧xml2dslへは迂回しない。
+        // 実際の同期・差分表示・atomicな適用はstorm-mclアダプターの責務。
+        // この層は入出力場所と確認関数だけを渡す。
         return await adapter.importXml({
             xmlPath: importedXml,
             projectPath,

@@ -30,7 +30,7 @@
 
 **きっかけ**：ユーザーからの指示「Dropbox管理だったこのツールを、Dropboxの個人管理データではなくTeinishi氏の`route_data.json`を単一の情報源としてビルドパイプラインへ正式に組み込みたい」。また「`generate.mjs`の出力はstorm-lua-minify式`dofile`で取り込み可能な形式にしてほしい」との追加指示を受けた。
 
-**`src/`・`deploy/`分離を導入した理由**：`scripts/n61.lua`・`scripts/n141.lua`は`reimport.sh`（`pnpm exec storm-mcl xml2dsl ... --out-dir CHUSO2000_Driver_Assistance_IV`）が書き込む対象そのものであることを`git log --follow`で確認した（コミットは一括インポート1回のみ、以後の手編集なし）。minifyビルドの出力を`scripts/`に直接書くと、`reimport.sh`と書き込み先が競合し、どちらを後に実行したかでビルド結果かゲーム側の変更のどちらかがサイレントに消える。そのため、手書きロジックは`src/n61.lua`・`src/n141.lua`（`dofile("route_data_position")`・`dofile("route_data_arc")`を使用）に置き、`deploy/build.js`（CHUSO1800の`deploy/build.js`に準拠）でstorm-lua-minifyを実行し、`deploy/n61_deploy.lua`・`deploy/n141_deploy.lua`へ出力する構成にした。
+**`src/`・`deploy/`分離を導入した理由**：`scripts/n61.lua`・`scripts/n141.lua`はXML同期が管理するsidecarであり、手書きロジックの正本にはしない。minifyビルドの出力を`scripts/`に直接書くと、XML同期と書き込み先が競合し、どちらを後に実行したかでビルド結果かゲーム側の変更のどちらかがサイレントに消える。そのため、手書きロジックは`src/n61.lua`・`src/n141.lua`（`dofile("route_data_position")`・`dofile("route_data_arc")`を使用）に置き、`deploy/build.js`（CHUSO1800の`deploy/build.js`に準拠）でstorm-lua-minifyを実行し、`deploy/n61_deploy.lua`・`deploy/n141_deploy.lua`へ出力する構成にした。
 
 その後、個別の`deploy/build.js`とXML再取り込みスクリプトはリポジトリ共通の
 `microcontroller` CLIへ統合した。生成物は引き続き`deploy/`へ置き、Stormworksへ

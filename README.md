@@ -26,9 +26,9 @@ pnpm microcontroller import <name...>
 `export`はLua生成、DSL検査、XML生成、バックアップ、Stormworks保存領域への
 配置を行います。変更を伴う配置にはTTY上の確認が必要です。PNGは扱いません。
 
-`import`は既存DSLの構造と名前を維持するstorm-mclの同期機能（issue #63）を
-前提にしています。対応版が利用できるまでは安全のため停止し、既存DSLを
-`xml2dsl --out-dir`で上書きするフォールバックは行いません。
+`import`はstorm-mcl v0.10.0以降の同期機能（`xml2dsl --sync-with`）を使い、既存DSLの
+モジュール構造と名前を維持します。まずdry-runの診断を表示し、確認後に同期を
+適用します。
 
 設定例のプロジェクト定義は次の形です。
 

@@ -1,0 +1,32 @@
+module extension_output
+  port in "nits_rx_gate_switch_out" : composite
+  port in "rx_addr_not_mine_read_out" : boolean
+  port out "NITS Extension Output" : composite
+
+  inst LUA ext_output_decoder_lua (script_ref="scripts/n848.lua") : composite="nits_rx_gate_switch_out" -> composite=ext_output_decoder_lua_composite
+  inst COMPOSITE_READ_NUMBER ext_out_n1_value_read (channel=1) : composite=ext_output_decoder_lua_composite -> out=ext_out_n1_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n1_flag_read (channel=1) : composite=ext_output_decoder_lua_composite -> out=ext_out_n1_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n2_value_read (channel=2) : composite=ext_output_decoder_lua_composite -> out=ext_out_n2_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n2_flag_read (channel=2) : composite=ext_output_decoder_lua_composite -> out=ext_out_n2_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n3_value_read (channel=3) : composite=ext_output_decoder_lua_composite -> out=ext_out_n3_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n3_flag_read (channel=3) : composite=ext_output_decoder_lua_composite -> out=ext_out_n3_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n4_value_read (channel=4) : composite=ext_output_decoder_lua_composite -> out=ext_out_n4_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n4_flag_read (channel=4) : composite=ext_output_decoder_lua_composite -> out=ext_out_n4_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n5_value_read (channel=5) : composite=ext_output_decoder_lua_composite -> out=ext_out_n5_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n5_flag_read (channel=5) : composite=ext_output_decoder_lua_composite -> out=ext_out_n5_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n6_value_read (channel=6) : composite=ext_output_decoder_lua_composite -> out=ext_out_n6_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n6_flag_read (channel=6) : composite=ext_output_decoder_lua_composite -> out=ext_out_n6_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n7_value_read (channel=7) : composite=ext_output_decoder_lua_composite -> out=ext_out_n7_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n7_flag_read (channel=7) : composite=ext_output_decoder_lua_composite -> out=ext_out_n7_flag_read_out
+  inst COMPOSITE_READ_NUMBER ext_out_n8_value_read (channel=8) : composite=ext_output_decoder_lua_composite -> out=ext_out_n8_value_read_out
+  inst COMPOSITE_READ_BOOLEAN ext_out_n8_flag_read (channel=8) : composite=ext_output_decoder_lua_composite -> out=ext_out_n8_flag_read_out
+  inst MEMORY_REGISTER ext_out_n9_memory (reset_value=0) : reset="rx_addr_not_mine_read_out", set=ext_out_n1_flag_read_out, value=ext_out_n1_value_read_out -> out=ext_out_n9_memory_out
+  inst MEMORY_REGISTER ext_out_n10_memory (reset_value=0) : reset="rx_addr_not_mine_read_out", set=ext_out_n2_flag_read_out, value=ext_out_n2_value_read_out -> out=ext_out_n10_memory_out
+  inst MEMORY_REGISTER ext_out_n11_memory (reset_value=0) : reset="rx_addr_not_mine_read_out", set=ext_out_n3_flag_read_out, value=ext_out_n3_value_read_out -> out=ext_out_n11_memory_out
+  inst MEMORY_REGISTER ext_out_n12_memory (reset_value=0) : reset="rx_addr_not_mine_read_out", set=ext_out_n4_flag_read_out, value=ext_out_n4_value_read_out -> out=ext_out_n12_memory_out
+  inst MEMORY_REGISTER ext_out_n13_memory (reset_value=0) : reset="rx_addr_not_mine_read_out", set=ext_out_n5_flag_read_out, value=ext_out_n5_value_read_out -> out=ext_out_n13_memory_out
+  inst MEMORY_REGISTER ext_out_n14_memory (reset_value=0) : reset="rx_addr_not_mine_read_out", set=ext_out_n6_flag_read_out, value=ext_out_n6_value_read_out -> out=ext_out_n14_memory_out
+  inst MEMORY_REGISTER ext_out_n15_memory (reset_value=0) : reset="rx_addr_not_mine_read_out", set=ext_out_n7_flag_read_out, value=ext_out_n7_value_read_out -> out=ext_out_n15_memory_out
+  inst MEMORY_REGISTER ext_out_n16_memory (reset_value=0) : reset="rx_addr_not_mine_read_out", set=ext_out_n8_flag_read_out, value=ext_out_n8_value_read_out -> out=ext_out_n16_memory_out
+  inst COMPOSITE_WRITE_NUMBER ext_output_bus_write (count=8, offset=9) : in1=ext_out_n9_memory_out, in2=ext_out_n10_memory_out, in3=ext_out_n11_memory_out, in4=ext_out_n12_memory_out, in5=ext_out_n13_memory_out, in6=ext_out_n14_memory_out, in7=ext_out_n15_memory_out, in8=ext_out_n16_memory_out, inc=ext_output_decoder_lua_composite -> out="NITS Extension Output"
+end

@@ -1,0 +1,149 @@
+{
+  "formatVersion": "stormworks-sw-mcl-v1",
+  "sourceName": "C:\\Users\\taka\\Documents\\GitHub\\stormworks-train-microcontrollers\\CHUSO2000_Door_Min\\door_position_detector.sw-net",
+  "moduleId": "door_position_detector",
+  "ports": [
+    {
+      "name": "phys_a",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -2.75,
+        "y": -0.75
+      }
+    },
+    {
+      "name": "phys_b",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -2.75,
+        "y": 1.5
+      }
+    },
+    {
+      "name": "phys_door_open_out",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 2.75,
+        "y": -2.25
+      }
+    }
+  ],
+  "instances": [
+    {
+      "id": "closed_dist_max_sq",
+      "type": "FUNC_NUM_3",
+      "position": {
+        "x": -1,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "closed_dist_min_sq",
+      "type": "FUNC_NUM_3",
+      "position": {
+        "x": -1,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "dist_above_closed_min",
+      "type": "GREATER_THAN",
+      "position": {
+        "x": 0.25,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "dist_below_closed_max",
+      "type": "LESS_THAN",
+      "position": {
+        "x": 0.25,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "door_detect_length",
+      "type": "PROPERTY_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "door_detect_width",
+      "type": "PROPERTY_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "phys_a_pos_x",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": -1
+      }
+    },
+    {
+      "id": "phys_a_pos_y",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "phys_a_pos_z",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "phys_b_pos_x",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": 2
+      }
+    },
+    {
+      "id": "phys_b_pos_y",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": 2.75
+      }
+    },
+    {
+      "id": "phys_b_pos_z",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": 1.25
+      }
+    },
+    {
+      "id": "phys_door_open",
+      "type": "NAND",
+      "position": {
+        "x": 1.5,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "sensor_dist_sq",
+      "type": "FUNC_NUM_8",
+      "position": {
+        "x": -1,
+        "y": 0
+      }
+    }
+  ],
+  "warnings": []
+}

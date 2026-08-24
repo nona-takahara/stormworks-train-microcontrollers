@@ -1,0 +1,16 @@
+module door_chime
+  port in "door_open_latch_q" : boolean
+  port out "door_state_edge_out" : boolean
+  port out "Chime High" : boolean
+  port out "Chime Low" : boolean
+
+  inst PULSE door_state_edge (mode="both") : a="door_open_latch_q" -> out=door_state_edge_tick, out="door_state_edge_out"
+  inst CONST_BOOL chime_counter_disable : -> out=chime_counter_disable_out
+  inst COUNTER chime_timer (reset_value=0, increment=1, min=0, max=120, clamp="on") : reset=door_state_edge_tick, up=chime_counter_disable_out -> out=chime_timer_out
+  inst THRESHOLD chime_high_phase1 (min=1, max=79) : value=chime_timer_out -> out=chime_high_phase1_out
+  inst THRESHOLD chime_high_phase2 (min=81, max=120) : value=chime_timer_out -> out=chime_high_phase2_out
+  inst THRESHOLD chime_low_phase1 (min=21, max=99) : value=chime_timer_out -> out=chime_low_phase1_out
+  inst THRESHOLD chime_low_phase2 (min=101, max=120) : value=chime_timer_out -> out=chime_low_phase2_out
+  inst OR chime_high_or : a=chime_high_phase1_out, b=chime_high_phase2_out -> out="Chime High"
+  inst OR chime_low_or : a=chime_low_phase1_out, b=chime_low_phase2_out -> out="Chime Low"
+end

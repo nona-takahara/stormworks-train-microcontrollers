@@ -1,6 +1,6 @@
 {
   "formatVersion": "stormworks-sw-mcl-v1",
-  "sourceName": "CHUSO_2000_Door_Min.xml",
+  "sourceName": "C:\\Users\\taka\\Documents\\GitHub\\stormworks-train-microcontrollers\\CHUSO2000_Door_Min\\main.sw-net",
   "moduleId": "main",
   "ports": [
     {
@@ -31,12 +31,12 @@
       }
     },
     {
-      "name": "Phys. Input",
+      "name": "Phys. Input_2",
       "direction": "in",
-      "occurrence": 2,
+      "occurrence": 1,
       "position": {
-        "x": -5.5,
-        "y": 0
+        "x": 12,
+        "y": 22
       }
     },
     {
@@ -78,323 +78,155 @@
   ],
   "instances": [
     {
-      "id": "n8",
-      "type": "OR",
+      "id": "const_close_dir",
+      "type": "CONST",
       "position": {
-        "x": 1,
-        "y": 0.5
+        "x": 17.5,
+        "y": 12.75
       }
     },
     {
-      "id": "n9",
-      "type": "COMPOSITE_READ_NUMBER",
+      "id": "const_open_dir",
+      "type": "CONST",
       "position": {
-        "x": -4.25,
-        "y": 0
+        "x": 17.5,
+        "y": 12
       }
     },
     {
-      "id": "n10",
-      "type": "COMPOSITE_READ_NUMBER",
+      "id": "door_chime",
+      "type": "door_chime.door_chime",
       "position": {
-        "x": -4.25,
-        "y": -0.5
+        "x": 18.75,
+        "y": 14.75
       }
     },
     {
-      "id": "n11",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -4.25,
-        "y": -1
-      }
-    },
-    {
-      "id": "n12",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -4.25,
-        "y": -1.5
-      }
-    },
-    {
-      "id": "n13",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -4.25,
-        "y": -2
-      }
-    },
-    {
-      "id": "n14",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -4.25,
-        "y": -2.5
-      }
-    },
-    {
-      "id": "n16",
-      "type": "FUNC_NUM_8",
-      "position": {
-        "x": -2.75,
-        "y": -1.75
-      }
-    },
-    {
-      "id": "n17",
-      "type": "GREATER_THAN",
-      "position": {
-        "x": -1.5,
-        "y": -1
-      }
-    },
-    {
-      "id": "n18",
-      "type": "LESS_THAN",
-      "position": {
-        "x": -1.5,
-        "y": -0.25
-      }
-    },
-    {
-      "id": "n19",
-      "type": "NAND",
-      "position": {
-        "x": -0.25,
-        "y": -0.25
-      }
-    },
-    {
-      "id": "n20",
-      "type": "PROPERTY_NUMBER",
-      "position": {
-        "x": -1.5,
-        "y": -1.5
-      }
-    },
-    {
-      "id": "n21",
-      "type": "PROPERTY_NUMBER",
-      "position": {
-        "x": -1.5,
-        "y": -2
-      }
-    },
-    {
-      "id": "n22",
-      "type": "FUNC_NUM_3",
-      "position": {
-        "x": -0.25,
-        "y": -2.5
-      }
-    },
-    {
-      "id": "n23",
-      "type": "FUNC_NUM_3",
-      "position": {
-        "x": -0.25,
-        "y": -1.5
-      }
-    },
-    {
-      "id": "n35",
+      "id": "door_close_cmd_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": -4.25,
-        "y": -3.5
+        "x": 15,
+        "y": 14.75
       }
     },
     {
-      "id": "n36",
-      "type": "PROPERTY_DROPDOWN",
-      "position": {
-        "x": -6.75,
-        "y": -3.75
-      }
-    },
-    {
-      "id": "n38",
-      "type": "FUNC_NUM_1",
-      "position": {
-        "x": -5.5,
-        "y": -3.75
-      }
-    },
-    {
-      "id": "n39",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -4.25,
-        "y": -4.25
-      }
-    },
-    {
-      "id": "n40",
-      "type": "SR_LATCH",
-      "position": {
-        "x": -1.5,
-        "y": -3.5
-      }
-    },
-    {
-      "id": "n41",
+      "id": "door_close_trigger",
       "type": "BOOL_FUNC_4",
       "position": {
-        "x": -2.75,
-        "y": -4.5
+        "x": 16.25,
+        "y": 14.75
       }
     },
     {
-      "id": "n42",
-      "type": "PULSE",
-      "position": {
-        "x": -1.5,
-        "y": -6
-      }
-    },
-    {
-      "id": "n43",
-      "type": "CONST_BOOL",
-      "position": {
-        "x": -1.5,
-        "y": -5.5
-      }
-    },
-    {
-      "id": "n44",
-      "type": "COUNTER",
-      "position": {
-        "x": -0.25,
-        "y": -6
-      }
-    },
-    {
-      "id": "n45",
-      "type": "OR",
-      "position": {
-        "x": 2.25,
-        "y": -5.75
-      }
-    },
-    {
-      "id": "n46",
-      "type": "OR",
-      "position": {
-        "x": 2.25,
-        "y": -6.75
-      }
-    },
-    {
-      "id": "n47",
-      "type": "THRESHOLD",
-      "position": {
-        "x": 1,
-        "y": -5.5
-      }
-    },
-    {
-      "id": "n48",
-      "type": "THRESHOLD",
-      "position": {
-        "x": 1,
-        "y": -6.5
-      }
-    },
-    {
-      "id": "n49",
-      "type": "THRESHOLD",
-      "position": {
-        "x": 1,
-        "y": -6
-      }
-    },
-    {
-      "id": "n50",
-      "type": "THRESHOLD",
-      "position": {
-        "x": 1,
-        "y": -7
-      }
-    },
-    {
-      "id": "n51",
-      "type": "NUM_SWITCHBOX",
-      "position": {
-        "x": 1,
-        "y": -3.75
-      }
-    },
-    {
-      "id": "n52",
-      "type": "CONST",
-      "position": {
-        "x": -0.25,
-        "y": -3.25
-      }
-    },
-    {
-      "id": "n53",
-      "type": "CONST",
-      "position": {
-        "x": -0.25,
-        "y": -3.75
-      }
-    },
-    {
-      "id": "n54",
-      "type": "MULTIPLY",
-      "position": {
-        "x": 2.25,
-        "y": -3.5
-      }
-    },
-    {
-      "id": "n55",
-      "type": "NUM_SWITCHBOX",
-      "position": {
-        "x": 1,
-        "y": -4.75
-      }
-    },
-    {
-      "id": "n56",
-      "type": "CONST",
-      "position": {
-        "x": -0.25,
-        "y": -4.25
-      }
-    },
-    {
-      "id": "n57",
-      "type": "CONST",
-      "position": {
-        "x": -0.25,
-        "y": -4.75
-      }
-    },
-    {
-      "id": "n58",
-      "type": "CAPACITOR",
-      "position": {
-        "x": -1.5,
-        "y": -4.75
-      }
-    },
-    {
-      "id": "n59",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -8,
-        "y": -3.25
-      }
-    },
-    {
-      "id": "n60",
+      "id": "door_cmd_gate",
       "type": "COMPOSITE_SWITCHBOX",
       "position": {
-        "x": -5.5,
-        "y": -3.25
+        "x": 13.75,
+        "y": 17.5
+      }
+    },
+    {
+      "id": "door_cmd_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 15,
+        "y": 16.25
+      }
+    },
+    {
+      "id": "door_dir_sw",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 18.75,
+        "y": 12.5
+      }
+    },
+    {
+      "id": "door_open_latch",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 17.5,
+        "y": 15
+      }
+    },
+    {
+      "id": "door_open_or",
+      "type": "OR",
+      "position": {
+        "x": 18.75,
+        "y": 21.75
+      }
+    },
+    {
+      "id": "door_paired_ch",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 13.75,
+        "y": 16
+      }
+    },
+    {
+      "id": "door_position_detector",
+      "type": "door_position_detector.door_position_detector",
+      "position": {
+        "x": 17.5,
+        "y": 21.75
+      }
+    },
+    {
+      "id": "door_side_ch",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": 12.5,
+        "y": 16
+      }
+    },
+    {
+      "id": "haptic_decay_cap",
+      "type": "CAPACITOR",
+      "position": {
+        "x": 20,
+        "y": 14.75
+      }
+    },
+    {
+      "id": "haptic_fast_strength",
+      "type": "CONST",
+      "position": {
+        "x": 20,
+        "y": 14
+      }
+    },
+    {
+      "id": "haptic_output_mul",
+      "type": "MULTIPLY",
+      "position": {
+        "x": 22.5,
+        "y": 12.75
+      }
+    },
+    {
+      "id": "haptic_slow_strength",
+      "type": "CONST",
+      "position": {
+        "x": 20,
+        "y": 15.5
+      }
+    },
+    {
+      "id": "haptic_strength_sw",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 21.25,
+        "y": 14.5
+      }
+    },
+    {
+      "id": "nits_ext_enable_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 12.5,
+        "y": 18.75
       }
     }
   ],
