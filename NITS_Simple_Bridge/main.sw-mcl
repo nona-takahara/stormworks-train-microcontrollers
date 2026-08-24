@@ -1,6 +1,6 @@
 {
   "formatVersion": "stormworks-sw-mcl-v1",
-  "sourceName": "NITS_Simple_Bridge.xml",
+  "sourceName": "C:\\Users\\taka\\Documents\\GitHub\\stormworks-train-microcontrollers\\NITS_Simple_Bridge\\main.sw-net",
   "moduleId": "main",
   "ports": [
     {
@@ -60,579 +60,379 @@
   ],
   "instances": [
     {
-      "id": "n440",
-      "type": "LUA",
-      "position": {
-        "x": 6.5,
-        "y": 0.75
-      }
-    },
-    {
-      "id": "n441",
-      "type": "COMPOSITE_WRITE_BOOLEAN",
-      "position": {
-        "x": 10.25,
-        "y": -0.5
-      }
-    },
-    {
-      "id": "n442",
+      "id": "ext_input_interrupt_req",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 6.5,
-        "y": 0.25
+        "x": 32.25,
+        "y": 35.5
       }
     },
     {
-      "id": "n443",
-      "type": "NOT",
-      "position": {
-        "x": 6.5,
-        "y": -0.25
-      }
-    },
-    {
-      "id": "n444",
-      "type": "XOR",
-      "position": {
-        "x": 7.75,
-        "y": 0
-      }
-    },
-    {
-      "id": "n445",
-      "type": "NOT",
-      "position": {
-        "x": 7.75,
-        "y": -0.5
-      }
-    },
-    {
-      "id": "n446",
-      "type": "CAPACITOR",
-      "position": {
-        "x": 9,
-        "y": 0.75
-      }
-    },
-    {
-      "id": "n457",
+      "id": "ext_input_override_req",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 4,
-        "y": -0.5
+        "x": 32.25,
+        "y": 37
       }
     },
     {
-      "id": "n458",
-      "type": "LUA",
-      "position": {
-        "x": 0.25,
-        "y": 0.5
-      }
-    },
-    {
-      "id": "n459",
-      "type": "COMPOSITE_WRITE_BOOLEAN",
-      "position": {
-        "x": -1,
-        "y": 0.5
-      }
-    },
-    {
-      "id": "n461",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": 2.75,
-        "y": -1.75
-      }
-    },
-    {
-      "id": "n462",
+      "id": "ext_mode_latch",
       "type": "SR_LATCH",
       "position": {
-        "x": -3.5,
-        "y": 0
+        "x": 27.25,
+        "y": 38.5
       }
     },
     {
-      "id": "n463",
+      "id": "extension_output",
+      "type": "extension_output.extension_output",
+      "position": {
+        "x": 31,
+        "y": 39.25
+      }
+    },
+    {
+      "id": "local_mode_timer",
       "type": "CAPACITOR",
       "position": {
-        "x": -2.25,
-        "y": 0.25
+        "x": 28.5,
+        "y": 38.75
       }
     },
     {
-      "id": "n464",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -4.75,
-        "y": -0.25
-      }
-    },
-    {
-      "id": "n465",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -4.75,
-        "y": 0.25
-      }
-    },
-    {
-      "id": "n466",
-      "type": "LUA",
-      "position": {
-        "x": -6,
-        "y": 1.25
-      }
-    },
-    {
-      "id": "n486",
-      "type": "OR",
-      "position": {
-        "x": 4,
-        "y": -2
-      }
-    },
-    {
-      "id": "n487",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": 2.75,
-        "y": 0.75
-      }
-    },
-    {
-      "id": "n488",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": 2.75,
-        "y": 0.25
-      }
-    },
-    {
-      "id": "n489",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": 9,
-        "y": 0.25
-      }
-    },
-    {
-      "id": "n490",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": 9,
-        "y": -0.75
-      }
-    },
-    {
-      "id": "n491",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": 9,
-        "y": -0.25
-      }
-    },
-    {
-      "id": "n492",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": 9,
-        "y": -1.75
-      }
-    },
-    {
-      "id": "n493",
-      "type": "COMPOSITE_WRITE_BOOLEAN",
-      "position": {
-        "x": 5.25,
-        "y": 0
-      }
-    },
-    {
-      "id": "n503",
-      "type": "COMPOSITE_WRITE_BOOLEAN",
-      "position": {
-        "x": -2.25,
-        "y": 1.5
-      }
-    },
-    {
-      "id": "n504",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -4.75,
-        "y": 1.75
-      }
-    },
-    {
-      "id": "n506",
-      "type": "OR",
-      "position": {
-        "x": -3.5,
-        "y": 1.25
-      }
-    },
-    {
-      "id": "n507",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -4.75,
-        "y": 1.25
-      }
-    },
-    {
-      "id": "n663",
-      "type": "PROPERTY_TEXT",
-      "position": {
-        "x": -6,
-        "y": 2
-      }
-    },
-    {
-      "id": "n667",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": 2.75,
-        "y": -0.25
-      }
-    },
-    {
-      "id": "n674",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": 2.75,
-        "y": -1
-      }
-    },
-    {
-      "id": "n675",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": 2.75,
-        "y": -2.5
-      }
-    },
-    {
-      "id": "n676",
-      "type": "OR",
-      "position": {
-        "x": 4,
-        "y": -1.25
-      }
-    },
-    {
-      "id": "n677",
-      "type": "OR",
-      "position": {
-        "x": 4,
-        "y": -2.75
-      }
-    },
-    {
-      "id": "n741",
-      "type": "COMPOSITE_WRITE_NUMBER",
-      "position": {
-        "x": 4,
-        "y": 0.25
-      }
-    },
-    {
-      "id": "n838",
-      "type": "PROPERTY_DROPDOWN",
-      "position": {
-        "x": -11,
-        "y": 2.5
-      }
-    },
-    {
-      "id": "n839",
-      "type": "PROPERTY_DROPDOWN",
-      "position": {
-        "x": -11,
-        "y": 2
-      }
-    },
-    {
-      "id": "n840",
-      "type": "PROPERTY_DROPDOWN",
-      "position": {
-        "x": -11,
-        "y": 1.5
-      }
-    },
-    {
-      "id": "n841",
-      "type": "PROPERTY_DROPDOWN",
-      "position": {
-        "x": -11,
-        "y": 1
-      }
-    },
-    {
-      "id": "n842",
-      "type": "PROPERTY_DROPDOWN",
-      "position": {
-        "x": -11,
-        "y": 0.5
-      }
-    },
-    {
-      "id": "n843",
-      "type": "PROPERTY_DROPDOWN",
-      "position": {
-        "x": -11,
-        "y": 0
-      }
-    },
-    {
-      "id": "n844",
-      "type": "PROPERTY_DROPDOWN",
-      "position": {
-        "x": -11,
-        "y": -0.5
-      }
-    },
-    {
-      "id": "n845",
-      "type": "PROPERTY_DROPDOWN",
-      "position": {
-        "x": -11,
-        "y": -1
-      }
-    },
-    {
-      "id": "n848",
-      "type": "LUA",
-      "position": {
-        "x": -6,
-        "y": 7.25
-      }
-    },
-    {
-      "id": "n849",
-      "type": "COMPOSITE_WRITE_NUMBER",
-      "position": {
-        "x": 0.25,
-        "y": 9
-      }
-    },
-    {
-      "id": "n850",
-      "type": "MEMORY_REGISTER",
-      "position": {
-        "x": -2.25,
-        "y": 6.5
-      }
-    },
-    {
-      "id": "n851",
-      "type": "MEMORY_REGISTER",
-      "position": {
-        "x": -2.25,
-        "y": 5.5
-      }
-    },
-    {
-      "id": "n852",
-      "type": "MEMORY_REGISTER",
-      "position": {
-        "x": -2.25,
-        "y": 4.5
-      }
-    },
-    {
-      "id": "n853",
-      "type": "MEMORY_REGISTER",
-      "position": {
-        "x": -2.25,
-        "y": 3.5
-      }
-    },
-    {
-      "id": "n854",
-      "type": "MEMORY_REGISTER",
-      "position": {
-        "x": -2.25,
-        "y": 10.5
-      }
-    },
-    {
-      "id": "n855",
-      "type": "MEMORY_REGISTER",
-      "position": {
-        "x": -2.25,
-        "y": 9.5
-      }
-    },
-    {
-      "id": "n856",
-      "type": "MEMORY_REGISTER",
-      "position": {
-        "x": -2.25,
-        "y": 8.5
-      }
-    },
-    {
-      "id": "n857",
-      "type": "MEMORY_REGISTER",
-      "position": {
-        "x": -2.25,
-        "y": 7.5
-      }
-    },
-    {
-      "id": "n858",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -3.5,
-        "y": 10.5
-      }
-    },
-    {
-      "id": "n859",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -3.5,
-        "y": 11
-      }
-    },
-    {
-      "id": "n860",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -3.5,
-        "y": 9.5
-      }
-    },
-    {
-      "id": "n861",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -3.5,
-        "y": 10
-      }
-    },
-    {
-      "id": "n862",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -3.5,
-        "y": 8.5
-      }
-    },
-    {
-      "id": "n863",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -3.5,
-        "y": 9
-      }
-    },
-    {
-      "id": "n864",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -3.5,
-        "y": 7.5
-      }
-    },
-    {
-      "id": "n865",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -3.5,
-        "y": 8
-      }
-    },
-    {
-      "id": "n866",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -3.5,
-        "y": 6.5
-      }
-    },
-    {
-      "id": "n867",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -3.5,
-        "y": 7
-      }
-    },
-    {
-      "id": "n868",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -3.5,
-        "y": 5.5
-      }
-    },
-    {
-      "id": "n869",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -3.5,
-        "y": 6
-      }
-    },
-    {
-      "id": "n870",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -3.5,
-        "y": 4.5
-      }
-    },
-    {
-      "id": "n871",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -3.5,
-        "y": 5
-      }
-    },
-    {
-      "id": "n872",
-      "type": "COMPOSITE_READ_NUMBER",
-      "position": {
-        "x": -3.5,
-        "y": 3.5
-      }
-    },
-    {
-      "id": "n873",
-      "type": "COMPOSITE_READ_BOOLEAN",
-      "position": {
-        "x": -3.5,
-        "y": 4
-      }
-    },
-    {
-      "id": "n874",
+      "id": "local_mode_tooltip",
       "type": "TOOLTIP_BOOLEAN",
       "position": {
-        "x": -1,
-        "y": 0
+        "x": 29.75,
+        "y": 38.75
       }
     },
     {
-      "id": "n875",
-      "type": "COMPOSITE_READ_BOOLEAN",
+      "id": "n1_n9_mode",
+      "type": "PROPERTY_DROPDOWN",
       "position": {
-        "x": 9,
-        "y": -1.25
+        "x": 13.25,
+        "y": 12
       }
     },
     {
-      "id": "n876",
+      "id": "n2_n10_mode",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": 14.5,
+        "y": 12
+      }
+    },
+    {
+      "id": "n3_n11_mode",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": 15.75,
+        "y": 12
+      }
+    },
+    {
+      "id": "n4_n12_mode",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": 17,
+        "y": 12
+      }
+    },
+    {
+      "id": "n5_n13_mode",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": 18.25,
+        "y": 12
+      }
+    },
+    {
+      "id": "n6_n14_mode",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": 19.5,
+        "y": 12
+      }
+    },
+    {
+      "id": "n7_n15_mode",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": 20.75,
+        "y": 12
+      }
+    },
+    {
+      "id": "n8_n16_mode",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": 22,
+        "y": 12
+      }
+    },
+    {
+      "id": "nits_ext_id_property",
+      "type": "PROPERTY_TEXT",
+      "position": {
+        "x": 12,
+        "y": 12
+      }
+    },
+    {
+      "id": "nits_rx_decoder_lua",
+      "type": "LUA",
+      "position": {
+        "x": 24.75,
+        "y": 33
+      }
+    },
+    {
+      "id": "nits_rx_gate_switch",
       "type": "COMPOSITE_SWITCHBOX",
       "position": {
-        "x": -7.25,
-        "y": 7
+        "x": 29.75,
+        "y": 46.5
+      }
+    },
+    {
+      "id": "nits_rx_raw_passthrough_bit",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 26,
+        "y": 43.75
+      }
+    },
+    {
+      "id": "nits_tx_bus_write",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 31,
+        "y": 77.25
+      }
+    },
+    {
+      "id": "nits_tx_command_composite",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 34.75,
+        "y": 35.75
+      }
+    },
+    {
+      "id": "nits_tx_encoder_lua",
+      "type": "LUA",
+      "position": {
+        "x": 23.5,
+        "y": 80.5
+      }
+    },
+    {
+      "id": "nits_tx_strobe_cap",
+      "type": "CAPACITOR",
+      "position": {
+        "x": 29.75,
+        "y": 81.75
+      }
+    },
+    {
+      "id": "nits_tx_watchdog_not",
+      "type": "NOT",
+      "position": {
+        "x": 26,
+        "y": 81.5
+      }
+    },
+    {
+      "id": "nits_tx_watchdog_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 24.75,
+        "y": 81.75
+      }
+    },
+    {
+      "id": "nits_tx_watchdog_xor",
+      "type": "XOR",
+      "position": {
+        "x": 27.25,
+        "y": 81.5
+      }
+    },
+    {
+      "id": "nits_tx_watchdog_xor_not",
+      "type": "NOT",
+      "position": {
+        "x": 28.5,
+        "y": 81.75
+      }
+    },
+    {
+      "id": "rx_addr_conflict_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 27.25,
+        "y": 37.25
+      }
+    },
+    {
+      "id": "rx_addr_matched_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 26,
+        "y": 38.5
+      }
+    },
+    {
+      "id": "rx_addr_not_mine_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 26,
+        "y": 39.25
+      }
+    },
+    {
+      "id": "rx_decoded_op1_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 26,
+        "y": 40
+      }
+    },
+    {
+      "id": "rx_total_car_count_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 28.5,
+        "y": 32.75
+      }
+    },
+    {
+      "id": "simpleif_cmd_ready_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 32.25,
+        "y": 36.25
+      }
+    },
+    {
+      "id": "simpleif_cmd_value_back_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 32.25,
+        "y": 34
+      }
+    },
+    {
+      "id": "simpleif_cmd_value_front_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 32.25,
+        "y": 34.75
+      }
+    },
+    {
+      "id": "simpleif_input_mode_write",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 29.75,
+        "y": 34
+      }
+    },
+    {
+      "id": "simpleif_push_flag",
+      "type": "OR",
+      "position": {
+        "x": 33.5,
+        "y": 36.25
+      }
+    },
+    {
+      "id": "simpleif_rx_bus_write",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 28.5,
+        "y": 42.25
+      }
+    },
+    {
+      "id": "simpleif_rx_status_bit",
+      "type": "OR",
+      "position": {
+        "x": 27.25,
+        "y": 43.5
+      }
+    },
+    {
+      "id": "simpleif_tx_bit5_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 29.75,
+        "y": 72
+      }
+    },
+    {
+      "id": "simpleif_tx_bit6_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 29.75,
+        "y": 74
+      }
+    },
+    {
+      "id": "simpleif_tx_bit7_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 29.75,
+        "y": 78
+      }
+    },
+    {
+      "id": "simpleif_tx_bit8_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 29.75,
+        "y": 80
+      }
+    },
+    {
+      "id": "simpleif_tx_encoder_lua",
+      "type": "LUA",
+      "position": {
+        "x": 31,
+        "y": 34.25
+      }
+    },
+    {
+      "id": "simpleif_tx_primary_bit_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 29.75,
+        "y": 76
+      }
+    },
+    {
+      "id": "tx_interrupt_flag",
+      "type": "OR",
+      "position": {
+        "x": 33.5,
+        "y": 35.5
+      }
+    },
+    {
+      "id": "tx_override_flag",
+      "type": "OR",
+      "position": {
+        "x": 33.5,
+        "y": 37
+      }
+    },
+    {
+      "id": "tx_override_number_write",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 33.5,
+        "y": 32.5
       }
     }
   ],

@@ -1,0 +1,118 @@
+{
+  "formatVersion": "stormworks-sw-mcl-v1",
+  "sourceName": "C:\\Users\\taka\\Documents\\GitHub\\stormworks-train-microcontrollers\\CHUSO2000_Door_Min\\door_chime.sw-net",
+  "moduleId": "door_chime",
+  "ports": [
+    {
+      "name": "door_open_latch_q",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -2.5,
+        "y": -11.25
+      }
+    },
+    {
+      "name": "Chime High",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 2.5,
+        "y": 9.5
+      }
+    },
+    {
+      "name": "Chime Low",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 2.5,
+        "y": 11
+      }
+    },
+    {
+      "name": "door_state_edge_out",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": -0.75,
+        "y": -11.25
+      }
+    }
+  ],
+  "instances": [
+    {
+      "id": "chime_counter_disable",
+      "type": "CONST_BOOL",
+      "position": {
+        "x": -2.5,
+        "y": 9.25
+      }
+    },
+    {
+      "id": "chime_high_or",
+      "type": "OR",
+      "position": {
+        "x": 1.25,
+        "y": 9.25
+      }
+    },
+    {
+      "id": "chime_high_phase1",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 0,
+        "y": 10
+      }
+    },
+    {
+      "id": "chime_low_phase1",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 0,
+        "y": 11.5
+      }
+    },
+    {
+      "id": "chime_high_phase2",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 0,
+        "y": 9.25
+      }
+    },
+    {
+      "id": "chime_low_or",
+      "type": "OR",
+      "position": {
+        "x": 1.25,
+        "y": 10.75
+      }
+    },
+    {
+      "id": "chime_low_phase2",
+      "type": "THRESHOLD",
+      "position": {
+        "x": 0,
+        "y": 10.75
+      }
+    },
+    {
+      "id": "chime_timer",
+      "type": "COUNTER",
+      "position": {
+        "x": -1.25,
+        "y": 9.25
+      }
+    },
+    {
+      "id": "door_state_edge",
+      "type": "PULSE",
+      "position": {
+        "x": -2,
+        "y": -11.25
+      }
+    }
+  ],
+  "warnings": []
+}

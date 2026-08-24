@@ -1,6 +1,9 @@
+import door_position_detector from "./door_position_detector.sw-net"
+import door_chime from "./door_chime.sw-net"
+
 module main
   port in "Phys. Input" : composite
-  port in "Phys. Input" : composite
+  port in "Phys. Input_2" : composite
   port out "Door is Open" : boolean
   port out "Chime Low" : boolean
   port out "Chime High" : boolean
@@ -9,23 +12,9 @@ module main
   port out Input : number
 
   # --- Configuration: door geometry and side properties ---
-  inst PROPERTY_NUMBER door_detect_length (value=1.25, n="Length") : -> out=door_detect_length_out
-  inst PROPERTY_NUMBER door_detect_width (value=0.1, n="Width") : -> out=door_detect_width_out
   inst PROPERTY_DROPDOWN door_side_ch (items="[{\"l\":\"A Right\",\"value\":\"27\"},{\"l\":\"B Left\",\"value\":\"29\"}]", name="Door Side", v=16) : -> out=door_side_ch_out
 
   # --- Physics-based door open detection ---
-  inst COMPOSITE_READ_NUMBER phys_a_pos_x (channel=1) : composite="Phys. Input" -> out=phys_a_pos_x_out
-  inst COMPOSITE_READ_NUMBER phys_a_pos_y (channel=2) : composite="Phys. Input" -> out=phys_a_pos_y_out
-  inst COMPOSITE_READ_NUMBER phys_a_pos_z (channel=3) : composite="Phys. Input" -> out=phys_a_pos_z_out
-  inst COMPOSITE_READ_NUMBER phys_b_pos_x (channel=1) : composite="Phys. Input" -> out=phys_b_pos_x_out
-  inst COMPOSITE_READ_NUMBER phys_b_pos_y (channel=2) : composite="Phys. Input" -> out=phys_b_pos_y_out
-  inst COMPOSITE_READ_NUMBER phys_b_pos_z (channel=3) : composite="Phys. Input" -> out=phys_b_pos_z_out
-  inst FUNC_NUM_8 sensor_dist_sq (expression="(x-a)^2+(y-b)^2+(z-c)^2") : x=phys_a_pos_x_out, y=phys_a_pos_y_out, z=phys_a_pos_z_out, a=phys_b_pos_x_out, b=phys_b_pos_y_out, c=phys_b_pos_z_out -> out=sensor_dist_sq_out
-  inst FUNC_NUM_3 closed_dist_min_sq (expression="(x-y)^2") : x=door_detect_length_out, y=door_detect_width_out -> out=closed_dist_min_sq_out
-  inst FUNC_NUM_3 closed_dist_max_sq (expression="(x+y)^2") : x=door_detect_length_out, y=door_detect_width_out -> out=closed_dist_max_sq_out
-  inst GREATER_THAN dist_above_closed_min : a=sensor_dist_sq_out, b=closed_dist_min_sq_out -> out=dist_above_closed_min_out
-  inst LESS_THAN dist_below_closed_max : a=sensor_dist_sq_out, b=closed_dist_max_sq_out -> out=dist_below_closed_max_out
-  inst NAND phys_door_open : a=dist_below_closed_max_out, b=dist_above_closed_min_out -> out=phys_door_open_out
 
   # --- NITS Ext. Input gate (enabled by Other Inputs ch10) ---
   inst COMPOSITE_READ_BOOLEAN nits_ext_enable_read (channel=10) : composite="Other Inputs" -> out=nits_ext_enable_read_out
@@ -40,15 +29,6 @@ module main
   inst OR door_open_or : a=door_open_latch_q, b=phys_door_open_out -> out="Door is Open"
 
   # --- Chime timer (triggered on door state edge) ---
-  inst PULSE door_state_edge (mode="both") : a=door_open_latch_q -> out=door_state_edge_out
-  inst CONST_BOOL chime_counter_disable : -> out=chime_counter_disable_out
-  inst COUNTER chime_timer (reset_value=0, increment=1, min=0, max=120, m=1) : reset=door_state_edge_out, up=chime_counter_disable_out -> out=chime_timer_out
-  inst THRESHOLD chime_high_phase1 (min=1, max=79) : value=chime_timer_out -> out=chime_high_phase1_out
-  inst THRESHOLD chime_high_phase2 (min=81, max=120) : value=chime_timer_out -> out=chime_high_phase2_out
-  inst THRESHOLD chime_low_phase1 (min=21, max=99) : value=chime_timer_out -> out=chime_low_phase1_out
-  inst THRESHOLD chime_low_phase2 (min=101, max=120) : value=chime_timer_out -> out=chime_low_phase2_out
-  inst OR chime_high_or : a=chime_high_phase1_out, b=chime_high_phase2_out -> out="Chime High"
-  inst OR chime_low_or : a=chime_low_phase1_out, b=chime_low_phase2_out -> out="Chime Low"
 
   # --- Haptic output (direction x strength, decays after state change) ---
   inst CONST const_open_dir (value=1) : -> value=const_open_dir_value
@@ -59,4 +39,6 @@ module main
   inst CAPACITOR haptic_decay_cap (charge_time=0, discharge_time=1) : enable=door_state_edge_out -> out=haptic_decay_cap_out
   inst NUM_SWITCHBOX haptic_strength_sw : a=haptic_fast_strength_value, b=haptic_slow_strength_value, switch=haptic_decay_cap_out -> out=haptic_strength_sw_out
   inst MULTIPLY haptic_output_mul : a=door_dir_sw_out, b=haptic_strength_sw_out -> out="Input"
+  use door_position_detector.door_position_detector door_position_detector : phys_a="Phys. Input", phys_b="Phys. Input_2" -> phys_door_open_out=phys_door_open_out
+  use door_chime.door_chime door_chime : door_open_latch_q=door_open_latch_q -> door_state_edge_out=door_state_edge_out, "Chime High"="Chime High", "Chime Low"="Chime Low"
 end

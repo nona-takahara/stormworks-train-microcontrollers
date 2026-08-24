@@ -1,0 +1,245 @@
+{
+  "formatVersion": "stormworks-sw-mcl-v1",
+  "sourceName": "C:\\Users\\taka\\Documents\\GitHub\\stormworks-train-microcontrollers\\NITS_Simple_Bridge\\extension_output.sw-net",
+  "moduleId": "extension_output",
+  "ports": [
+    {
+      "name": "nits_rx_gate_switch_out",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -2.75,
+        "y": -9.25
+      }
+    },
+    {
+      "name": "rx_addr_not_mine_read_out",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -2.75,
+        "y": -8.75
+      }
+    },
+    {
+      "name": "NITS Extension Output",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 2.75,
+        "y": -0.75
+      }
+    }
+  ],
+  "instances": [
+    {
+      "id": "ext_out_n1_flag_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": -9.5
+      }
+    },
+    {
+      "id": "ext_out_n1_value_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": -10.25
+      }
+    },
+    {
+      "id": "ext_out_n10_memory",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": -6.5
+      }
+    },
+    {
+      "id": "ext_out_n11_memory",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "ext_out_n12_memory",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": -1.25
+      }
+    },
+    {
+      "id": "ext_out_n13_memory",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": 1
+      }
+    },
+    {
+      "id": "ext_out_n14_memory",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": 4
+      }
+    },
+    {
+      "id": "ext_out_n15_memory",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": 7
+      }
+    },
+    {
+      "id": "ext_out_n16_memory",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": 10
+      }
+    },
+    {
+      "id": "ext_out_n2_flag_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": -6.25
+      }
+    },
+    {
+      "id": "ext_out_n2_value_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": -7
+      }
+    },
+    {
+      "id": "ext_out_n3_flag_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": -3.25
+      }
+    },
+    {
+      "id": "ext_out_n3_value_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": -4
+      }
+    },
+    {
+      "id": "ext_out_n4_flag_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": -1
+      }
+    },
+    {
+      "id": "ext_out_n4_value_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "ext_out_n5_flag_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 1.25
+      }
+    },
+    {
+      "id": "ext_out_n5_value_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "ext_out_n6_flag_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 4.25
+      }
+    },
+    {
+      "id": "ext_out_n6_value_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 3.5
+      }
+    },
+    {
+      "id": "ext_out_n7_flag_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 7.25
+      }
+    },
+    {
+      "id": "ext_out_n7_value_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 6.5
+      }
+    },
+    {
+      "id": "ext_out_n8_flag_read",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 10.25
+      }
+    },
+    {
+      "id": "ext_out_n8_value_read",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 9.5
+      }
+    },
+    {
+      "id": "ext_out_n9_memory",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": -9.75
+      }
+    },
+    {
+      "id": "ext_output_bus_write",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 1.5,
+        "y": -2
+      }
+    },
+    {
+      "id": "ext_output_decoder_lua",
+      "type": "LUA",
+      "position": {
+        "x": -2.25,
+        "y": -1.75
+      }
+    }
+  ],
+  "warnings": []
+}
