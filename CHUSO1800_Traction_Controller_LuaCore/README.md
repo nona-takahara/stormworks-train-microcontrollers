@@ -52,7 +52,9 @@ stateless_out, state_out = core_tick(stateless_in, state_in)
 - 原型ゲート網に存在した低速再力行時の固着・過電流経路を修正しています。
 - 非常制動とDB自動OFF時の異常状態では、解放を決めたtickから電流、電力、
   Momelink-A用加速度を0にします。
-- 弱め界磁力行のノッチ4以上では、電流目標に`Power Limit Current [A]`を使います。
+- 1982年型電動機の定数と複巻界磁モデルをLuaへ直接埋め込んでいます。
+- 弱め界磁力行のノッチ4以上では、独立した`Field Control Current [A]`を
+  電機子電流目標に使います。`Power Limit Current [A]`はカム進段判定専用です。
 
 ## プロパティ
 
@@ -60,6 +62,7 @@ stateless_out, state_out = core_tick(stateless_in, state_in)
 
 - `Over Speed Th. [m/s]`
 - `Power Limit Current [A]`
+- `Field Control Current [A]`
 
 テスト環境では`test/run_all.lua`が同名プロパティのスタブを用意します。
 

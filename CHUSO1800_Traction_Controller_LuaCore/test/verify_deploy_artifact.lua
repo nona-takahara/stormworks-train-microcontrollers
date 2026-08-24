@@ -18,11 +18,14 @@
 local this_file = debug.getinfo(1, "S").source:sub(2)
 local this_dir = this_file:match("(.*/)") or "./"
 
+local requested_properties = {}
 property = {
     getNumber = function(name)
+        requested_properties[name] = true
         local defaults = {
-            ["Over Speed Th. [m/s]"] = 32,
+            ["Over Speed Th. [m/s]"] = 30.56,
             ["Power Limit Current [A]"] = 210,
+            ["Field Control Current [A]"] = 315,
         }
         return defaults[name]
     end,
@@ -34,6 +37,10 @@ input = { getNumber = function(ch) return in_channels[ch] or 0 end }
 output = { setNumber = function(ch, v) out_channels[ch] = v end }
 
 dofile(this_dir .. "../deploy/chuso1800_deploy.lua")
+
+if not requested_properties["Field Control Current [A]"] then
+    error("deploy artifact is stale: it does not read the 1982 model's Field Control Current property")
+end
 
 local function assert_eq(actual, expected, msg)
     if actual ~= expected then

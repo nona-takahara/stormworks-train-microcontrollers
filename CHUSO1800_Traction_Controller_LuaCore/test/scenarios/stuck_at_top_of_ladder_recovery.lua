@@ -163,7 +163,7 @@ return function(h)
     do
         local state = stuck_state()
         local braking_inputs = h.encode_stateless_in({
-            speed = 15, catenary_voltage_sw = 1500, notch_pos = 0,
+            speed = 25, catenary_voltage_sw = 1500, notch_pos = 0,
             direction = 1, brake_pressure_sw = 5, sap_pressure_sw = 5, regen_flag = true,
         })
         for tick = 1, 150 do

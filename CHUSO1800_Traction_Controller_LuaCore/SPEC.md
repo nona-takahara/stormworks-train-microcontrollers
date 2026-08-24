@@ -21,7 +21,7 @@ Lua Coreは、1800系牽引制御マイコンのうち、直列・並列・界�
 | `phase1_latch` | 直列接続 |
 | `phase2_latch` | 並列接続 |
 | `regen_latch` | 界磁制御。力行と回生の両方で使用 |
-| `eb_condition` | 非常制動に限らない牽引禁止条件 |
+| `eb_condition` | Controller Stop、方向未成立、過速度または低ブレーキ管圧による非常制動条件 |
 | `bc_target_smooth` | Momelink-Aへ送る自車平滑加速度 |
 | `bcT` | 空気ブレーキ補完減速度要求 |
 
@@ -50,7 +50,7 @@ stateless_out, state_out = core_tick(stateless_in, state_in)
 |---:|---|
 | 1 | 車両速度 [m/s] |
 | 2 | ゲート側で選択済みの牽引供給電圧 [V] |
-| 3 | 牽引禁止判定用ブレーキ管相当圧 [atm] |
+| 3 | 非常制動判定用ブレーキ管相当圧 [atm] |
 | 4 | SAP/ECB解決済みのブレーキ要求圧 [atm] |
 | 5 | 方向符号 `-1 / 0 / +1` |
 | 6 | 力行ノッチ。整数化後0～7へ制限 |
@@ -81,7 +81,7 @@ Lua Coreは次の判定を行わない。
 
 Lua Coreには、これらを解決した最終値を渡す。
 
-## 5. 牽引禁止
+## 5. 非常制動条件
 
 次のいずれかで`eb_condition`を成立させる。
 
@@ -161,34 +161,44 @@ BLINKER+PULSEと定常周期は同じだが、初回位相は逐語互換では�
 
 ## 8. 電動機モデル
 
-主要定数は原型`n409.lua`に由来する。
+同一車両の1982年型電動機を、車種別定数をLuaへ直接埋め込んで表す。
 
 | 定数 | 値 |
 |---|---:|
-| `K` | 12.16 |
-| `Kmu` | 0.00029 |
-| `MOT_RES` | 0.07 Ω |
-| `Ks` | 0.85 |
-| `PHIs` | 150 |
+| `K` | 78.941 |
+| `PHI_SAT` | 0.05696 |
+| `I_HALF` | 400 A |
+| `MOT_RES` | 0.12 Ω |
+| `SERIES_FIELD_K` | 0.30 |
 | `MOT_CTRL` | 4 |
-| `GEAR_RATIO` | 5.31 |
+| `GEAR_RATIO` | 5.60 |
 | `WHEEL_R` | 0.43 m |
 | `WEIGHT` | 35000 kg |
 
-回転数、磁束、電機子電流は次式を基礎とする。
+角速度、合成界磁電流、磁束、電機子電流は次式を基礎とする。
 
 ```text
-rpm = speed * 9.55 * GEAR_RATIO / WHEEL_R
-phi = iF * Kmu * Ks * PHIs / (Ks * abs(iF) + PHIs)
-K * phi * rpm - terminal_voltage
+omega = speed * GEAR_RATIO / WHEEL_R
+iF = direction * (0.30 * armature_current + external_field_current)
+phi = PHI_SAT * iF / (I_HALF + abs(iF))
+K * phi * omega - terminal_voltage
   + (MOT_RES + external_resistance) * armature_current = 0
 ```
 
 最後の方程式をNewton法で5回反復する。直列時は架線電圧と抵抗を1/8、
 並列時は1/4として1電動機相当に換算する。
 
-原型との差分は、界磁制御力行のノッチ4以上で、電機子電流目標を固定200 Aではなく
-`Power Limit Current [A]`とする点である。ノッチ1～3は界磁電流追従を維持する。
+電磁トルク`K * phi * armature_current`を軸トルクとして扱い、機械損失は
+別モデル化しない。界磁制御前と界磁制御中のノッチ1～3では、添加界磁電流を
+電機子電流の70%へ追従させ、直巻界磁30%との合計を100%界磁とする。
+界磁制御中のノッチ4以上では、電機子電流を独立プロパティ
+`Field Control Current [A]`（既定315 A）へ追従させる。
+
+`Power Limit Current [A]`はカム進段判定専用であり、界磁制御電流目標と共有しない。
+界磁制御前の添加界磁電流は、始動過渡が既存の300 A遷移判定へ入らないよう
+`0.70 * 390 = 273 A`を上限とする。チョッパ通流率を0にできない表現として、
+添加界磁電流の下限20 Aは維持する。回生時の1電動機あたり逆起電力は470 V以下へ
+制限する。
 
 ## 9. ブレーキ要求
 

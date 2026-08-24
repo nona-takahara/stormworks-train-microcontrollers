@@ -16,8 +16,9 @@ package.path = this_dir .. "?.lua;" ..
 property = {
     getNumber = function(name)
         local defaults = {
-            ["Over Speed Th. [m/s]"] = 32,
+            ["Over Speed Th. [m/s]"] = 30.56,
             ["Power Limit Current [A]"] = 210,
+            ["Field Control Current [A]"] = 315,
         }
         return defaults[name]
     end,
@@ -35,7 +36,7 @@ local harness = require("harness")
 
 local scenario_names = {
     "bitpack_selftest",
-    "physics_regression_vs_n409",
+    "physics_regression_1982",
     "state_diagram_basic_traversal",
     "eb_trip_converges_idle",
     "h5_phase1_phase2_coon_corner",

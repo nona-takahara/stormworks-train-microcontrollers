@@ -116,11 +116,9 @@ OFFになる。途中の値では前状態を維持する。詳細は`SPEC.md` �
 | 6 | `regen_bc_smooth` |
 | 7 | `bc_target_smooth` |
 
-**実装上の注意（Newton法のシード）**：Newton法の反復初期値は `OLD_I` では
-ない。`n409.lua` は `input.getNumber(6)` から初期値を得ており、これは
-`main.sw-net` の `sim_input` で毎tick固定の `CONST(200)` に配線されている。
-`physics_tick` は `state.OLD_I` ではなく定数 `200` からシードしなければ
-ならない。
+**実装上の注意（Newton法のシード）**：1982年型電動機モデルでも、Newton法の
+反復初期値は`OLD_I`ではなく固定値`200`とする。これは原型の`sim_input`が
+毎tick`CONST(200)`を渡していた反復条件を維持するためである。
 
 ### `state_in[8]`／`state_out[8]` — 予備（現状は常に0）
 
@@ -227,9 +225,9 @@ OFFになる。途中の値では前状態を維持する。詳細は`SPEC.md` �
 
 | 信号 | 由来 | 式 |
 |---|---|---|
-| `OLD_I` | `n409.lua` グローバル変数 | 直近tickのNewton法解（電機子電流） |
-| `OLD_IF_A` | `n409.lua` グローバル変数 | 直近tickの界磁電流 |
-| `OLD_PHI` | `n409.lua` グローバル変数 | 直近tickの磁束 |
+| `OLD_I` | 電動機モデルの反復状態 | 直近tickのNewton法解（電機子電流） |
+| `OLD_IF_A` | 電動機モデルの反復状態 | 直近tickの添加界磁電流 |
+| `OLD_PHI` | 電動機モデルの反復状態 | 直近tickの磁束 |
 | `regen_bc_smooth` | `FUNC_NUM_3` 自己ループ | `min(clamp(x, y-0.1, y+0.02), 0)` |
 | `bc_target_smooth` | `FUNC_NUM_3` 自己ループ | `x*0.2 + y*0.8`（EMA） |
 
@@ -242,7 +240,7 @@ OFFになる。途中の値では前状態を維持する。詳細は`SPEC.md` �
 
 ### 分類(c) — ステートレス（毎tick再計算）
 
-`notch_eff`、`notch_ge1..4`、`eb_condition`（`SPEC.md` §5の牽引禁止）、
+`notch_eff`、`notch_ge1..4`、`eb_condition`（`SPEC.md` §5の非常制動条件）、
 `power_with_regen`、
 `coasting_cond`／`neutral_cond`／`phase_reset_cond`、`current_below_limit`
 （デバウンス前）、`regen_available`、`brake_below_min`、`overspeed`、

@@ -1,6 +1,6 @@
 -- User-specified realistic driving scenario 5 (DESIGN_LOG.md #27/#28):
 -- full-notch accel to 80km/h -> emergency brake (BP<4atm,gauge, i.e.
--- SPEC.md §11 traction_inhibit's brake_pressure_sw < BRAKE_MIN_PRESSURE)
+-- SPEC.md §5 emergency condition: brake_pressure_sw < BRAKE_MIN_PRESSURE)
 -- decelerates the vehicle to 30km/h -> 5s notch off -> reaccel to 80km/h.
 -- The concern under test: no anomalous current spike anywhere across the
 -- EB trip, the release/homing that follows it, and the subsequent restart

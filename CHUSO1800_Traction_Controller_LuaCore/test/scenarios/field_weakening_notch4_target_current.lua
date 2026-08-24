@@ -24,18 +24,17 @@ return function(h)
         return phys
     end
 
-    -- Notch 2 (<=3): no fixed target: the loop settles wherever iF_a==OLD_I
-    -- becomes self-consistent, which for these inputs is well below the
-    -- 210A property -- it must NOT be pulled toward POWER_LIMIT_CURRENT.
+    -- Notch 2 (<=3): external field settles at 70% of armature current, so
+    -- the 30% series component and external field form a 100% series curve.
     local low_notch = run(2, 600)
-    h.assert_near(low_notch.iF_a, low_notch.motor_current, 1e-6,
-        "notch<=3: field current settles equal to armature current (target_i=OLD_IF_A fixed point)")
-    h.assert_true(low_notch.motor_current < 150,
-        "notch<=3: settles well below POWER_LIMIT_CURRENT, got " .. tostring(low_notch.motor_current))
+    h.assert_near(low_notch.iF_a, low_notch.motor_current * 0.7, 1e-6,
+        "notch<=3: external field settles at 70% of armature current")
+    h.assert_true(low_notch.motor_current < 300,
+        "notch<=3: settles below POWER_LIMIT_CURRENT, got " .. tostring(low_notch.motor_current))
 
-    -- Notch 5 (>3): real feedback control, target is POWER_LIMIT_CURRENT
-    -- (210A, main.sw-net's "Power Limit Current [A]" PROPERTY_NUMBER default).
+    -- Notch 5 (>3): real feedback control uses the independent
+    -- Field Control Current property, not the cam-advance current property.
     local high_notch = run(5, 600)
-    h.assert_near(high_notch.motor_current, 210, 1e-6,
+    h.assert_near(high_notch.motor_current, 315, 1e-6,
         "notch>3: armature current converges to POWER_LIMIT_CURRENT")
 end

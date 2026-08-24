@@ -79,8 +79,9 @@ module main
   inst AND panta2_1800_active : a=panta2_en_latch_q, b=vehicle_type_1800_out -> out=panta2_1800_active_out
 
   # --- 調整可能プロパティ（ノードは残す。値はsrc/chuso1800_core.luaがproperty.getNumberで直接読む。README.md「チューニング可能なプロパティ」/DESIGN_LOG.md #3） ---
-  inst PROPERTY_NUMBER overspeed_threshold (value=32, n="Over Speed Th. [m/s]") : -> out=overspeed_threshold_out
+  inst PROPERTY_NUMBER overspeed_threshold (value=30.56, n="Over Speed Th. [m/s]") : -> out=overspeed_threshold_out
   inst PROPERTY_NUMBER cam_advance_current_limit_base (value=210, n="Power Limit Current [A]") : -> out=cam_advance_current_limit_base_out
+  inst PROPERTY_NUMBER field_control_current (value=315, n="Field Control Current [A]") : -> out=field_control_current_out
   inst PROPERTY_NUMBER brake_current_limit_scale (value=290, n="Brake Limit@320kPa [A]") : -> out=brake_current_limit_scale_out
 
   # --- Core program: state_sync + chuso1800_core Luaブリッジ ---

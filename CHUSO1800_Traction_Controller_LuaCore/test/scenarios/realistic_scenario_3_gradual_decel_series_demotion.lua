@@ -26,9 +26,11 @@ return function(h)
 
     local sim = Sim.new(h, "Scenario 3: 60km/h accel -> notch off -> external decel to 20km/h (series field control) -> reaccel 60km/h")
 
-    sim:phase("full notch accel to 60km/h", {
+    sim:phase("full notch accel into field control", {
         notch = 4, seconds = 90, db_auto = true,
-        until_fn = function(self) return self.speed >= kmh(60) end,
+        until_fn = function(self, stateless_out, st)
+            return self.speed >= kmh(60) and st.phase2_latch and st.regen_latch
+        end,
     })
 
     local saw_series_field_control = false

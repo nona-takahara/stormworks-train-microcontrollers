@@ -82,7 +82,7 @@ function Sim:phase(label, opts)
     for tick = 1, ticks do
         -- eb=true forces bp below BRAKE_MIN_PRESSURE(4) regardless of the
         -- passed bp, matching "非常制動(BP<4atm,gauge)" scenarios directly
-        -- (SPEC §11 traction_inhibit: brake_pressure_sw < 4 trips EB).
+        -- (SPEC §5: brake_pressure_sw < 4 trips emergency braking).
         local effective_bp = eb and math.min(bp, 2) or bp
         local stateless_in = self.h.encode_stateless_in({
             speed = self.speed, catenary_voltage_sw = 1500, brake_pressure_sw = effective_bp,

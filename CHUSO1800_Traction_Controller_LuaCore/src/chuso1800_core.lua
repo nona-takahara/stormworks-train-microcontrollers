@@ -5,18 +5,22 @@
 -- 外部APIをグローバル定義する非モジュール構成はDESIGN_LOG.md #15参照。
 
 --------------------------------------------------------------------------
--- 定数（n409.luaからの逐語コピー）
+-- 1982年型複巻電動機。実機投入Luaでは車種別定数を直接埋め込む。
 --------------------------------------------------------------------------
 
-local K = 12.16
-local Kmu = 0.00029
-local MOT_RES = 0.07
-local Ks = 0.85
-local PHIs = 150
+local K = 78.941
+local PHI_SAT = 0.05696
+local I_HALF = 400
+local MOT_RES = 0.12
+local SERIES_FIELD_K = 0.30
+local FULL_FIELD_EXT_K = 1.00 - SERIES_FIELD_K
+local POWER_CURRENT_MAX = 390
+local FULL_FIELD_EXT_MAX = FULL_FIELD_EXT_K * POWER_CURRENT_MAX
+local BRAKE_EMF_MAX = 470
 
 local MOT_CTRL = 4
 
-local GEAR_RATIO = 5.31
+local GEAR_RATIO = 5.60
 local WHEEL_R = 0.86 / 2
 local WEIGHT = 35 * 1000
 
@@ -32,6 +36,7 @@ local NEWTON_SEED = 200
 
 local OVERSPEED_THRESHOLD = property.getNumber("Over Speed Th. [m/s]")     -- m/s
 local POWER_LIMIT_CURRENT = property.getNumber("Power Limit Current [A]") -- A
+local FIELD_CONTROL_CURRENT = property.getNumber("Field Control Current [A]") -- A
 
 -- 原型でも調整不可のCONST。
 local BRAKE_MIN_PRESSURE = 4         -- atm
@@ -140,22 +145,23 @@ local function regen_delay_step(old_level, old_active, enable)
 end
 
 --------------------------------------------------------------------------
--- 物理演算（n409.luaからの移植）
+-- 1982年型複巻電動機の物理演算
 --------------------------------------------------------------------------
 
 local function calc_phi(iF)
-    return iF * Kmu * Ks * PHIs / (Ks * math.abs(iF) + PHIs)
+    return PHI_SAT * iF / (I_HALF + math.abs(iF))
 end
 
 local function deriv_phi(iF)
-    return Kmu * Ks * PHIs * PHIs / ((Ks * math.abs(iF) + PHIs) * (Ks * math.abs(iF) + PHIs))
+    local d = I_HALF + math.abs(iF)
+    return PHI_SAT * I_HALF / (d * d)
 end
 
 -- 戻り値: motor_current, back_emf, accel, W, iF_a, bcT,
--- new_I, new_IF_A, new_PHI。原型はscripts/n409.lua。
+-- new_I, new_IF_A, new_PHI。
 function physics_tick(speed, vl, position_counter, direction, notch_eff, phase1, phase2, regen,
     notch_ge1, low_bc_with_regen_flag, regen_bc_smooth_seed, regen_bc_target, OLD_I, OLD_IF_A, OLD_PHI)
-    local rpm = speed * 9.55 * GEAR_RATIO / WHEEL_R
+    local omega = speed * GEAR_RATIO / WHEEL_R
     local notch = position_counter + 1 -- n409.lua's "notch" var is actually cam-position+1
     local res = 100000
     local srsmtr = 4
@@ -168,22 +174,28 @@ function physics_tick(speed, vl, position_counter, direction, notch_eff, phase1,
 
     if regen then
         if low_bc_with_regen_flag then
-            local oldtrq = direction * (MOT_CTRL * 9.55 * K * OLD_PHI * OLD_I * GEAR_RATIO * 0.99 / WHEEL_R / WEIGHT)
+            local oldtrq = direction * (MOT_CTRL * K * OLD_PHI * OLD_I * GEAR_RATIO * 0.99 / WHEEL_R / WEIGHT)
             iF_a = OLD_IF_A + (oldtrq - regen_bc_smooth_seed) * 20
-            iF_a = iF_a * math.min(1, (470 / (K * math.abs(rpm))) / calc_phi(iF_a + OLD_I * 0.15))
+            local phi_limit = calc_phi(direction * (iF_a + SERIES_FIELD_K * OLD_I))
+            if math.abs(omega) > 0.000001 and math.abs(phi_limit) > 0.000001 then
+                iF_a = iF_a * math.min(1, BRAKE_EMF_MAX / (K * math.abs(omega * phi_limit)))
+            end
         else
-            -- 弱め界磁力行: ノッチ1～3は界磁電流追従、4以上は電機子電流を限流値へ追従。
-            if notch_ge1 and notch_eff <= 3 then target_i = OLD_IF_A end
-            if notch_ge1 and notch_eff > 3 then target_i = POWER_LIMIT_CURRENT end
+            -- ノッチ1～3は外部界磁を電機子電流の70%へ追従させ、合計100%の
+            -- 直巻特性とする。4以上は独立した界磁制御電流目標へ追従する。
+            if notch_ge1 and notch_eff <= 3 then target_i = OLD_IF_A / FULL_FIELD_EXT_K end
+            if notch_ge1 and notch_eff > 3 then target_i = FIELD_CONTROL_CURRENT end
             if not notch_ge1 then target_i = 0 end
             if target_i == 0 then target_i = math.max(math.min(0, OLD_I + 20), OLD_I - 20) end
             iF_a = OLD_IF_A + (OLD_I - target_i) * 0.1
         end
     else
-        target_i = OLD_IF_A
-        if notch_eff == 0 then target_i = 0 end
-        iF_a = OLD_IF_A + (OLD_I - target_i) * 0.1
-        if notch_eff ~= 0 and iF_a > 180 then iF_a = 180 end
+        if notch_eff == 0 then
+            iF_a = OLD_IF_A + OLD_I * 0.1
+        else
+            iF_a = OLD_IF_A + (FULL_FIELD_EXT_K * OLD_I - OLD_IF_A) * 0.1
+            if iF_a > FULL_FIELD_EXT_MAX then iF_a = FULL_FIELD_EXT_MAX end
+        end
     end
 
     if srsmtr == 8 then res = SR[notch] end
@@ -192,15 +204,18 @@ function physics_tick(speed, vl, position_counter, direction, notch_eff, phase1,
     if iF_a < 20 then iF_a = 20 elseif iF_a > 500 then iF_a = 500 end
 
     -- minifierの変数名衝突を避けるため、Newton反復を独立local関数へ戻さない。
-    local newton_vt, newton_n, newton_rpn, newton_pf, newton_ifa = vl / srsmtr, rpm, res / srsmtr, direction * 0.2, iF_a * direction
+    -- 添加界磁は前tickから決め、このtickのNewton反復中は固定する。これにより
+    -- 界磁チョッパの応答遅れと回路方程式の境界を同じ状態値で表す。
+    local newton_vt, newton_rpn = vl / srsmtr, res / srsmtr
+    local newton_pf, newton_ifa = direction * SERIES_FIELD_K, iF_a * direction
     local i = NEWTON_SEED
     local phi = 0
     for _ = 1, 5 do
         local iF = i * newton_pf + newton_ifa
         phi = calc_phi(iF)
         local dphi = deriv_phi(iF)
-        local ndf = K * dphi * newton_pf * newton_n + MOT_RES + newton_rpn
-        local fx = K * phi * newton_n - newton_vt + (MOT_RES + newton_rpn) * i
+        local ndf = K * dphi * newton_pf * omega + MOT_RES + newton_rpn
+        local fx = K * phi * omega - newton_vt + (MOT_RES + newton_rpn) * i
         if math.abs(ndf) >= 0.000001 then
             i = i - fx / ndf
         else
@@ -214,11 +229,11 @@ function physics_tick(speed, vl, position_counter, direction, notch_eff, phase1,
     phi = calc_phi(i * newton_pf + newton_ifa)
     if vl == 0 then i = 0; phi = 0 end
 
-    local trqN = 9.55 * K * phi * i
+    local trqN = K * phi * i
     local bcT = math.min(direction * MOT_CTRL * trqN * GEAR_RATIO / WHEEL_R / WEIGHT, 0) - regen_bc_target
     if bcT < 0.01 and i < 0 then bcT = 0 end
 
-    return i, K * phi * rpm, MOT_CTRL * trqN * GEAR_RATIO * 0.99 / WHEEL_R / WEIGHT, vl * i * (MOT_CTRL / srsmtr) * 2,
+    return i, K * phi * omega, MOT_CTRL * trqN * GEAR_RATIO * 0.99 / WHEEL_R / WEIGHT, vl * i * (MOT_CTRL / srsmtr) * 2,
         iF_a, bcT, i, iF_a, phi
 end
 
@@ -310,7 +325,7 @@ local function decode_inputs(stateless_in)
         (stateless_in[8] or 0) ~= 0
 end
 
--- SPEC §11（traction_inhibit／牽引故障ラッチ）。`power_cut`自体は死コードと証明済み
+-- SPEC §5（非常制動条件）。Lua故障検出の`power_cut`は死コードと証明済み
 -- （`DESIGN_LOG.md` #9）でここでは折り畳んで扱わない。
 local function eb_and_brake_pressure(speed, brake_pressure_sw, direction, controller_stop)
     local overspeed = math.abs(speed) > OVERSPEED_THRESHOLD
@@ -419,7 +434,7 @@ local function phase_state_machine(phase1_latch, phase2_latch, regen_latch,
         and phase2_cap_charged and current_below_limit_cap_charged
     local phase2_set_cond = notch_ge3 and notch_fb_eq14 and current_below_limit_cap_charged
 
-    -- 牽引禁止、またはDB自動OFF中の直列＋界磁制御は無条件に全解放する。
+    -- 非常制動条件、またはDB自動OFF中の直列＋界磁制御は無条件に全解放する。
     local db_auto_off_in_series_field_control = (not regen_flag) and phase1_latch and regen_latch
     local force_full_disconnect = eb_condition or db_auto_off_in_series_field_control
 

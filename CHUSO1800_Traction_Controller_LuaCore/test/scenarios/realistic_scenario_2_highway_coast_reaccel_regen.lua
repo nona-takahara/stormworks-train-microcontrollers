@@ -26,9 +26,11 @@ return function(h)
 
     local sim = Sim.new(h, "Scenario 2: 60km/h accel -> notch off -> 10s coast -> reaccel 85km/h (no cam rotation) -> 20s coast -> SAP4 brake (regen -> regen ends)")
 
-    sim:phase("full notch accel to 60km/h", {
+    sim:phase("full notch accel into field control", {
         notch = 4, seconds = 90, db_auto = true,
-        until_fn = function(self) return self.speed >= kmh(60) end,
+        until_fn = function(self, stateless_out, st)
+            return self.speed >= kmh(60) and st.phase2_latch and st.regen_latch
+        end,
     })
     sim:phase("notch off, 10s coast", { notch = 0, seconds = 10, db_auto = true })
     sim:phase("reaccel to 85km/h (expect NO cam rotation)", {

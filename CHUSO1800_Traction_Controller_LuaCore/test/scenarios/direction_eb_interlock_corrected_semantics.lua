@@ -1,9 +1,9 @@
 -- SPEC.md §2/§11 (originally analyzed under the old SPEC.md's now-removed
 -- H1): the sw-net TEXT shows direction_nonzero as THRESHOLD(0,1) (which
--- would falsely trip traction_inhibit on forward/+1 as well as neutral/0),
+-- would falsely trip the emergency condition on forward/+1 as well as neutral/0),
 -- but SPEC.md §2 identifies this as one of six nodes hit by a sw-net
 -- generation bug -- the real machine value is THRESHOLD(0,0) (renamed
--- `direction_neutral` in current SPEC.md/main.sw-net), i.e. traction_inhibit
+-- `direction_neutral` in current SPEC.md/main.sw-net), i.e. the emergency condition
 -- only on direction==0 (neutral/no reverser selected). This module
 -- implements the REAL semantics (direction == 0 only). This test is a
 -- regression guard against the literal (0,1) bug reappearing.

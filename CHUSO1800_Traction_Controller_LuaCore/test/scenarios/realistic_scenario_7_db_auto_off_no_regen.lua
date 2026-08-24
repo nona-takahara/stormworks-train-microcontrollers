@@ -23,9 +23,11 @@ return function(h)
 
     local sim = Sim.new(h, "Scenario 7: DB-auto OFF -- Parallel+field-control with no regen, full disconnect on series-transition attempt")
 
-    sim:phase("full notch accel to 60km/h (db_auto=false)", {
+    sim:phase("full notch accel into field control (db_auto=false)", {
         notch = 4, seconds = 90, db_auto = false,
-        until_fn = function(self) return self.speed >= kmh(60) end,
+        until_fn = function(self, stateless_out, st)
+            return self.speed >= kmh(60) and st.phase2_latch and st.regen_latch
+        end,
     })
 
     local reached_parallel_field_control = false
@@ -35,7 +37,7 @@ return function(h)
             if st.phase2_latch and st.regen_latch and (not st.phase1_latch) then
                 reached_parallel_field_control = true
             end
-            return true
+            return reached_parallel_field_control
         end,
     })
     h.assert_true(reached_parallel_field_control,
