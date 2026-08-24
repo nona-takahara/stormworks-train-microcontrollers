@@ -95,10 +95,10 @@ export function loadConfiguration(repoRoot, options = {}) {
     const envValues = { ...parseEnv(fsApi.readFileSync(envPath, "utf8")), ...options.environment };
     const stormworksDir = requiredAbsoluteDirectory("STORMWORKS_MICROPROCESSORS_DIR", envValues, fsApi, pathApi);
     const backupDir = requiredAbsoluteDirectory("STORMWORKS_BACKUP_DIR", envValues, fsApi, pathApi);
-    // バックアップを同じ管理領域へ置くと、リポジトリ整理やStormworks側の削除に
-    // 巻き込まれる。復旧経路として独立させるため、両方の外側を要求する。
-    if (isWithin(backupDir, repoRoot, pathApi) || isWithin(backupDir, stormworksDir, pathApi)) {
-        throw new Error("STORMWORKS_BACKUP_DIR must be outside the repository and Stormworks microprocessors directory");
+    // Stormworksの現用保存領域内だけは、ゲーム側の削除や置換に巻き込まれて
+    // バックアップにならないため拒否する。リポジトリ内の.gitignore済み領域は許可する。
+    if (isWithin(backupDir, stormworksDir, pathApi)) {
+        throw new Error("STORMWORKS_BACKUP_DIR must be outside the Stormworks microprocessors directory");
     }
 
     let raw;

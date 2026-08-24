@@ -14,6 +14,8 @@ AIがマイコンロジックを書く場合は、適宜`storm-mcl spec`を呼�
 統合支援コマンドを使う前に、`.env.example`を`.env`へ、
 `microcontrollers.example.json`を`microcontrollers.local.json`へコピーし、
 ローカル環境と管理対象を設定します。どちらの実ファイルもGit管理しません。
+バックアップ先は絶対パスで指定します。`.gitignore`済みのリポジトリ内`.backup`を
+使用できますが、Stormworksの現用マイコン保存領域内には置けません。
 
 ```console
 pnpm microcontroller build <name...>
