@@ -3,7 +3,6 @@ import path from "node:path";
 import { run } from "./process.mjs";
 
 // storm-mcl固有のサブコマンドと引数を、このアダプター以外へ漏らさない。
-// #63の正式CLIが公開された際は、主にimportXmlだけを差し替える想定である。
 export class StormMclAdapter {
     constructor(repoRoot, options = {}) {
         this.repoRoot = repoRoot;
@@ -27,12 +26,13 @@ export class StormMclAdapter {
         this.invoke(["dsl2xml", projectPath, "--out", outputPath]);
     }
 
-    importXml() {
-        // 現行xml2dslはobjectId由来の名前で既存DSLを再生成し、手動命名や
-        // script_refを崩し得る。対応版がない間は不完全な取り込みより停止を選ぶ。
-        throw new Error(
-            "Import requires the storm-mcl #63 synchronization CLI, which is not available in the supported storm-mcl version. " +
-            "The unsafe xml2dsl --out-dir fallback is intentionally disabled."
-        );
+    async importXml({ xmlPath, projectPath, confirm }) {
+        // syncの診断を先に利用者へ見せ、承認された同じ入力だけを適用する。
+        this.invoke(["xml2dsl", xmlPath, "--sync-with", projectPath, "--dry-run"]);
+        if (!(await confirm(`Apply storm-mcl synchronization to ${projectPath}?`))) {
+            return { changed: false, declined: true, projectPath };
+        }
+        this.invoke(["xml2dsl", xmlPath, "--sync-with", projectPath]);
+        return { changed: true, projectPath };
     }
 }

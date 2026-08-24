@@ -1,0 +1,2 @@
+minimumReleaseAgeExclude:
+  - storm-microcontroller-language@0.10.1
