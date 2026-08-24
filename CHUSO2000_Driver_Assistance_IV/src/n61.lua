@@ -57,6 +57,7 @@ end
 
 ROUTE = nil
 OLD_CODE_A = nil
+--@storm export
 function onTick()
 	local px, py, kp, codeA, dr, en, dop, isap, start_ctrl, dop_start, upkp
 	px = input.getNumber(1)              -- GPS X

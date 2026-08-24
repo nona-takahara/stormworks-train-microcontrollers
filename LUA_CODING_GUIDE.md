@@ -31,6 +31,10 @@
   宣言する。統合CLIがコピー、minify、後始末を行う。
 - `dofile(...)`は常に生の文としてその場にインライン展開される
   （文位置でも式位置でも）。
+- StormworksがLua外から名前で呼ぶ`onTick`、`onDraw`、`httpReply`の宣言直前には
+  `--@storm export`を付ける。統合CLIも同じ3名を
+  `--reserved-globals-config`で保護する。アノテーション対応前の版を使う場合と、
+  設定またはソースの片方が欠けた場合にもコールバック名を失わないための二重保護である。
 - `-m`（`--module-like-lua`）フラグを付けると`require(...)`は、実際に
   参照されたモジュールだけをIIFEでラップされたrequire()ディスパッチャ
   経由で解決するようになる。付けない場合、`require(...)`も`dofile`と

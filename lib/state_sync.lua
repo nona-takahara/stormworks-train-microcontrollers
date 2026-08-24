@@ -18,7 +18,7 @@ end
 s1 = {0,0,0,0,0,0,0,0} -- 1tick前. integerで保存
 s2 = {0,0,0,0,0,0,0,0} -- 2tick前. integerで保存
 
----@storm export
+--@storm export
 function onTick()
   local i0, i1, o2_fb, s2_fb = {}, {}, {}, {}
   local o0, s0, o1

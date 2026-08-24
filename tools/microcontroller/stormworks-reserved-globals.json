@@ -1,0 +1,7 @@
+{
+  "neverRenameGlobals": [
+    "onTick",
+    "onDraw",
+    "httpReply"
+  ]
+}

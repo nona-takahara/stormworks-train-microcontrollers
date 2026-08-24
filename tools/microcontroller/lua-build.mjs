@@ -15,7 +15,13 @@ export function buildLua(repoRoot, build, options = {}) {
     // 引数の再解釈やshell依存を挟まず、同じNodeランタイムを使える。
     const runProcess = options.run ?? run;
     const minifyCli = options.minifyCli ?? path.join(repoRoot, "node_modules", "storm-lua-minify", "dist", "cli.js");
+    // ソース側の--@storm exportに加え、対応前のminifierでもコールバック名を
+    // 保護する。どちらか一方の欠落でVehicle Luaが無言で停止しないための二重化。
+    const reservedGlobals = options.reservedGlobals ?? path.join(
+        repoRoot, "tools", "microcontroller", "stormworks-reserved-globals.json",
+    );
     if (!fs.existsSync(minifyCli)) throw new Error(`storm-lua-minify CLI not found: ${minifyCli}`);
+    if (!fs.existsSync(reservedGlobals)) throw new Error(`Reserved globals config not found: ${reservedGlobals}`);
 
     const entry = path.resolve(repoRoot, build.entry);
     const output = path.resolve(repoRoot, build.output);
@@ -45,7 +51,9 @@ export function buildLua(repoRoot, build, options = {}) {
         // 前回異常終了時のminifier中間物は入力として信用せず、毎回作り直す。
         removeIfExists(generated);
         removeIfExists(generatedMap);
-        runProcess(process.execPath, [minifyCli, entry], { cwd: repoRoot });
+        runProcess(process.execPath, [
+            minifyCli, entry, "--reserved-globals-config", reservedGlobals,
+        ], { cwd: repoRoot });
         if (!fs.existsSync(generated)) throw new Error(`Minifier did not create expected output: ${generated}`);
         const size = fs.readFileSync(generated, "utf8").length;
         if (size > LIMIT) throw new Error(`Lua output exceeds ${LIMIT} characters (${size}): ${build.output}`);

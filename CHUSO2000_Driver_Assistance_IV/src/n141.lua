@@ -56,6 +56,7 @@ end
 
 local old_stat=0
 local pending_info={}
+--@storm export
 function onTick()
     -- from drive-support.lua
     local id1,id2,mode,dir=gI(11),gI(12),gI(13),gI(14)

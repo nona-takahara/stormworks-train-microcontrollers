@@ -36,6 +36,10 @@ for i = 1, 32 do in_channels[i] = 0; out_channels[i] = 0 end
 input = { getNumber = function(ch) return in_channels[ch] or 0 end }
 output = { setNumber = function(ch, v) out_channels[ch] = v end }
 
+local function artifact_u32(value)
+    return string.unpack("I4", string.pack("I4", math.floor(value or 0) & 0xFFFFFFFF))
+end
+
 dofile(this_dir .. "../deploy/chuso1800_deploy.lua")
 
 if not requested_properties["Field Control Current [A]"] then
@@ -48,12 +52,14 @@ local function assert_eq(actual, expected, msg)
     end
 end
 
--- Direct put_bit/put_bits check: this is the exact shape of expression the
--- minifier bug corrupts (a shift applied to a parenthesized and/or or
--- bitwise-and expression).
-assert_eq(put_bit(true, 5), 32, "put_bit(true, 5) must actually shift, not collapse to 0/1")
-assert_eq(put_bit(false, 5), 0, "put_bit(false, 5)")
-assert_eq(put_bits(3, 5, 5), 96, "put_bits(3, 5, 5) must actually shift by 5")
+-- Direct put_bit/put_bits check when the minifier preserves internal global
+-- names. storm-lua-minify 0.3 may rename these implementation details, so
+-- correctness must ultimately be observed through the onTick pipeline below.
+if put_bit and put_bits then
+    assert_eq(put_bit(true, 5), 32, "put_bit(true, 5) must actually shift, not collapse to 0/1")
+    assert_eq(put_bit(false, 5), 0, "put_bit(false, 5)")
+    assert_eq(put_bits(3, 5, 5), 96, "put_bits(3, 5, 5) must actually shift by 5")
+end
 
 -- Full-pipeline regression: PR #3's real-hardware report (notch_pos=4,
 -- direction=1, brake_pressure_sw=5, sap_pressure_sw=1, catenary=1500,
@@ -72,7 +78,7 @@ local saw_real_current = false
 for tick = 1, 30 do
     for i = 17, 32 do in_channels[i] = out_channels[i] end
     onTick()
-    if out_channels[21] and (to_u32(out_channels[21]) & 2) ~= 0 then reached_phase1 = true end
+    if out_channels[21] and (artifact_u32(out_channels[21]) & 2) ~= 0 then reached_phase1 = true end
     if (out_channels[17] or 0) > 100 then saw_real_current = true end
 end
 
@@ -121,7 +127,7 @@ for tick = 1, 60 * 20 do -- 20 simulated seconds
     for i = 17, 32 do in_channels[i] = out_channels[i] end
     onTick()
 
-    local status = out_channels[21] and to_u32(out_channels[21]) or 0
+    local status = out_channels[21] and artifact_u32(out_channels[21]) or 0
     if (status & 4) ~= 0 and not reached_parallel_tick then reached_parallel_tick = tick end
 
     local accel = out_channels[19] or 0
