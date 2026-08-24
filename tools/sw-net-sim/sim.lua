@@ -1,15 +1,8 @@
 -- Generic sw-net gate-network tick simulator.
 --
--- TICK MODEL (user decision, see chat log / DESIGN_LOG for this session):
--- every inter-node signal is delayed by exactly 1 tick, uniformly, with NO
--- same-tick propagation between nodes at all -- "freeze the previous tick's
--- outputs, and use this frozen snapshot as this tick's inputs". This matches
--- storm-microcontroller-language's own bundled, "verified"-confidence
--- execution-order note ("previous tick's output values are used as this
--- tick's inputs"), which contradicts CHUSO1800_Traction_Controller/SPEC.md's
--- "only stateful gates delay" assumption (itself flagged there as never
--- confirmed against real hardware). Building this simulator is exactly how
--- we test which model actually matches reality.
+-- TICK MODEL: follow `storm-mcl spec` and delay every inter-node signal by
+-- exactly 1 tick, with no same-tick propagation between nodes. Freeze the
+-- previous tick's outputs and use that snapshot as this tick's inputs.
 --
 -- Practically: at the start of tick N we have `frozen`, a full snapshot of
 -- every internal signal as computed at the end of tick N-1 (default 0/false
@@ -22,9 +15,7 @@
 --
 -- Node-intrinsic memory (SR_LATCH's q, CAPACITOR's level, BLINKER's phase,
 -- PULSE's/DELTA's last-seen input) is additional per-node state carried
--- alongside the frozen snapshot; see node-behavior-notes.json (bundled with
--- storm-microcontroller-language) for the behavior each of these is based
--- on, reproduced in tools/sw-net-sim/README.md.
+-- alongside the frozen snapshot; their behavior follows `storm-mcl spec`.
 
 local expr = require("expr")
 
@@ -88,9 +79,7 @@ local function default_for_kind(kind)
 end
 
 --------------------------------------------------------------------------
--- Composite helpers (a composite bundles up to 32 number + 32 boolean
--- channels, 1-origin channel numbers per storm-mcl's
--- composite-signal-layout note)
+-- Composite helpers. Channel numbering follows `storm-mcl spec`.
 --------------------------------------------------------------------------
 
 local function composite_get_number(c, ch)
@@ -178,8 +167,7 @@ end
 
 local function eval_blinker(node, enable, state)
     if not node._blink then
-        -- on_time/off_time are quantized to 0.1s steps == 6 ticks @ 60Hz
-        -- (node-behavior-notes.json, confidence: verified)
+        -- Convert the spec-defined 0.1s timing quantum to simulator ticks.
         local onT = node.attrs.on_time or 0.5
         local offT = node.attrs.off_time or 0.5
         node._blink = {
@@ -285,7 +273,8 @@ EVAL.BOOL_FUNC_4 = function(node, ins)
 end
 EVAL.BOOL_FUNC_8 = EVAL.BOOL_FUNC_4
 
--- SPEC.md §2: "NUM_SWITCHBOX は switch=true で入力a、falseで入力bを選ぶ"
+-- Explicit simulator choice: `storm-mcl spec NUM_SWITCHBOX` currently marks
+-- this truth table as unconfirmed.
 EVAL.NUM_SWITCHBOX = function(node, ins) return { out = ins.switch and ins.a or ins.b } end
 EVAL.COMPOSITE_SWITCHBOX = function(node, ins) return { out = ins.switch and ins.a or ins.b } end
 

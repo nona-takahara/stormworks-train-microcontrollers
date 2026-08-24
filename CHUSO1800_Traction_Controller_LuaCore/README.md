@@ -39,7 +39,8 @@ stateless_out, state_out = core_tick(stateless_in, state_in)
 永続グローバルには制御状態を持ちません。正確な割付は`SIGNAL_MAP.md`を参照してください。
 
 `src/chuso1800_core.lua`はモジュールテーブルを持たず、外部APIをグローバル関数で
-定義します。Stormworksの8192文字制限とビルド方式に合わせた意図的な構成です。
+定義します。`storm-mcl spec LUA`が示す文字数制限とビルド方式に合わせた
+意図的な構成です。
 
 ## 原型との差分
 
@@ -93,7 +94,7 @@ pnpm microcontroller build <microcontrollers.local.jsonで登録したname>
 ディレクトリへ置き、`deploy/main.lua`を入口にフラット化・minifyします。
 生成後は次を確認してください。
 
-1. `deploy/chuso1800_deploy.lua`が8192文字以内である。
+1. `deploy/chuso1800_deploy.lua`が`storm-mcl spec LUA`の制約を満たす。
 2. `lua test/run_all.lua`が通る。
 3. `lua test/verify_deploy_artifact.lua`が通る。
 

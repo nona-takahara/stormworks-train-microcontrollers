@@ -7,13 +7,11 @@
 
 ---
 
-## 0. 凡例・前提知識
+## 0. 凡例
 
-- sw-net の `inst` 行は `型ID 名前 (パラメータ): 入力 -> 出力` 形式。
-- `COMPOSITE_READ_*` の `channel=N` が読み出すチャンネル。`channel=-1` + `channel_input` は動的チャンネル指定。
-- `COMPOSITE_WRITE_*` の `inK` は出力 composite のチャンネル `K + offset - 1` に書き込む。`inc` は元 composite をパススルーし、書かれないチャンネルはそのまま流れる。
-- 「B」=ブールチャンネル、「N」=数値チャンネル。チャンネル番号は 1 始まり。
-- Stormworks のロジックは 1 tick (1/60 s) ごとに評価され、`MEMORY_REGISTER`・`SR_LATCH`・`CAPACITOR`・Lua はフィードバックループ上で **1 tick 遅延** を持つ。コンポジット間の信号伝搬も各マイコン 1 tick の遅延がある。
+`storm-mcl`の構文、ゲート、チャンネル番号、tick評価に関する一般仕様は
+`storm-mcl spec`を正典とする。本書では「B」をブールチャンネル、「N」を
+数値チャンネルの略記として使う。
 
 ---
 

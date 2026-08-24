@@ -13,12 +13,10 @@ M車とT車は同じマイコンを使用し、`Rolling Stock Settings` B1のM�
 
 準備済みだが現在は外部出力へ接続されていない慣性演算・非常制動時牽引カット回路も、削除せず実装どおり記載する。
 
-## 2. sw-net解釈上の前提
+## 2. sw-net実装上の補足
 
-- `THRESHOLD(min,max)`は`min <= input <= max`のときtrue。
-- `NUM_SWITCHBOX`と`COMPOSITE_SWITCHBOX`は`switch=true`で入力`a`、falseで入力`b`を選ぶ。未接続入力は0またはfalse。
-- `COMPOSITE_WRITE_*`の`inc`は元コンポジットを引き継ぎ、指定チャンネルだけを上書きする。
-- Lua、ラッチ、キャパシタ、メモリレジスタ、およびウォッチドッグの遅延用ORは状態またはtick間の値を持つ。
+ゲートとtick評価の一般仕様は`storm-mcl spec`を正典とする。
+
 - Luaノードは`scripts/n485.lua`を参照する。
 
 ## 3. 外部入出力

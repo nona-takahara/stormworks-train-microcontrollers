@@ -22,7 +22,7 @@
 
 ## tickモデル（重要な設計判断）
 
-このセッションでユーザーと確認した通り、**全ゲート出力を一律1tick遅延**
+評価順序は`storm-mcl spec`を正典とし、**全ゲート出力を一律1tick遅延**
 させる。ただし字面通りに「遅延した配線」を実装するのではなく、
 「前tickの全ノード出力をフリーズし、この凍結済みスナップショットだけを
 今tickの入力として使う」という形で実装している（`sim.lua`冒頭コメント
@@ -36,18 +36,8 @@
 - ノードの評価順序は完全に無関係（tickごとに`graph.nodes`を
   好きな順序で回してよい）。
 
-**この選択の背景**：`CHUSO1800_Traction_Controller/SPEC.md` §2は
-「SR_LATCH・CAPACITOR・Lua・自己帰還式だけが状態を持ち、組合せゲートは
-同tick内で瞬時に伝播する」と仮定しているが、`LEGACY_SPEC_CORRECTIONS.md`
-§4はこの仮定自体を「本マイコン固有資料から確認されていない」と明記して
-いる。一方 `storm-microcontroller-language` パッケージ自身の知識ベース
-（`node-behavior-notes.json`の`execution-order`、confidence: **verified**）
-は「Video/Audio以外の全コンポーネントは前tickの出力値を今tickの入力として
-使う」＝全ゲート一律1tick遅延、と明記している。今回はユーザーの指示で
-後者（全ゲート一律1tick遅延）を採用した。
-
-**注意**：`chuso1800_core.lua`（Luaコア移植）は前者（組合せは瞬時、状態要素
-だけ遅延）の前提で書かれている。そのため本シミュレータと`chuso1800_core.lua`
+**注意**：`chuso1800_core.lua`（Luaコア移植）はゲート網の段ごとの遅延を
+逐語再現しない。そのため本シミュレータと`chuso1800_core.lua`
 を単純にtick単位で突き合わせると、実際のロジックバグとは無関係な
 「一律1tickぶんのタイミングのずれ」が突き合わせ結果に出る可能性が高い。
 突き合わせ方法（定常値比較にするか、tickモデルの差を吸収する変換を挟むか等）
@@ -65,9 +55,7 @@
 他のゲート型が出てきたら`sim.lua`の`PORT_KINDS`/`EVAL`に追加が必要
 （未対応の型は`Sim.new`で即エラーになる）。
 
-CAPACITORのヒステリシス（満充電で一度ONになったら完全放電までON維持）は
-`CHUSO1800_Traction_Controller_LuaCore`側で実機検証済みのモデル
-（DESIGN_LOG.md #21）を一般化して実装した。BLINKERは「有効化後、最初は
+BLINKERは「有効化後、最初は
 off_ticks待ってから点灯」という経験則（同SIGNAL_MAP.md）に従っている
 ─ この初期位相の厳密なtick合わせは実機未確認。
 

@@ -46,12 +46,10 @@ NITSは編成内の車両間をデイジーチェーンで結ぶコマンドベ�
 
 ---
 
-## 1. sw-net 表記の前提（本書での解釈）
+## 1. sw-net実装上の補足
 
-- `inst TYPE name (params) : in=... -> out=...` 形式。`channel=` は composite 上のスロット指定で、**元XMLの属性値をそのまま転記した0始まりの値**である（sw-net変換ツール`storm-mcl`は`channel`に対して一切の演算を行わないパススルー値であることを確認済み）。
-- 各 Lua スクリプトの `input.getBool(i)/getNumber(i)`・`output.setBool(i)/setNumber(i)` は **1始まり**。**「XMLでのチャンネル0 = Luaでのチャンネル1」が確定仕様**であるため、sw-net の `channel=N` は Lua 側の **index N+1** に一致し、`channel=null`（XML上`i`属性が省略された既定スロット）は Lua 側の **index 1** に一致する。この対応は本書の解析中に複数箇所で独立に突き合わせても矛盾がないことを確認済み（§3.3 の `rx_addr_conflict`→B6 一致、§2 の `push_ext` back/front 値の意味一致、`nits_tx_watchdog_read`→`output.setBool(1,watchdog)` 一致）。以降の記述はこの対応関係に基づく。
-- `COMPOSITE_WRITE_BOOLEAN/NUMBER (count=N, offset=M)` は `inc=` で指定された既存 composite をベースに、`in1..inN` を（0始まりの）チャンネル `offset, offset+1, ..., offset+N-1` へ書き込む（Lua側 index では `offset+1 .. offset+N`）。`inc` 側の他チャンネルはそのまま透過する。
-- `SR_LATCH`・`CAPACITOR`・`MEMORY_REGISTER`・`COMPOSITE_SWITCHBOX`の詳細挙動（reset/set優先度・充放電中の出力値・switch=false時のb未接続時の既定値等）は、リポジトリ内の`SYSTEM_SPEC.md`/`SignalComposite.md`には明文化されておらず、Stormworks標準ロジックノードの一般的挙動（reset優先のSRラッチ、charge/dischargeタイマとしてのCAPACITOR、`switch?a:b`かつb未接続時は0/false）を前提に解析した。これは本リポジトリの他のSPEC.md（例:`CHUSO1800_Traction_Controller/SPEC.md`§0.1）と同じ前提である。
+構文、チャンネル番号、ゲートの一般仕様は`storm-mcl spec`を正典とする。
+
 - Lua ノード（`inst LUA name (script_ref=...)`）の出力 composite は、`output.set***` で上書きしない限り**直前tickの出力値を保持し続ける**（レジスタ的な保持動作。入力compositeからの自動透過は無い）。一度も設定されていないチャンネルの初期値は0/false（作者確認済み）。したがって「スクリプトが一度も触れないチャンネル」は恒久的に初期値0/falseのまま変化しない。
 
 ---
@@ -60,15 +58,15 @@ NITSは編成内の車両間をデイジーチェーンで結ぶコマンドベ�
 
 ### 2.1 入力（`nits_tx_command_composite_out`、sw-net上の配線経由）
 
-| 種別 | sw-net channel (0始まり) | Lua index | 内容 |
-|---|---|---|---|
-| bool | 5 | curB[6] | `rx_addr_conflict_read_out`（後述、自ID競合検出） |
-| bool | 6 | curB[7] | `tx_interrupt_flag_out`（即時送信要求） |
-| bool | 7 | curB[8] | `simpleif_push_flag_out`（拡張コマンド新規エンコード通知） |
-| bool | 8 | curB[9] | `tx_override_flag_out`（同上、即時送信系） |
-| number | 5 | curN[6] | `simpleif_cmd_value_back_read_out` = Simple IF TX 由来の「後方向」拡張値 |
-| number | 6 | curN[7] | `simpleif_cmd_value_front_read_out` = 同「前方向」拡張値 |
-| number | 7 | curN[8]（未使用） | `rx_total_car_count_read_out`（総車両数、本スクリプトでは未参照） |
+| 種別 | sw-net channel | 内容 |
+|---|---|---|
+| bool | 6 | `rx_addr_conflict_read_out`（後述、自ID競合検出） |
+| bool | 7 | `tx_interrupt_flag_out`（即時送信要求） |
+| bool | 8 | `simpleif_push_flag_out`（拡張コマンド新規エンコード通知） |
+| bool | 9 | `tx_override_flag_out`（同上、即時送信系） |
+| number | 6 | `simpleif_cmd_value_back_read_out` = Simple IF TX 由来の「後方向」拡張値 |
+| number | 7 | `simpleif_cmd_value_front_read_out` = 同「前方向」拡張値 |
+| number | 8 | `rx_total_car_count_read_out`（総車両数、本スクリプトでは未参照） |
 
 さらに `curB[1..32]`／`curN[1..9]` は Simple IF TX 起源の運転・サービス機器状態（後述 §2.2 で個別対応）を、`input.getBool/getNumber` で直接読む。これらは `nits_tx_command_composite_out` 自体が `inc="Simple IF TX"` を経由して合成されているため（`tx_override_number_write` の `inc="Simple IF TX"`）、Simple IF TX の生チャンネルがそのまま透過している。
 
@@ -222,9 +220,9 @@ nits_tx_watchdog_xor_not = NOT(nits_tx_watchdog_xor_out)
 nits_tx_strobe_cap       = CAPACITOR(charge_time=0, discharge_time=0.1)(enable=nits_tx_watchdog_xor_not_out)
 ```
 
-一見すると`XOR(a, NOT a)`は同一tick内なら恒真（常にtrue）であり、この回路は無意味に見える。しかし実機Stormworksのロジックゲートはチェーンした各ゲートが1tickずつ遅延して伝搬する（本リポジトリの`CHUSO1800_Traction_Controller/SPEC.md`§0.2が採用するのと同じ解析上の前提）ため、`nits_tx_watchdog_not_out`は`nits_tx_watchdog_read_out`の**1tick前**の値のNOTになる。`watchdog`が正常に毎tickトグルしている間は、この「1tickずれたNOT」と「現在値」の関係が一定のパターンで安定し、`nits_tx_watchdog_xor_not_out`（延いては`nits_tx_strobe_cap`のenable）は安定した値を取り続ける。**ところがLuaがエラーで実行停止すると、Stormworksの仕様上そのマイコンのLuaは以後のtickで一切実行されなくなり、`output.setBool(1,watchdog)`の値（＝`nits_tx_watchdog_read_out`）はエラー発生時の値のまま凍結する**。トグルという前提が崩れるため、上記のNOT/XOR遅延段の整合が崩れ、`nits_tx_strobe_cap`のenableが反転し、`discharge_time=0.1`のCAPACITORにより約0.1秒後に`nits_tx_strobe_cap_out`がfalseへ変化する。
+一見すると`XOR(a, NOT a)`は同一tick内なら恒真（常にtrue）であり、この回路は無意味に見える。しかし`storm-mcl spec`が定める評価順序により、`nits_tx_watchdog_not_out`は`nits_tx_watchdog_read_out`の**1tick前**の値のNOTになる。`watchdog`が正常に毎tickトグルしている間は、この「1tickずれたNOT」と「現在値」の関係が一定のパターンで安定し、`nits_tx_watchdog_xor_not_out`（延いては`nits_tx_strobe_cap`のenable）は安定した値を取り続ける。**ところがLuaがエラーで実行停止すると、Stormworksの仕様上そのマイコンのLuaは以後のtickで一切実行されなくなり、`output.setBool(1,watchdog)`の値（＝`nits_tx_watchdog_read_out`）はエラー発生時の値のまま凍結する**。トグルという前提が崩れるため、上記のNOT/XOR遅延段の整合が崩れ、`nits_tx_strobe_cap`のenableが反転し、`discharge_time=0.1`のCAPACITORにより約0.1秒後に`nits_tx_strobe_cap_out`がfalseへ変化する。
 
-これは**意図的なLuaクラッシュ検知ウォッチドッグ**であり、「Luaがエラーで停止すると以後のtickで実行されなくなる」というStormworksの仕様を逆手に取った設計である（当初解析でこの回路を「常時false固定のデッド回路」としたのは誤りであり、本節で訂正する）。`nits_tx_strobe_cap_out`は`nits_tx_bus_write`のin1(offset=0→"to NITS"のbool ch1)として送出されており、これは公式仕様の「基本マイコンのインターフェース」入力欄に記載された **`B1: Lua動作異常なし`** に正確に対応する。すなわち本ブリッジは、自身の0x41-0x47エンコードLua(`n440.lua`)が健全に動作している間は`"to NITS"`のB1をtrueに保ち、クラッシュした場合は約0.1秒でfalseへ落とすことで、下流（NITS Line Node等）に自身の異常を通知する。
+これは**意図的なLuaクラッシュ検知ウォッチドッグ**であり、「Luaがエラーで停止すると以後のtickで実行されなくなる」というStormworksの仕様を逆手に取った設計である（当初解析でこの回路を「常時false固定のデッド回路」としたのは誤りであり、本節で訂正する）。`nits_tx_strobe_cap_out`は`nits_tx_bus_write`のin1(offset=1→"to NITS"のbool ch1)として送出されており、これは公式仕様の「基本マイコンのインターフェース」入力欄に記載された **`B1: Lua動作異常なし`** に正確に対応する。すなわち本ブリッジは、自身の0x41-0x47エンコードLua(`n440.lua`)が健全に動作している間は`"to NITS"`のB1をtrueに保ち、クラッシュした場合は約0.1秒でfalseへ落とすことで、下流（NITS Line Node等）に自身の異常を通知する。
 
 ---
 
@@ -462,7 +460,7 @@ sw-net側:
 ```
 ext_out_n9_memory = MEMORY_REGISTER(reset_value=0)(reset=rx_addr_not_mine_read_out, set=ext_out_n1_flag_read_out, value=ext_out_n1_value_read_out)
 ... (N10-N16も同様にN2-N8対応)
-ext_output_bus_write (count=8, offset=8): in1..in8 = ext_out_n9..n16_memory_out, inc=ext_output_decoder_lua_composite -> "NITS Extension Output"
+ext_output_bus_write (count=8, offset=9): in1..in8 = ext_out_n9..n16_memory_out, inc=ext_output_decoder_lua_composite -> "NITS Extension Output"
 ```
 
 n848.luaが出力したN1-N8の瞬時値を、対応するフラグ(B1-B8)が立った時にMEMORY_REGISTERへラッチし、`rx_addr_not_mine_read_out`（自ID不一致＝§3.5のB7と同一）でリセットする。この結果、`NITS Extension Output`composite は:
@@ -477,18 +475,19 @@ n848.luaが出力したN1-N8の瞬時値を、対応するフラグ(B1-B8)が立
 ## 6. TXコマンドフラグ組み立て（main.sw-net グルーロジック）
 
 ```
-ext_input_interrupt_req = COMPOSITE_READ_BOOLEAN(channel=12)(composite=simpleif_tx_encoder_lua_composite)
+ext_input_interrupt_req = COMPOSITE_READ_BOOLEAN(channel=13)(composite=simpleif_tx_encoder_lua_composite)
 tx_interrupt_flag       = OR(ext_input_interrupt_req_out)
-ext_input_override_req  = COMPOSITE_READ_BOOLEAN(channel=14)(composite=simpleif_tx_encoder_lua_composite)
+ext_input_override_req  = COMPOSITE_READ_BOOLEAN(channel=15)(composite=simpleif_tx_encoder_lua_composite)
 tx_override_flag        = OR(ext_input_override_req_out)
-simpleif_cmd_ready_read = COMPOSITE_READ_BOOLEAN(channel=13)(composite=simpleif_tx_encoder_lua_composite)
+simpleif_cmd_ready_read = COMPOSITE_READ_BOOLEAN(channel=14)(composite=simpleif_tx_encoder_lua_composite)
 simpleif_push_flag      = OR(simpleif_cmd_ready_read_out)
-rx_addr_conflict_read   = COMPOSITE_READ_BOOLEAN(channel=5)(composite=nits_rx_decoder_lua_composite)
+rx_addr_conflict_read   = COMPOSITE_READ_BOOLEAN(channel=6)(composite=nits_rx_decoder_lua_composite)
 ```
 
-`simpleif_cmd_ready_read`(channel=13→Lua index14)は`n458.lua`が自ら`output.setBool(14, cmd~=0)`として明示的に設定している値と一致し、これは§4.3で述べた「今tick拡張コマンドを送信したか」を`simpleif_push_flag`としてn440.luaへ伝えるための配線であることが確認できる。
-
-一方`ext_input_interrupt_req`(channel=12→Lua index13)と`ext_input_override_req`(channel=14→Lua index15)は、`n458.lua`のスクリプト本体を見る限り該当インデックスへの明示的な`output.setBool`呼び出しが存在しない。**Luaの出力composite は `output.set***` で上書きしない限り直前tickの出力値を保持し続け（入力compositeからの自動透過は無い）、一度も設定されていないチャンネルの初期値は0/falseである**（作者確認済み）。`n458.lua`はLua index13・15を一度も設定しないため、これらは常に初期値0/falseのまま変化せず、`ext_input_interrupt_req`/`ext_input_override_req`ひいては`tx_interrupt_flag`/`tx_override_flag`は**実質的に常時false固定のデッド配線**である（§7 F8）。
+`n458.lua`はB14を`output.setBool(14, cmd~=0)`で明示的に更新するため、
+`simpleif_cmd_ready_read`はその送信通知を正しく読む。一方、B13とB15には
+`output.setBool`がなく、初期値falseのままなので、interrupt/overrideの2経路は
+現在の配線では到達不能である。
 
 ---
 
@@ -505,9 +504,7 @@ rx_addr_conflict_read   = COMPOSITE_READ_BOOLEAN(channel=5)(composite=nits_rx_de
 | F5 | §3.2 後方両数の非伝送 | 公式仕様が0x46の後方両数フィールドを「伝送無し」と明記している点について、当初「`last_car`は常に0になる可能性」とした解析は誤り。実際にはNITS Line Nodeが他車へは後方両数を送出しない一方、**前後両方向から届く前方両数を内部でマージし、本ブリッジには（マージ済みの）後方両数として与える**。公式仕様書はこのNITS Line Node内部の合成処理の記載が欠落している | **仕様書側の記載漏れ**（作者確認済み。コードは正しい） |
 | F6 | n458.lua ラウンドロビン保留トリガ | 前方向フラグ(`riseB[i+8]`)の立ち上がりのみでは送信保留が起きない（後方向フラグの立ち上がりのみ判定） | **仕様として確定**（作者確認済み。前後非対称のままでよい） |
 | F7 | n440.lua 0x41送信後のクリア | `riseB[1..5]`は0x41フレームの計算には使われておらず(`curB`を直接参照)、クリアのみ行われる | **意図的な冗長処理**（作者確認済み。問題なし） |
-| F8 | §6 `ext_input_interrupt_req`/`ext_input_override_req` | LUAノードの出力compositeにおける未設定チャンネルの扱い | **確定**（作者確認済み。Luaの出力は`output.set***`で上書きしない限り**直前tickの出力値を保持し続ける**（inputからの透過は無い）。初期値は0/false。`n458.lua`はLua index13/15に一度も`output.setBool`しないため、これらは初期値0/falseのまま変化せず、**実質デッド配線**である） |
-
-参考: `TOOLTIP_BOOLEAN`（`local_mode_tooltip`, §3.5関連配線には現れないUI専用ノード）は`storm-mcl`の型定義(`definitions.json` type44)で出力ポートが定義されておらず(`"outputs": []`)、`value`入力を表示するのみで下流に一切の信号を渡さないことが確認できる。sw-net上も`local_mode_tooltip`の行に`-> `以降の出力指定が無く、この点と整合する。
+| F8 | §6 `ext_input_interrupt_req`/`ext_input_override_req` | n458.luaはB13/B15を一度も設定しないため、interrupt/override経路は初期値falseのまま到達不能 | **確定**（Lua出力とsw-netの同一チャンネル番号で再確認） |
 
 ---
 

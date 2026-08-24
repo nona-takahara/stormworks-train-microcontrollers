@@ -13,12 +13,10 @@
 
 本書では、現在未消費のロジックも削除せず、実装どおり記載する。
 
-## 2. sw-net解釈上の前提
+## 2. sw-net実装上の補足
 
-- `THRESHOLD(min,max)` は `min <= input <= max` のときtrue。
-- `NUM_SWITCHBOX` は `switch=true`で入力`a`、falseで入力`b`を選ぶ。未接続入力は0またはfalse。
-- `COMPOSITE_WRITE_*` の `inc` は元コンポジットを引き継ぎ、指定チャンネルだけを上書きする。
-- `SR_LATCH`、`CAPACITOR`、Lua、自己帰還式は状態を持つ。すべての組合せゲートが一律に1 tick遅延するとは仮定しない。
+ゲートとtick評価の一般仕様は`storm-mcl spec`を正典とする。
+
 - 元のsw-net生成処理には、`THRESHOLD`の`max=0`を`max=1`として出力する不具合があった。次の6ノードは実機設定に合わせて`max=0`へ修正済み。
   - `catenary_input_zero`
   - `cam_position_unchanged`
