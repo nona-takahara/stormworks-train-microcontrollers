@@ -33,26 +33,20 @@
 | **Signal Gateway** | NITS busとの出入口。CC3をSimple IF RX/Extended Commands RX/Rolling Stock Settingsへ変換し、`from NITS`/`to NITS`で編成内の他車と繋がる |
 
 （`Signal Gateway`以外は`SYSTEM_SPEC.md`「1. システム概要」の表を要約。
-`Signal Gateway`は`project.json`の入出力ポート宣言から判明した役割で、
-SYSTEM_SPEC.md本文にはまだ記載がない。各マイコンの入出力ポート詳細は
-`SYSTEM_SPEC.md`「3. 各マイコン詳細」および各プロジェクトの`SPEC.md`を参照）
+`Signal Gateway`の役割は`project.json`の入出力ポート宣言のみを根拠にしており
+（sw-net内部のロジックは未確認）、`SYSTEM_SPEC.md`本文には記載がない。各マイコン
+の入出力ポート詳細は`SYSTEM_SPEC.md`「3. 各マイコン詳細」および各プロジェクトの
+`SPEC.md`を参照）
 
 ## 2000系列マイコン間の関連
 
-以下は2000系列マイコン間のコンポジット信号の概略図である。7マイコンのうち
-Onecar Controlは、Cab Controller VとSignal Gateway/Traction Controllerの
-間を中継するだけで図が煩雑になるため描いていない（後述）。
+以下は2000系列マイコン間のコンポジット信号の概略図である。正典は
+[`SYSTEM_SPEC.md`](./SYSTEM_SPEC.md)（特に「1.1 全体データフロー」「2. マイコン間
+インターフェース」）と[`SignalComposite.md`](./SignalComposite.md)であり、この図は
+関連性の見取り図に留める。チャンネル割付・負論理はここには示さない。
 
 この図は**電気指令ブレーキ系統の標準構成**を示すものであり、系列番号で
-対象範囲が決まるわけではない。電磁直通ブレーキ系統については別図を参照
-（別図は未作成）。
-
-正典は[`SYSTEM_SPEC.md`](./SYSTEM_SPEC.md)（特に「1.1 全体データフロー」
-「2. マイコン間インターフェース」）だが、`Signal Gateway`はまだ同文書に
-記載がないため、この図の該当部分は`CHUSO2000_Signal_Gateway/project.json`の
-入出力ポート宣言のみを根拠にしている（sw-net内部のロジックは未確認）。
-各信号のチャンネル割付や負論理は`SYSTEM_SPEC.md`/`SignalComposite.md`を
-参照すること。この図は関連性の見取り図に留める。
+対象範囲が決まるわけではない。電磁直通ブレーキ系統の図は未作成。
 
 ```mermaid
 flowchart TD
@@ -95,45 +89,34 @@ flowchart TD
     TC -. "Momelink chain" .-> TC
 ```
 
-Onecar Controlはこの図から省いた。前位・後位2台のCab ControllerのControl
-Commands TXを1つのCC3へ合成し、Gatewayから戻ってきたSimple IF RXの前後を
-入れ替えてTraction Controllerへ渡す、という中継の役割そのものは実在するが、
-図の見通しを優先してその変換の中身は省略し、Cab Controller VとSignal Gateway/
-Traction Controllerを直結する形で表した。合成・反転の詳細は`SYSTEM_SPEC.md`と
-`CHUSO2000_Onecar_Control/project.json`を参照。
+図中の見取りだけでは分かりにくい点を以下に補足する。
 
-- **Signal Gateway**は実在するプロジェクト（`CHUSO2000_Signal_Gateway/`）で、
-  `Control Commands TX`（Onecar Control経由でCC3に合成された形）を受け取り、
-  `Simple IF RX`・`Extended Commands RX`・`Rolling Stock Settings`へ変換して
-  各マイコンへ配る。`from NITS`/`to NITS`ポートで編成内の他車と繋がる（＝この
-  図の「NITS bus」の実体）。Door Minからは`Door Open (A)/(B)`が戻り、Traction
-  Controllerからは`Rolling Stock Status`（Inertia Compositeと合成された形）が
-  入る。CP Request・SOS Button・Batteryなど他の車両物理系の入出力も持つが、
-  マイコン間の関連の主題ではないためこの図では省略した。
-- **CC3(≒Control Commands TX)はTraction Controllerへ直接渡らない。**
-  必ずGateway→NITS bus→Gatewayと往復し、戻ってきた時点で`Simple IF RX`という
-  別名になる。行き(Control Commands TX/CC3)と帰り(Simple IF RX)は同じデータの
-  往復であり、並存する2経路ではない。
-- **Cab Display IV → Cab Controller V**の`Loop Start, ATS/C Settings`は、
-  Cab Controller Vの`Drive Loop`/`Settings Loop`入力に対応すると見られる
-  （名前が完全一致ではないため、同じ配線かは要確認）。
-- **Door Min**はCC3を直接受け取らない。開扉指令はGatewayからの
-  `Extended Commands RX`(Door_Minでの別名`NITS Ext. Input`)経由で受け、
-  状態は`Door Open (A)/(B)`としてGatewayへ返す。project.json上のDoor Min
-  自身の出力は`Door is Open`1系統だけなので、Traction Controllerの自己ループ
-  (M車/T車)と同様に、扉グループA/Bで2台構成になっていると見られる
-  （未確認）。
-- **Traction Controllerの自己ループ（Momelink, ID=1911）**は、他の信号と違い
-  異なるマイコン間ではなく、同じTraction Controllerを積んだM車とT車の間を結ぶ
-  専用線である。T車はローカルに電動機計算を持たないため、M車からMomelink経由で
-  架線電圧・電流・空気ブレーキ分担を受け取る（いわゆる遅れ込め制御 ─
-  電気制動の実際の効きに合わせて空気ブレーキ側の負担を配分する仕組み）。
-  詳細は[`SYSTEM_SPEC.md`](./SYSTEM_SPEC.md) §5「制動・力行制御フロー」を参照。
+- **Onecar Control**は図から省いた。前位・後位2台のCab ControllerのControl
+  Commands TXを1つのCC3へ合成し、Gatewayから戻ったSimple IF RXの前後を入れ替えて
+  Traction Controllerへ渡す中継役だが、変換の中身を省きCab Controller VとSignal
+  Gateway/Traction Controllerを直結する形で表した。合成・反転の詳細は
+  `SYSTEM_SPEC.md`と`CHUSO2000_Onecar_Control/project.json`を参照。
+- **CC3(≒Control Commands TX)とSimple IF RXは同じデータの往復であり、並存する
+  2経路ではない。** Gateway→NITS bus→Gatewayを経て戻ってきた時点で名前が
+  Simple IF RXに変わる。
+- **Cab Display IV → Cab Controller V**の`Loop Start, ATS/C Settings`は、名前が
+  Cab Controller Vの`Drive Loop`/`Settings Loop`入力と完全一致しない。対応関係は
+  要確認。
+- **Door Min**はCC3を直接受け取らない。開扉指令はGatewayの`Extended Commands RX`
+  (Door_Minでの別名`NITS Ext. Input`)経由で受け、状態は`Door Open (A)/(B)`として
+  Gatewayへ返す。project.json上の出力は`Door is Open`1系統のみで、Traction
+  Controllerの自己ループ(M車/T車)と同様に扉グループA/Bで2台構成になっていると
+  見られるが未確認。
+- **Traction Controllerの自己ループ（Momelink, ID=1911）**は、異なるマイコン間
+  ではなく同じTraction Controllerを積んだM車とT車の間を結ぶ専用線である。T車は
+  ローカルに電動機計算を持たず、M車からMomelink経由で架線電圧・電流・空気
+  ブレーキ分担（遅れ込め制御 ─ 電気制動の実際の効きに合わせて空気ブレーキ側の
+  負担を配分する仕組み）を受け取る。詳細は[`SYSTEM_SPEC.md`](./SYSTEM_SPEC.md)
+  §5「制動・力行制御フロー」を参照。
 - **Inertia Composite**は車両内の別マイコンから供給されるため、図では
-  データストア(円柱)として表した。Signal GatewayとTraction Controllerの
-  両方が独立にこれを受け取る（`Traction Controller`側は`Inertia Composite
-  Input`という別ポート）。どのマイコンが実際の供給元かは未確認。
-- **ATS/ATC**はCab Controller V・Cab Display IVへ`ATS/ATC`信号を供給し、
-  Cab Controller Vから`ATS/C Reset Signal`を受け取る別マイコンである。
-  この7マイコン（このディレクトリ配下のプロジェクト）には含まれず、
-  まだこのリポジトリに実体を持たないため、図では他と区別して示した。
+  データストア(円柱)として表した。Signal GatewayとTraction Controllerが独立に
+  受け取る（Traction Controller側は`Inertia Composite Input`という別ポート名）。
+  供給元マイコンは未確認。
+- **ATS/ATC**はこの7マイコンに含まれない別マイコンで、Cab Controller V・
+  Cab Display IVへ`ATS/ATC`信号を供給し、Cab Controller Vから`ATS/C Reset Signal`
+  を受け取る。まだこのリポジトリに実体を持たないため、図では他と区別して示した。
