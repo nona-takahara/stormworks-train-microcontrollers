@@ -15,213 +15,245 @@ module main
   port in "Inertia Composite" : composite
   port out "SOS Button" : boolean
 
-  inst LUA n440 (script_ref="scripts/n440.lua") : composite=n493_out -> composite=n440_composite
-  inst COMPOSITE_WRITE_BOOLEAN n441 (count=6, offset=1) : in1=n446_out, in2=n489_out, in3=n491_out, in4=n490_out, in5=n508_out, in6=n492_out, inc=n440_composite -> out="to NITS"
-  inst COMPOSITE_READ_BOOLEAN n442 (channel=1) : composite=n440_composite -> out=n442_out
-  inst NOT n443 : a=n442_out -> out=n443_out
-  inst XOR n444 : a=n442_out, b=n443_out -> out=n444_out
-  inst NOT n445 : a=n444_out -> out=n445_out
-  inst CAPACITOR n446 (charge_time=0, discharge_time=0.1) : enable=n445_out -> out=n446_out
-  inst COMPOSITE_READ_BOOLEAN n457 (channel=13) : composite=n466_composite -> out=n457_out
-  inst LUA n458 (script_ref="scripts/n458.lua") : composite=n459_out -> composite=n458_composite
-  inst COMPOSITE_WRITE_BOOLEAN n459 (count=8, offset=16) : in1=n463_out, in3=n553_out, in4=n867_out, in5=n855_out, in6=n642_out, in7=n872_out, in8=n687_out, inc=n686_out -> out=n459_out
-  inst COMPOSITE_READ_BOOLEAN n461 (channel=14) : composite=n458_composite -> out=n461_out
-  inst SR_LATCH n462 : r=n464_out, s=n465_out -> q=n462_q
-  inst CAPACITOR n463 (charge_time=3, discharge_time=0) : enable=n462_q -> out=n463_out
-  inst COMPOSITE_READ_BOOLEAN n464 (channel=14) : composite=n466_composite -> out=n464_out
-  inst COMPOSITE_READ_BOOLEAN n465 (channel=31) : composite=n466_composite -> out=n465_out
-  inst LUA n466 (script_ref="scripts/n466.lua") : composite="from NITS" -> composite=n466_composite
-  inst OR n486 : a=n461_out -> out=n486_out
-  inst COMPOSITE_READ_NUMBER n487 (channel=6) : composite=n458_composite -> out=n487_out
-  inst COMPOSITE_READ_NUMBER n488 (channel=7) : composite=n458_composite -> out=n488_out
-  inst COMPOSITE_READ_BOOLEAN n489 (channel=6) : composite="Control Commands Type 3 front" -> out=n489_out
-  inst COMPOSITE_READ_BOOLEAN n490 (channel=1) : composite="Control Commands Type 3 front" -> out=n490_out
-  inst COMPOSITE_READ_BOOLEAN n491 (channel=7) : composite="Control Commands Type 3 front" -> out=n491_out
-  inst COMPOSITE_READ_BOOLEAN n492 (channel=9) : composite="Control Commands Type 3 front" -> out=n492_out
-  inst COMPOSITE_WRITE_BOOLEAN n493 (count=7, offset=3) : in1=n639_out, in2="Door Open (A)", in3="Door Open (B)", in4=n457_out, in5=n676_out, in6=n486_out, in7=n677_out, inc=n741_out -> out=n493_out
-  inst COMPOSITE_WRITE_BOOLEAN n502 (count=32, offset=1) : in1=n463_out, in2=n744_q, in3=n751_q, in4=n758_out, in5=n759_out, in6=n762_out, in7=n763_out, in8=n764_out, in9=n765_out, in10=n792_out, in11=n771_q, in12=n778_q, in13=n779_q, in14=n780_q, in15=n781_not_q, in16=n782_not_q, in17=n835_out, in18=n836_out, in19=n837_out, in20=n790_out, in21=n791_out, in22=n785_out, in27=n786_out, in28=n787_out, in29=n788_out, in30=n789_out, in31=n828_out, in32=n829_out, inc=n717_out -> out=n502_out, out="Extended Commands RX"
-  inst COMPOSITE_WRITE_BOOLEAN n503 (count=1, offset=1) : in1=n506_out, inc=n466_composite -> out="Simple IF RX"
-  inst COMPOSITE_READ_BOOLEAN n504 (channel=11) : composite="from NITS" -> out=n504_out
-  inst OR n506 : a=n504_out, b=n507_out -> out=n506_out
-  inst COMPOSITE_READ_BOOLEAN n507 (channel=1) : composite=n466_composite -> out=n507_out
-  inst NOT n508 : a=n509_out -> out=n508_out
-  inst CONST_BOOL n509 : -> out=n509_out
-  inst LUA n523 (script_ref="scripts/n523.lua") : composite=n525_out -> composite=n523_composite
-  inst COMPOSITE_WRITE_BOOLEAN n525 (count=1, offset=32) : in1=n463_out, inc="from NITS" -> out=n525_out
-  inst COMPOSITE_READ_BOOLEAN n553 (channel=32) : composite="Control Commands Type 3 front" -> out=n553_out
-  inst BOOL_FUNC_4 n639 (expression="x|y|z|w") : x=n867_out, y=n855_out, z=n642_out, w=n740_out -> out=n639_out
-  inst COMPOSITE_READ_BOOLEAN n642 (channel=1) : composite="Rolling Stock Status w/ Inertia Composite" -> out=n642_out
-  inst NUM_SWITCHBOX n645 : a=n648_out, b=n649_out, switch=n647_out -> out=n645_out
-  inst FUNC_NUM_1 n646 (expression="x+1") : x=n645_out -> out=n646_out
-  inst PROPERTY_TOGGLE n647 (label="", on_label="Front is 1 / Up", off_label="Back is 1 / Down", n="Car count", v=true) : -> out=n647_out
-  inst COMPOSITE_READ_NUMBER n648 (channel=4) : composite=n466_composite -> out=n648_out
-  inst COMPOSITE_READ_NUMBER n649 (channel=5) : composite=n466_composite -> out=n649_out
-  inst COMPOSITE_READ_NUMBER n652 (channel=2) : composite="Rolling Stock Status w/ Inertia Composite" -> out=n652_out
-  inst PROPERTY_TEXT n663 (name="NITS Ext. ID", v=240001) : ->
-  inst NUM_SWITCHBOX n664 : a=n665_value, switch=n463_out -> out=n664_out
-  inst CONST n665 (value=1) : -> value=n665_value
-  inst COMPOSITE_READ_NUMBER n667 (channel=6) : composite=n466_composite -> out=n667_out
-  inst BLINKER n672 (on_time=5, off_time=5) : enable=n463_out -> out=n672_out
-  inst PULSE n673 (mode="rise") : a=n672_out -> out=n673_out
-  inst COMPOSITE_READ_BOOLEAN n674 (channel=13) : composite=n458_composite -> out=n674_out
-  inst COMPOSITE_READ_BOOLEAN n675 (channel=15) : composite=n458_composite -> out=n675_out
-  inst OR n676 : a=n674_out -> out=n676_out
-  inst OR n677 : a=n675_out -> out=n677_out
-  inst COMPOSITE_WRITE_NUMBER n686 (count=7, offset=1) : in1=n851_out, in2=n739_out, in3=n646_out, in4=n832_out, in5=n720_out, in6=n723_out, in7=n728_out, inc=n737_out -> out=n686_out
-  inst OR n687 : a=n673_out, b=n465_out -> out=n687_out
-  inst LUA n688 (script_ref="scripts/n688.lua") : composite=n689_out -> composite=n688_composite
-  inst COMPOSITE_WRITE_BOOLEAN n689 (count=1, offset=1) : in1=n463_out, inc="from NITS" -> out=n689_out
-  inst COMPOSITE_WRITE_NUMBER n690 (count=8, offset=1) : in1=n694_out, in2=n697_out, in3=n700_out, in4=n703_out, in5=n706_out, in6=n709_out, in7=n712_out, in8=n715_out, inc=n688_composite -> out=n690_out
-  inst LUA n691 (script_ref="scripts/n691.lua") : composite=n690_out -> composite=n691_composite
-  inst COMPOSITE_READ_BOOLEAN n692 (channel=1) : composite=n691_composite -> out=n692_out
-  inst COMPOSITE_READ_NUMBER n693 (channel=1) : composite=n691_composite -> out=n693_out
-  inst MEMORY_REGISTER n694 (reset_value=0) : set=n692_out, value=n693_out -> out=n694_out
-  inst COMPOSITE_READ_BOOLEAN n695 (channel=2) : composite=n691_composite -> out=n695_out
-  inst COMPOSITE_READ_NUMBER n696 (channel=2) : composite=n691_composite -> out=n696_out
-  inst MEMORY_REGISTER n697 (reset_value=0) : set=n695_out, value=n696_out -> out=n697_out
-  inst COMPOSITE_READ_BOOLEAN n698 (channel=3) : composite=n691_composite -> out=n698_out
-  inst COMPOSITE_READ_NUMBER n699 (channel=3) : composite=n691_composite -> out=n699_out
-  inst MEMORY_REGISTER n700 (reset_value=0) : set=n698_out, value=n699_out -> out=n700_out
-  inst COMPOSITE_READ_BOOLEAN n701 (channel=4) : composite=n691_composite -> out=n701_out
-  inst COMPOSITE_READ_NUMBER n702 (channel=4) : composite=n691_composite -> out=n702_out
-  inst MEMORY_REGISTER n703 (reset_value=0) : set=n701_out, value=n702_out -> out=n703_out
-  inst COMPOSITE_READ_BOOLEAN n704 (channel=5) : composite=n691_composite -> out=n704_out
-  inst COMPOSITE_READ_NUMBER n705 (channel=5) : composite=n691_composite -> out=n705_out
-  inst MEMORY_REGISTER n706 (reset_value=0) : set=n704_out, value=n705_out -> out=n706_out
-  inst COMPOSITE_READ_BOOLEAN n707 (channel=6) : composite=n691_composite -> out=n707_out
-  inst COMPOSITE_READ_NUMBER n708 (channel=6) : composite=n691_composite -> out=n708_out
-  inst MEMORY_REGISTER n709 (reset_value=0) : set=n707_out, value=n708_out -> out=n709_out
-  inst COMPOSITE_READ_BOOLEAN n710 (channel=7) : composite=n691_composite -> out=n710_out
-  inst COMPOSITE_READ_NUMBER n711 (channel=7) : composite=n691_composite -> out=n711_out
-  inst MEMORY_REGISTER n712 (reset_value=0) : set=n710_out, value=n711_out -> out=n712_out
-  inst COMPOSITE_READ_BOOLEAN n713 (channel=8) : composite=n691_composite -> out=n713_out
-  inst COMPOSITE_READ_NUMBER n714 (channel=8) : composite=n691_composite -> out=n714_out
-  inst MEMORY_REGISTER n715 (reset_value=0) : set=n713_out, value=n714_out -> out=n715_out
-  inst COMPOSITE_WRITE_NUMBER n717 (count=30, offset=1) : in1=n694_out, in2=n697_out, in3=n700_out, in4=n703_out, in5=n706_out, in6=n709_out, in7=n712_out, in8=n715_out, in9=n731_out, in10=n732_out, in11=n733_out, in12=n734_out, in13=n735_out, in27=n815_out, in28=n799_out, in29=n800_out, in30=n646_out -> out=n717_out
-  inst COMPOSITE_READ_BOOLEAN n718 (channel=1) : composite=n688_composite -> out=n718_out
-  inst COMPOSITE_READ_NUMBER n719 (channel=1) : composite=n688_composite -> out=n719_out
-  inst MEMORY_REGISTER n720 (reset_value=0) : set=n718_out, value=n719_out -> out=n720_out
-  inst COMPOSITE_READ_BOOLEAN n721 (channel=2) : composite=n688_composite -> out=n721_out
-  inst COMPOSITE_READ_NUMBER n722 (channel=2) : composite=n688_composite -> out=n722_out
-  inst MEMORY_REGISTER n723 (reset_value=0) : set=n721_out, value=n722_out -> out=n723_out
-  inst COMPOSITE_READ_NUMBER n724 (channel=4) : composite=n688_composite -> out=n724_out
-  inst MEMORY_REGISTER n725 (reset_value=0) : set=n721_out, value=n724_out -> out=n725_out
-  inst COMPOSITE_READ_BOOLEAN n726 (channel=3) : composite=n688_composite -> out=n726_out
-  inst COMPOSITE_READ_NUMBER n727 (channel=3) : composite=n688_composite -> out=n727_out
-  inst MEMORY_REGISTER n728 (reset_value=0) : set=n726_out, value=n727_out -> out=n728_out
-  inst COMPOSITE_READ_NUMBER n729 (channel=5) : composite=n688_composite -> out=n729_out
-  inst MEMORY_REGISTER n730 (reset_value=0) : set=n726_out, value=n729_out -> out=n730_out
-  inst FUNC_NUM_1 n731 (expression="x") : x=n720_out -> out=n731_out
-  inst FUNC_NUM_1 n732 (expression="x") : x=n723_out -> out=n732_out
-  inst FUNC_NUM_1 n733 (expression="x") : x=n728_out -> out=n733_out
-  inst FUNC_NUM_1 n734 (expression="x") : x=n725_out -> out=n734_out
-  inst FUNC_NUM_1 n735 (expression="x") : x=n730_out -> out=n735_out
-  inst NUMBER_TO_COMPOSITE n737 : number=n738_out -> out=n737_out
-  inst COMPOSITE_READ_NUMBER n738 (channel=7) : composite="Control Commands Type 3 front" -> out=n738_out
-  inst COMPOSITE_READ_NUMBER n739 (channel=6) : composite="Control Commands Type 3 front" -> out=n739_out
-  inst COMPOSITE_READ_BOOLEAN n740 (channel=2) : composite="Rolling Stock Status w/ Inertia Composite" -> out=n740_out
-  inst COMPOSITE_WRITE_NUMBER n741 (count=6, offset=4) : in1=n652_out, in2=n859_out, in3=n487_out, in4=n488_out, in5=n664_out, in6=n667_out, inc="Control Commands Type 3 front" -> out=n741_out
-  inst COMPOSITE_READ_NUMBER n742 (channel=3) : composite="Rolling Stock Status w/ Inertia Composite" -> out=n742_out
-  inst SR_LATCH n744 : r=n746_out, s=n748_out -> q=n744_q
-  inst COMPOSITE_READ_BOOLEAN n745 (channel=19) : composite=n688_composite -> out=n745_out
-  inst OR n746 : a=n745_out, b=n750_out -> out=n746_out
-  inst COMPOSITE_READ_BOOLEAN n747 (channel=20) : composite=n688_composite -> out=n747_out
-  inst OR n748 : a=n747_out, b=n749_out -> out=n748_out
-  inst COMPOSITE_READ_BOOLEAN n749 (channel=23) : composite=n466_composite -> out=n749_out
-  inst COMPOSITE_READ_BOOLEAN n750 (channel=24) : composite=n466_composite -> out=n750_out
-  inst SR_LATCH n751 : r=n753_out, s=n755_out -> q=n751_q
-  inst COMPOSITE_READ_BOOLEAN n752 (channel=21) : composite=n688_composite -> out=n752_out
-  inst OR n753 : a=n752_out, b=n757_out -> out=n753_out
-  inst COMPOSITE_READ_BOOLEAN n754 (channel=22) : composite=n688_composite -> out=n754_out
-  inst OR n755 : a=n754_out, b=n756_out -> out=n755_out
-  inst COMPOSITE_READ_BOOLEAN n756 (channel=19) : composite=n466_composite -> out=n756_out
-  inst COMPOSITE_READ_BOOLEAN n757 (channel=20) : composite=n466_composite -> out=n757_out
-  inst COMPOSITE_READ_BOOLEAN n758 (channel=16) : composite=n688_composite -> out=n758_out
-  inst COMPOSITE_READ_BOOLEAN n759 (channel=15) : composite=n688_composite -> out=n759_out
-  inst COMPOSITE_READ_BOOLEAN n762 (channel=6) : composite=n466_composite -> out=n762_out
-  inst COMPOSITE_READ_BOOLEAN n763 (channel=7) : composite=n466_composite -> out=n763_out
-  inst COMPOSITE_READ_BOOLEAN n764 (channel=14) : composite=n688_composite -> out=n764_out
-  inst COMPOSITE_READ_BOOLEAN n765 (channel=13) : composite=n688_composite -> out=n765_out
-  inst SR_LATCH n766 : r=n831_out, s=n770_out -> q=n766_q
-  inst COMPOSITE_READ_BOOLEAN n768 (channel=8) : composite=n737_out -> out=n768_out
-  inst COMPOSITE_READ_BOOLEAN n769 (channel=23) : composite=n688_composite -> out=n769_out
-  inst COMPOSITE_READ_BOOLEAN n770 (channel=24) : composite=n688_composite -> out=n770_out
-  inst SR_LATCH n771 : r=n773_out, s=n775_out -> q=n771_q
-  inst COMPOSITE_READ_BOOLEAN n772 (channel=17) : composite=n688_composite -> out=n772_out
-  inst OR n773 : a=n772_out, b=n777_out -> out=n773_out
-  inst COMPOSITE_READ_BOOLEAN n774 (channel=18) : composite=n688_composite -> out=n774_out
-  inst OR n775 : a=n774_out, b=n776_out -> out=n775_out
-  inst COMPOSITE_READ_BOOLEAN n776 (channel=25) : composite=n466_composite -> out=n776_out
-  inst COMPOSITE_READ_BOOLEAN n777 (channel=26) : composite=n466_composite -> out=n777_out
-  inst SR_LATCH n778 : r=n801_out, s=n802_out -> q=n778_q
-  inst SR_LATCH n779 : r=n804_out, s=n803_out -> q=n779_q
-  inst SR_LATCH n780 : r=n808_out, s=n807_out -> q=n780_q
-  inst SR_LATCH n781 : r=n809_out, s=n810_out -> not_q=n781_not_q
-  inst SR_LATCH n782 : r=n811_out, s=n812_out -> not_q=n782_not_q
-  inst SR_LATCH n783 : r=n814_out, s=n813_out -> q=n783_q, not_q=n783_not_q
-  inst COMPOSITE_READ_BOOLEAN n784 (channel=21) : composite=n466_composite -> out=n784_out
-  inst COMPOSITE_READ_BOOLEAN n785 (channel=22) : composite=n466_composite -> out=n785_out
-  inst COMPOSITE_READ_BOOLEAN n786 (channel=11) : composite=n688_composite -> out=n786_out
-  inst COMPOSITE_READ_BOOLEAN n787 (channel=12) : composite=n688_composite -> out=n787_out
-  inst COMPOSITE_READ_BOOLEAN n788 (channel=9) : composite=n688_composite -> out=n788_out
-  inst COMPOSITE_READ_BOOLEAN n789 (channel=10) : composite=n688_composite -> out=n789_out
-  inst AND n790 : a=n783_q -> out=n790_out
-  inst AND n791 : a=n783_not_q, b=n784_out -> out=n791_out
-  inst BOOL_FUNC_4 n792 (expression="x|y|z|w") : x=n766_q, y=n768_out, z=n793_out, w=n794_out -> out=n792_out
-  inst GREATER_THAN n793 : a=n734_out -> out=n793_out
-  inst GREATER_THAN n794 : a=n735_out -> out=n794_out
-  inst COMPOSITE_READ_NUMBER n799 (channel=2) : composite=n523_composite -> out=n799_out
-  inst COMPOSITE_READ_NUMBER n800 (channel=3) : composite=n523_composite -> out=n800_out
-  inst COMPOSITE_READ_BOOLEAN n801 (channel=19) : composite=n523_composite -> out=n801_out
-  inst COMPOSITE_READ_BOOLEAN n802 (channel=20) : composite=n523_composite -> out=n802_out
-  inst AND n803 : a=n781_not_q, b=n805_out -> out=n803_out
-  inst OR n804 : a=n806_out, b=n810_out -> out=n804_out
-  inst COMPOSITE_READ_BOOLEAN n805 (channel=22) : composite=n523_composite -> out=n805_out
-  inst COMPOSITE_READ_BOOLEAN n806 (channel=21) : composite=n523_composite -> out=n806_out
-  inst COMPOSITE_READ_BOOLEAN n807 (channel=18) : composite=n523_composite -> out=n807_out
-  inst COMPOSITE_READ_BOOLEAN n808 (channel=17) : composite=n523_composite -> out=n808_out
-  inst COMPOSITE_READ_BOOLEAN n809 (channel=2) : composite=n523_composite -> out=n809_out
-  inst COMPOSITE_READ_BOOLEAN n810 (channel=1) : composite=n523_composite -> out=n810_out
-  inst COMPOSITE_READ_BOOLEAN n811 (channel=4) : composite=n523_composite -> out=n811_out
-  inst COMPOSITE_READ_BOOLEAN n812 (channel=3) : composite=n523_composite -> out=n812_out
-  inst COMPOSITE_READ_BOOLEAN n813 (channel=6) : composite=n523_composite -> out=n813_out
-  inst COMPOSITE_READ_BOOLEAN n814 (channel=5) : composite=n523_composite -> out=n814_out
-  inst COMPOSITE_READ_NUMBER n815 (channel=1) : composite=n523_composite -> out=n815_out
-  inst PROPERTY_DROPDOWN n816 (items="[{\"l\":\"None\",\"value\":\"0\"},{\"l\":\"Front\",\"value\":\"2\"},{\"l\":\"Rear\",\"value\":\"1\"},{\"l\":\"Both\",\"value\":\"3\"}]", i=1, name="Cab") : -> out=n816_out
-  inst PROPERTY_DROPDOWN n817 (items="[{\"l\":\"None\",\"value\":\"0\"},{\"l\":\"Front only\",\"value\":\"2\"},{\"l\":\"Rear only\",\"value\":\"1\"},{\"l\":\"Both\",\"value\":\"3\"}]", name="Powered Axle") : -> out=n817_out
-  inst PROPERTY_DROPDOWN n818 (items="[{\"l\":\"0\",\"value\":\"0\"},{\"l\":\"1\",\"value\":\"1\"},{\"l\":\"2\",\"value\":\"2\"},{\"l\":\"3\",\"value\":\"3\"},{\"l\":\"4\",\"value\":\"4\"},{\"l\":\"5\",\"value\":\"5\"},{\"l\":\"6\",\"value\":\"6\"}]", i=3, name="Side doors") : -> out=n818_out
-  inst PROPERTY_DROPDOWN n820 (items="[{\"l\":\"None\",\"value\":\"0\"},{\"l\":\"Single arm inner\",\"value\":\"1\"},{\"l\":\"Single arm outer\",\"value\":\"2\"},{\"l\":\"Diamond\",\"value\":\"3\"}]", name="Front Pantograph") : -> out=n820_out
-  inst PROPERTY_DROPDOWN n821 (items="[{\"l\":\"None\",\"value\":\"0\"},{\"l\":\"Single arm inner\",\"value\":\"1\"},{\"l\":\"Single arm outer\",\"value\":\"2\"},{\"l\":\"Diamond\",\"value\":\"3\"}]", name="Rear Pantograph") : -> out=n821_out
-  inst PROPERTY_DROPDOWN n825 (items="[{\"l\":\"No\",\"value\":\"0\"},{\"l\":\"Yes\",\"value\":\"1\"}]", name="Double Decker") : -> out=n825_out
-  inst COMPOSITE_READ_BOOLEAN n828 (channel=31) : composite=n523_composite -> out=n828_out
-  inst COMPOSITE_READ_BOOLEAN n829 (channel=32) : composite=n523_composite -> out=n829_out
-  inst PULSE n830 (mode="rise") : a=n768_out -> out=n830_out
-  inst OR n831 : a=n769_out, b=n830_out -> out=n831_out
-  inst COMPOSITE_READ_NUMBER n832 (channel=6) : composite=n466_composite -> out=n832_out
-  inst COMPOSITE_READ_BOOLEAN n835 (channel=16) : composite=n523_composite -> out=n835_out
-  inst COMPOSITE_READ_BOOLEAN n836 (channel=15) : composite=n523_composite -> out=n836_out
-  inst COMPOSITE_READ_BOOLEAN n837 (channel=14) : composite=n523_composite -> out=n837_out
-  inst COMPOSITE_WRITE_BOOLEAN n841 (count=31, offset=2) : in1="Door Open (B)", in2="Door Open (B)", in3="Door Open (B)", in4="Door Open (B)", in5="Door Open (B)", in6="Door Open (B)", in7="Door Open (A)", in8="Door Open (A)", in9="Door Open (A)", in10="Door Open (A)", in11="Door Open (A)", in12="Door Open (A)", in13=n861_out, in14=n862_out, in15=n863_out, in16=n864_out, in17=n842_out, in18=n843_out, in19=n844_out, in20=n845_out, in21=n867_out, in22=n847_out, in23=n846_out, in24=n850_out, in25=n850_out, in26=n849_out, in27=n850_out, in28=n849_out, in29=n849_out, in30=n850_out, in31=n849_out -> out=n841_out
-  inst COMPOSITE_READ_BOOLEAN n842 (channel=11) : composite=n502_out -> out=n842_out
-  inst COMPOSITE_READ_BOOLEAN n843 (channel=2) : composite=n502_out -> out=n843_out
-  inst COMPOSITE_READ_BOOLEAN n844 (channel=3) : composite=n502_out -> out=n844_out
-  inst COMPOSITE_READ_BOOLEAN n845 (channel=10) : composite=n502_out -> out=n845_out
-  inst GREATER_THAN n846 : a=n859_out -> out=n846_out
-  inst LESS_THAN n847 : a=n859_out -> out=n847_out
-  inst CONST_BOOL n848 : -> out=n848_out
-  inst NOT n849 : a=n848_out -> out=n849_out
-  inst OR n850 : a=n848_out -> out=n850_out
-  inst COMPOSITE_TO_NUMBER n851 : composite=n841_out -> out=n851_out
-  inst LESS_THAN n855 : a="Battery", b=n856_value -> out=n855_out
-  inst CONST n856 (value=0.8) : -> value=n856_value
-  inst NUM_SWITCHBOX n859 : a=n742_out, switch=n860_out -> out=n859_out
-  inst COMPOSITE_READ_BOOLEAN n860 (channel=1) : composite=n868_out -> out=n860_out
-  inst COMPOSITE_READ_BOOLEAN n861 (channel=5) : composite="Rolling Stock Status w/ Inertia Composite" -> out=n861_out
-  inst COMPOSITE_READ_BOOLEAN n862 (channel=6) : composite="Rolling Stock Status w/ Inertia Composite" -> out=n862_out
-  inst COMPOSITE_READ_BOOLEAN n863 (channel=7) : composite="Rolling Stock Status w/ Inertia Composite" -> out=n863_out
-  inst COMPOSITE_READ_BOOLEAN n864 (channel=8) : composite="Rolling Stock Status w/ Inertia Composite" -> out=n864_out
-  inst OR n867 : a="SOS Button 1", b="SOS Button 2" -> out=n867_out, out="SOS Button"
-  inst COMPOSITE_WRITE_BOOLEAN n868 (count=2, offset=1) : in1=n869_out, in2=n647_out, inc="Inertia Composite" -> out=n868_out, out="Rolling Stock Settings"
-  inst GREATER_THAN n869 : a=n817_out -> out=n869_out
-  inst AND n872 : a=n463_out, b="CP Request" -> out=n872_out
+  # --- Configuration properties ---
+  inst PROPERTY_TEXT nits_ext_id_property (name="NITS Ext. ID", v=240001) : ->
+  inst PROPERTY_DROPDOWN cab_property (items="[{\"l\":\"None\",\"value\":\"0\"},{\"l\":\"Front\",\"value\":\"2\"},{\"l\":\"Rear\",\"value\":\"1\"},{\"l\":\"Both\",\"value\":\"3\"}]", i=1, name="Cab") : -> out=cab_property_out
+  inst PROPERTY_DROPDOWN powered_axle_property (items="[{\"l\":\"None\",\"value\":\"0\"},{\"l\":\"Front only\",\"value\":\"2\"},{\"l\":\"Rear only\",\"value\":\"1\"},{\"l\":\"Both\",\"value\":\"3\"}]", name="Powered Axle") : -> out=powered_axle_property_out
+  inst PROPERTY_DROPDOWN side_doors_property (items="[{\"l\":\"0\",\"value\":\"0\"},{\"l\":\"1\",\"value\":\"1\"},{\"l\":\"2\",\"value\":\"2\"},{\"l\":\"3\",\"value\":\"3\"},{\"l\":\"4\",\"value\":\"4\"},{\"l\":\"5\",\"value\":\"5\"},{\"l\":\"6\",\"value\":\"6\"}]", i=3, name="Side doors") : -> out=side_doors_property_out
+  inst PROPERTY_DROPDOWN front_pantograph_type_property (items="[{\"l\":\"None\",\"value\":\"0\"},{\"l\":\"Single arm inner\",\"value\":\"1\"},{\"l\":\"Single arm outer\",\"value\":\"2\"},{\"l\":\"Diamond\",\"value\":\"3\"}]", name="Front Pantograph") : -> out=front_pantograph_type_property_out
+  inst PROPERTY_DROPDOWN rear_pantograph_type_property (items="[{\"l\":\"None\",\"value\":\"0\"},{\"l\":\"Single arm inner\",\"value\":\"1\"},{\"l\":\"Single arm outer\",\"value\":\"2\"},{\"l\":\"Diamond\",\"value\":\"3\"}]", name="Rear Pantograph") : -> out=rear_pantograph_type_property_out
+  inst PROPERTY_DROPDOWN double_decker_property (items="[{\"l\":\"No\",\"value\":\"0\"},{\"l\":\"Yes\",\"value\":\"1\"}]", name="Double Decker") : -> out=double_decker_property_out
+  inst PROPERTY_TOGGLE car_count_direction_toggle_property (label="", on_label="Front is 1 / Up", off_label="Back is 1 / Down", n="Car count", v=true) : -> out=car_count_direction_toggle_property_out
+
+  # --- NITS RX: decode incoming NITS bus frame ---
+  inst LUA nits_rx_decoder_lua (script_ref="scripts/n466.lua") : composite="from NITS" -> composite=nits_rx_decoder_lua_composite
+  inst COMPOSITE_READ_BOOLEAN rx_addr_conflict_read (channel=13) : composite=nits_rx_decoder_lua_composite -> out=rx_addr_conflict_read_out
+  inst COMPOSITE_READ_BOOLEAN rx_addr_not_mine_read (channel=14) : composite=nits_rx_decoder_lua_composite -> out=rx_addr_not_mine_read_out
+  inst COMPOSITE_READ_BOOLEAN rx_addr_matched_read (channel=31) : composite=nits_rx_decoder_lua_composite -> out=rx_addr_matched_read_out
+  inst COMPOSITE_READ_BOOLEAN nits_rx_raw_passthrough_bit (channel=11) : composite="from NITS" -> out=nits_rx_raw_passthrough_bit_out
+  inst COMPOSITE_READ_BOOLEAN rx_decoded_op1_read (channel=1) : composite=nits_rx_decoder_lua_composite -> out=rx_decoded_op1_read_out
+
+  # --- Simple IF RX: pass consist status back to own car ---
+  inst OR simpleif_rx_status_bit : a=nits_rx_raw_passthrough_bit_out, b=rx_decoded_op1_read_out -> out=simpleif_rx_status_bit_out
+  inst COMPOSITE_WRITE_BOOLEAN simpleif_rx_bus_write (count=1, offset=1) : in1=simpleif_rx_status_bit_out, inc=nits_rx_decoder_lua_composite -> out="Simple IF RX"
+
+  # --- Address-match latch / local-mode gating ---
+  inst SR_LATCH ext_mode_latch : r=rx_addr_not_mine_read_out, s=rx_addr_matched_read_out -> q=ext_mode_latch_q
+  inst CAPACITOR local_mode_timer (charge_time=3, discharge_time=0) : enable=ext_mode_latch_q -> out=local_mode_timer_out
+
+  # --- Car position & consist size ---
+  inst COMPOSITE_READ_NUMBER front_car_count_read (channel=4) : composite=nits_rx_decoder_lua_composite -> out=front_car_count_read_out
+  inst COMPOSITE_READ_NUMBER last_car_count_read (channel=5) : composite=nits_rx_decoder_lua_composite -> out=last_car_count_read_out
+  inst NUM_SWITCHBOX car_count_switchbox : a=front_car_count_read_out, b=last_car_count_read_out, switch=car_count_direction_toggle_property_out -> out=car_count_switchbox_out
+  inst FUNC_NUM_1 car_position_number (expression="x+1") : x=car_count_switchbox_out -> out=car_position_number_out
+  inst COMPOSITE_READ_NUMBER total_car_count_for_nits_read (channel=6) : composite=nits_rx_decoder_lua_composite -> out=total_car_count_for_nits_read_out
+  inst COMPOSITE_READ_NUMBER total_car_count_for_door_calc_read (channel=6) : composite=nits_rx_decoder_lua_composite -> out=total_car_count_for_door_calc_read_out
+
+  # --- NITS TX: crash-detect watchdog / strobe ---
+  inst LUA nits_tx_encoder_lua (script_ref="scripts/n440.lua") : composite=nits_tx_command_write_out -> composite=nits_tx_encoder_lua_composite
+  inst COMPOSITE_READ_BOOLEAN nits_tx_watchdog_read (channel=1) : composite=nits_tx_encoder_lua_composite -> out=nits_tx_watchdog_read_out
+  inst NOT nits_tx_watchdog_not : a=nits_tx_watchdog_read_out -> out=nits_tx_watchdog_not_out
+  inst XOR nits_tx_watchdog_xor : a=nits_tx_watchdog_read_out, b=nits_tx_watchdog_not_out -> out=nits_tx_watchdog_xor_out
+  inst NOT nits_tx_watchdog_xor_not : a=nits_tx_watchdog_xor_out -> out=nits_tx_watchdog_xor_not_out
+  inst CAPACITOR nits_tx_strobe_cap (charge_time=0, discharge_time=0.1) : enable=nits_tx_watchdog_xor_not_out -> out=nits_tx_strobe_cap_out
+
+  # --- Control Commands Type 3 (front): direct reads ---
+  inst COMPOSITE_READ_BOOLEAN cc3_front_direction_select_front_read (channel=6) : composite="Control Commands Type 3 front" -> out=cc3_front_direction_select_front_read_out
+  inst COMPOSITE_READ_BOOLEAN cc3_front_emergency_brake_read (channel=1) : composite="Control Commands Type 3 front" -> out=cc3_front_emergency_brake_read_out
+  inst COMPOSITE_READ_BOOLEAN cc3_front_direction_select_back_read (channel=7) : composite="Control Commands Type 3 front" -> out=cc3_front_direction_select_back_read_out
+  inst COMPOSITE_READ_BOOLEAN cc3_front_direction_select_conflict_read (channel=9) : composite="Control Commands Type 3 front" -> out=cc3_front_direction_select_conflict_read_out
+  inst COMPOSITE_READ_BOOLEAN cc3_front_id_tx_flag_read (channel=32) : composite="Control Commands Type 3 front" -> out=cc3_front_id_tx_flag_read_out
+  inst NOT to_nits_reserved_bit_fixed_value : a=to_nits_reserved_bit_base_const_out -> out=to_nits_reserved_bit_fixed_value_out
+  inst CONST_BOOL to_nits_reserved_bit_base_const : -> out=to_nits_reserved_bit_base_const_out
+
+  # --- Car fault aggregation ---
+  inst COMPOSITE_READ_BOOLEAN motor_lua_fault_read (channel=1) : composite="Rolling Stock Status w/ Inertia Composite" -> out=motor_lua_fault_read_out
+  inst COMPOSITE_READ_BOOLEAN fault_info_4_read (channel=2) : composite="Rolling Stock Status w/ Inertia Composite" -> out=fault_info_4_read_out
+  inst LESS_THAN low_battery_check : a="Battery", b=low_battery_threshold_const_value -> out=low_battery_check_out
+  inst CONST low_battery_threshold_const (value=0.8) : -> value=low_battery_threshold_const_value
+  inst OR sos_button_or : a="SOS Button 1", b="SOS Button 2" -> out=sos_button_or_out, out="SOS Button"
+  inst BOOL_FUNC_4 car_fault_report_or (expression="x|y|z|w") : x=sos_button_or_out, y=low_battery_check_out, z=motor_lua_fault_read_out, w=fault_info_4_read_out -> out=car_fault_report_or_out
+
+  # --- Rolling Stock Settings / motor current gating ---
+  inst COMPOSITE_READ_NUMBER brake_cylinder_pressure_read (channel=2) : composite="Rolling Stock Status w/ Inertia Composite" -> out=brake_cylinder_pressure_read_out
+  inst COMPOSITE_READ_NUMBER motor_current_read (channel=3) : composite="Rolling Stock Status w/ Inertia Composite" -> out=motor_current_read_out
+  inst GREATER_THAN powered_axle_present_check : a=powered_axle_property_out -> out=powered_axle_present_check_out
+  inst COMPOSITE_WRITE_BOOLEAN rolling_stock_settings_write (count=2, offset=1) : in1=powered_axle_present_check_out, in2=car_count_direction_toggle_property_out, inc="Inertia Composite" -> out=rolling_stock_settings_write_out, out="Rolling Stock Settings"
+  inst COMPOSITE_READ_BOOLEAN powered_axle_present_readback (channel=1) : composite=rolling_stock_settings_write_out -> out=powered_axle_present_readback_out
+  inst NUM_SWITCHBOX motor_current_gated_by_axle : a=motor_current_read_out, switch=powered_axle_present_readback_out -> out=motor_current_gated_by_axle_out
+
+  # --- Extended Commands: door status decode & memory register bus ---
+  inst LUA door_status_decoder_lua (script_ref="scripts/n688.lua") : composite=door_decoder_input_write_out -> composite=door_status_decoder_lua_composite
+  inst COMPOSITE_WRITE_BOOLEAN door_decoder_input_write (count=1, offset=1) : in1=local_mode_timer_out, inc="from NITS" -> out=door_decoder_input_write_out
+  inst COMPOSITE_WRITE_NUMBER memory_register_bus_input_write (count=8, offset=1) : in1=memory_register_1_out, in2=memory_register_2_out, in3=memory_register_3_out, in4=memory_register_4_out, in5=memory_register_5_out, in6=memory_register_6_out, in7=memory_register_7_out, in8=memory_register_8_out, inc=door_status_decoder_lua_composite -> out=memory_register_bus_input_write_out
+  inst LUA memory_register_bus_lua (script_ref="scripts/n691.lua") : composite=memory_register_bus_input_write_out -> composite=memory_register_bus_lua_composite
+  inst COMPOSITE_READ_BOOLEAN memory_register_1_set_read (channel=1) : composite=memory_register_bus_lua_composite -> out=memory_register_1_set_read_out
+  inst COMPOSITE_READ_NUMBER memory_register_1_value_read (channel=1) : composite=memory_register_bus_lua_composite -> out=memory_register_1_value_read_out
+  inst MEMORY_REGISTER memory_register_1 (reset_value=0) : set=memory_register_1_set_read_out, value=memory_register_1_value_read_out -> out=memory_register_1_out
+  inst COMPOSITE_READ_BOOLEAN memory_register_2_set_read (channel=2) : composite=memory_register_bus_lua_composite -> out=memory_register_2_set_read_out
+  inst COMPOSITE_READ_NUMBER memory_register_2_value_read (channel=2) : composite=memory_register_bus_lua_composite -> out=memory_register_2_value_read_out
+  inst MEMORY_REGISTER memory_register_2 (reset_value=0) : set=memory_register_2_set_read_out, value=memory_register_2_value_read_out -> out=memory_register_2_out
+  inst COMPOSITE_READ_BOOLEAN memory_register_3_set_read (channel=3) : composite=memory_register_bus_lua_composite -> out=memory_register_3_set_read_out
+  inst COMPOSITE_READ_NUMBER memory_register_3_value_read (channel=3) : composite=memory_register_bus_lua_composite -> out=memory_register_3_value_read_out
+  inst MEMORY_REGISTER memory_register_3 (reset_value=0) : set=memory_register_3_set_read_out, value=memory_register_3_value_read_out -> out=memory_register_3_out
+  inst COMPOSITE_READ_BOOLEAN memory_register_4_set_read (channel=4) : composite=memory_register_bus_lua_composite -> out=memory_register_4_set_read_out
+  inst COMPOSITE_READ_NUMBER memory_register_4_value_read (channel=4) : composite=memory_register_bus_lua_composite -> out=memory_register_4_value_read_out
+  inst MEMORY_REGISTER memory_register_4 (reset_value=0) : set=memory_register_4_set_read_out, value=memory_register_4_value_read_out -> out=memory_register_4_out
+  inst COMPOSITE_READ_BOOLEAN memory_register_5_set_read (channel=5) : composite=memory_register_bus_lua_composite -> out=memory_register_5_set_read_out
+  inst COMPOSITE_READ_NUMBER memory_register_5_value_read (channel=5) : composite=memory_register_bus_lua_composite -> out=memory_register_5_value_read_out
+  inst MEMORY_REGISTER memory_register_5 (reset_value=0) : set=memory_register_5_set_read_out, value=memory_register_5_value_read_out -> out=memory_register_5_out
+  inst COMPOSITE_READ_BOOLEAN memory_register_6_set_read (channel=6) : composite=memory_register_bus_lua_composite -> out=memory_register_6_set_read_out
+  inst COMPOSITE_READ_NUMBER memory_register_6_value_read (channel=6) : composite=memory_register_bus_lua_composite -> out=memory_register_6_value_read_out
+  inst MEMORY_REGISTER memory_register_6 (reset_value=0) : set=memory_register_6_set_read_out, value=memory_register_6_value_read_out -> out=memory_register_6_out
+  inst COMPOSITE_READ_BOOLEAN memory_register_7_set_read (channel=7) : composite=memory_register_bus_lua_composite -> out=memory_register_7_set_read_out
+  inst COMPOSITE_READ_NUMBER memory_register_7_value_read (channel=7) : composite=memory_register_bus_lua_composite -> out=memory_register_7_value_read_out
+  inst MEMORY_REGISTER memory_register_7 (reset_value=0) : set=memory_register_7_set_read_out, value=memory_register_7_value_read_out -> out=memory_register_7_out
+  inst COMPOSITE_READ_BOOLEAN memory_register_8_set_read (channel=8) : composite=memory_register_bus_lua_composite -> out=memory_register_8_set_read_out
+  inst COMPOSITE_READ_NUMBER memory_register_8_value_read (channel=8) : composite=memory_register_bus_lua_composite -> out=memory_register_8_value_read_out
+  inst MEMORY_REGISTER memory_register_8 (reset_value=0) : set=memory_register_8_set_read_out, value=memory_register_8_value_read_out -> out=memory_register_8_out
+  inst COMPOSITE_READ_BOOLEAN door_mode_ready_read (channel=1) : composite=door_status_decoder_lua_composite -> out=door_mode_ready_read_out
+  inst COMPOSITE_READ_NUMBER door_mode_value_read (channel=1) : composite=door_status_decoder_lua_composite -> out=door_mode_value_read_out
+  inst MEMORY_REGISTER door_mode_register (reset_value=0) : set=door_mode_ready_read_out, value=door_mode_value_read_out -> out=door_mode_register_out
+  inst COMPOSITE_READ_BOOLEAN doorcut_front_ready_read (channel=2) : composite=door_status_decoder_lua_composite -> out=doorcut_front_ready_read_out
+  inst COMPOSITE_READ_NUMBER doorcut_front_value_read (channel=2) : composite=door_status_decoder_lua_composite -> out=doorcut_front_value_read_out
+  inst MEMORY_REGISTER doorcut_front_register (reset_value=0) : set=doorcut_front_ready_read_out, value=doorcut_front_value_read_out -> out=doorcut_front_register_out
+  inst COMPOSITE_READ_NUMBER doorcut_front_local_value_read (channel=4) : composite=door_status_decoder_lua_composite -> out=doorcut_front_local_value_read_out
+  inst MEMORY_REGISTER doorcut_front_local_register (reset_value=0) : set=doorcut_front_ready_read_out, value=doorcut_front_local_value_read_out -> out=doorcut_front_local_register_out
+  inst COMPOSITE_READ_BOOLEAN doorcut_back_ready_read (channel=3) : composite=door_status_decoder_lua_composite -> out=doorcut_back_ready_read_out
+  inst COMPOSITE_READ_NUMBER doorcut_back_value_read (channel=3) : composite=door_status_decoder_lua_composite -> out=doorcut_back_value_read_out
+  inst MEMORY_REGISTER doorcut_back_register (reset_value=0) : set=doorcut_back_ready_read_out, value=doorcut_back_value_read_out -> out=doorcut_back_register_out
+  inst COMPOSITE_READ_NUMBER doorcut_back_local_value_read (channel=5) : composite=door_status_decoder_lua_composite -> out=doorcut_back_local_value_read_out
+  inst MEMORY_REGISTER doorcut_back_local_register (reset_value=0) : set=doorcut_back_ready_read_out, value=doorcut_back_local_value_read_out -> out=doorcut_back_local_register_out
+  inst FUNC_NUM_1 door_mode_passthrough (expression="x") : x=door_mode_register_out -> out=door_mode_passthrough_out
+  inst FUNC_NUM_1 doorcut_front_passthrough (expression="x") : x=doorcut_front_register_out -> out=doorcut_front_passthrough_out
+  inst FUNC_NUM_1 doorcut_back_passthrough (expression="x") : x=doorcut_back_register_out -> out=doorcut_back_passthrough_out
+  inst FUNC_NUM_1 doorcut_front_local_passthrough (expression="x") : x=doorcut_front_local_register_out -> out=doorcut_front_local_passthrough_out
+  inst FUNC_NUM_1 doorcut_back_local_passthrough (expression="x") : x=doorcut_back_local_register_out -> out=doorcut_back_local_passthrough_out
+
+  # --- Extended Commands: per-car info packer (consist broadcast decode) ---
+  inst LUA car_info_packer_lua (script_ref="scripts/n523.lua") : composite=car_info_packer_input_write_out -> composite=car_info_packer_lua_composite
+  inst COMPOSITE_WRITE_BOOLEAN car_info_packer_input_write (count=1, offset=32) : in1=local_mode_timer_out, inc="from NITS" -> out=car_info_packer_input_write_out
+  inst COMPOSITE_READ_NUMBER packed_car_power_brake_number_read (channel=1) : composite=car_info_packer_lua_composite -> out=packed_car_power_brake_number_read_out
+  inst COMPOSITE_READ_NUMBER packed_car_fault_status_number_read (channel=2) : composite=car_info_packer_lua_composite -> out=packed_car_fault_status_number_read_out
+  inst COMPOSITE_READ_NUMBER packed_car_door_status_number_read (channel=3) : composite=car_info_packer_lua_composite -> out=packed_car_door_status_number_read_out
+  inst COMPOSITE_READ_BOOLEAN front_neighbor_car_isolated_read (channel=31) : composite=car_info_packer_lua_composite -> out=front_neighbor_car_isolated_read_out
+  inst COMPOSITE_READ_BOOLEAN rear_neighbor_car_isolated_read (channel=32) : composite=car_info_packer_lua_composite -> out=rear_neighbor_car_isolated_read_out
+  inst COMPOSITE_READ_BOOLEAN cross_seat_shiokata_remote_read (channel=16) : composite=car_info_packer_lua_composite -> out=cross_seat_shiokata_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN cross_seat_suhou_remote_read (channel=15) : composite=car_info_packer_lua_composite -> out=cross_seat_suhou_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN long_seat_remote_read (channel=14) : composite=car_info_packer_lua_composite -> out=long_seat_remote_read_out
+
+  # --- Extended Commands: internal latches (room light / info display / pantograph / heater / brake boost / CP / high-accel / SIV / chime / door / isolation) ---
+  inst SR_LATCH room_light_latch : r=room_light_off_or_out, s=room_light_on_or_out -> q=room_light_latch_q
+  inst COMPOSITE_READ_BOOLEAN room_light_off_local_read (channel=19) : composite=door_status_decoder_lua_composite -> out=room_light_off_local_read_out
+  inst OR room_light_off_or : a=room_light_off_local_read_out, b=room_light_off_remote_read_out -> out=room_light_off_or_out
+  inst COMPOSITE_READ_BOOLEAN room_light_on_local_read (channel=20) : composite=door_status_decoder_lua_composite -> out=room_light_on_local_read_out
+  inst OR room_light_on_or : a=room_light_on_local_read_out, b=room_light_on_remote_read_out -> out=room_light_on_or_out
+  inst COMPOSITE_READ_BOOLEAN room_light_on_remote_read (channel=23) : composite=nits_rx_decoder_lua_composite -> out=room_light_on_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN room_light_off_remote_read (channel=24) : composite=nits_rx_decoder_lua_composite -> out=room_light_off_remote_read_out
+  inst SR_LATCH passenger_info_display_latch : r=passenger_info_off_or_out, s=passenger_info_on_or_out -> q=passenger_info_display_latch_q
+  inst COMPOSITE_READ_BOOLEAN passenger_info_off_local_read (channel=21) : composite=door_status_decoder_lua_composite -> out=passenger_info_off_local_read_out
+  inst OR passenger_info_off_or : a=passenger_info_off_local_read_out, b=passenger_info_off_remote_read_out -> out=passenger_info_off_or_out
+  inst COMPOSITE_READ_BOOLEAN passenger_info_on_local_read (channel=22) : composite=door_status_decoder_lua_composite -> out=passenger_info_on_local_read_out
+  inst OR passenger_info_on_or : a=passenger_info_on_local_read_out, b=passenger_info_on_remote_read_out -> out=passenger_info_on_or_out
+  inst COMPOSITE_READ_BOOLEAN passenger_info_on_remote_read (channel=19) : composite=nits_rx_decoder_lua_composite -> out=passenger_info_on_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN passenger_info_off_remote_read (channel=20) : composite=nits_rx_decoder_lua_composite -> out=passenger_info_off_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN front_pantograph_lock_local_read (channel=16) : composite=door_status_decoder_lua_composite -> out=front_pantograph_lock_local_read_out
+  inst COMPOSITE_READ_BOOLEAN front_pantograph_raise_lower_local_read (channel=15) : composite=door_status_decoder_lua_composite -> out=front_pantograph_raise_lower_local_read_out
+  inst COMPOSITE_READ_BOOLEAN pantograph_raise_signal_read (channel=6) : composite=nits_rx_decoder_lua_composite -> out=pantograph_raise_signal_read_out
+  inst COMPOSITE_READ_BOOLEAN pantograph_lower_signal_read (channel=7) : composite=nits_rx_decoder_lua_composite -> out=pantograph_lower_signal_read_out
+  inst COMPOSITE_READ_BOOLEAN rear_pantograph_lock_local_read (channel=14) : composite=door_status_decoder_lua_composite -> out=rear_pantograph_lock_local_read_out
+  inst COMPOSITE_READ_BOOLEAN rear_pantograph_raise_lower_local_read (channel=13) : composite=door_status_decoder_lua_composite -> out=rear_pantograph_raise_lower_local_read_out
+  inst SR_LATCH isolate_via_neighbor_latch : r=isolate_via_neighbor_reset_or_out, s=isolate_via_neighbor_start_read_out -> q=isolate_via_neighbor_latch_q
+  inst COMPOSITE_READ_BOOLEAN own_car_isolate_direct_read (channel=8) : composite=cc3_ext_packed_bool_to_composite_out -> out=own_car_isolate_direct_read_out
+  inst COMPOSITE_READ_BOOLEAN isolate_via_neighbor_end_read (channel=23) : composite=door_status_decoder_lua_composite -> out=isolate_via_neighbor_end_read_out
+  inst COMPOSITE_READ_BOOLEAN isolate_via_neighbor_start_read (channel=24) : composite=door_status_decoder_lua_composite -> out=isolate_via_neighbor_start_read_out
+  inst PULSE own_car_isolate_direct_rise_pulse (mode="rise") : a=own_car_isolate_direct_read_out -> out=own_car_isolate_direct_rise_pulse_out
+  inst OR isolate_via_neighbor_reset_or : a=isolate_via_neighbor_end_read_out, b=own_car_isolate_direct_rise_pulse_out -> out=isolate_via_neighbor_reset_or_out
+  inst SR_LATCH heater_latch : r=heater_off_or_out, s=heater_on_or_out -> q=heater_latch_q
+  inst COMPOSITE_READ_BOOLEAN heater_off_local_read (channel=17) : composite=door_status_decoder_lua_composite -> out=heater_off_local_read_out
+  inst OR heater_off_or : a=heater_off_local_read_out, b=heater_off_remote_read_out -> out=heater_off_or_out
+  inst COMPOSITE_READ_BOOLEAN heater_on_local_read (channel=18) : composite=door_status_decoder_lua_composite -> out=heater_on_local_read_out
+  inst OR heater_on_or : a=heater_on_local_read_out, b=heater_on_remote_read_out -> out=heater_on_or_out
+  inst COMPOSITE_READ_BOOLEAN heater_on_remote_read (channel=25) : composite=nits_rx_decoder_lua_composite -> out=heater_on_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN heater_off_remote_read (channel=26) : composite=nits_rx_decoder_lua_composite -> out=heater_off_remote_read_out
+  inst SR_LATCH brake_boost_latch : r=brake_boost_end_remote_read_out, s=brake_boost_start_remote_read_out -> q=brake_boost_latch_q
+  inst COMPOSITE_READ_BOOLEAN brake_boost_end_remote_read (channel=19) : composite=car_info_packer_lua_composite -> out=brake_boost_end_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN brake_boost_start_remote_read (channel=20) : composite=car_info_packer_lua_composite -> out=brake_boost_start_remote_read_out
+  inst SR_LATCH cp_running_latch : r=cp_running_reset_or_out, s=cp_running_set_and_out -> q=cp_running_latch_q
+  inst AND cp_running_set_and : a=cp_start_prohibit_latch_not_q, b=cp_start_remote_read_out -> out=cp_running_set_and_out
+  inst OR cp_running_reset_or : a=cp_stop_remote_read_out, b=cp_start_prohibit_remote_read_out -> out=cp_running_reset_or_out
+  inst COMPOSITE_READ_BOOLEAN cp_start_remote_read (channel=22) : composite=car_info_packer_lua_composite -> out=cp_start_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN cp_stop_remote_read (channel=21) : composite=car_info_packer_lua_composite -> out=cp_stop_remote_read_out
+  inst SR_LATCH cp_start_prohibit_latch : r=cp_start_permit_remote_read_out, s=cp_start_prohibit_remote_read_out -> not_q=cp_start_prohibit_latch_not_q
+  inst COMPOSITE_READ_BOOLEAN cp_start_permit_remote_read (channel=2) : composite=car_info_packer_lua_composite -> out=cp_start_permit_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN cp_start_prohibit_remote_read (channel=1) : composite=car_info_packer_lua_composite -> out=cp_start_prohibit_remote_read_out
+  inst SR_LATCH high_accel_latch : r=high_accel_end_remote_read_out, s=high_accel_start_remote_read_out -> q=high_accel_latch_q
+  inst COMPOSITE_READ_BOOLEAN high_accel_start_remote_read (channel=18) : composite=car_info_packer_lua_composite -> out=high_accel_start_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN high_accel_end_remote_read (channel=17) : composite=car_info_packer_lua_composite -> out=high_accel_end_remote_read_out
+  inst SR_LATCH siv_permission_latch : r=siv_running_remote_read_out, s=siv_stopped_remote_read_out -> not_q=siv_permission_latch_not_q
+  inst COMPOSITE_READ_BOOLEAN siv_running_remote_read (channel=4) : composite=car_info_packer_lua_composite -> out=siv_running_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN siv_stopped_remote_read (channel=3) : composite=car_info_packer_lua_composite -> out=siv_stopped_remote_read_out
+  inst SR_LATCH chime_type_select_latch : r=chime_select_lower_remote_read_out, s=chime_select_upper_remote_read_out -> q=chime_type_select_latch_q, not_q=chime_type_select_latch_not_q
+  inst COMPOSITE_READ_BOOLEAN chime_select_upper_remote_read (channel=6) : composite=car_info_packer_lua_composite -> out=chime_select_upper_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN chime_select_lower_remote_read (channel=5) : composite=car_info_packer_lua_composite -> out=chime_select_lower_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN chime_start_remote_read (channel=21) : composite=nits_rx_decoder_lua_composite -> out=chime_start_remote_read_out
+  inst COMPOSITE_READ_BOOLEAN chime_stop_remote_read (channel=22) : composite=nits_rx_decoder_lua_composite -> out=chime_stop_remote_read_out
+  inst AND traffic_bureau_chime_gate_and : a=chime_type_select_latch_q -> out=traffic_bureau_chime_gate_and_out
+  inst AND chuso_chime_gate_and : a=chime_type_select_latch_not_q, b=chime_start_remote_read_out -> out=chuso_chime_gate_and_out
+  inst COMPOSITE_READ_BOOLEAN door_open_b_local_read (channel=11) : composite=door_status_decoder_lua_composite -> out=door_open_b_local_read_out
+  inst COMPOSITE_READ_BOOLEAN door_close_b_local_read (channel=12) : composite=door_status_decoder_lua_composite -> out=door_close_b_local_read_out
+  inst COMPOSITE_READ_BOOLEAN door_open_a_local_read (channel=9) : composite=door_status_decoder_lua_composite -> out=door_open_a_local_read_out
+  inst COMPOSITE_READ_BOOLEAN door_close_a_local_read (channel=10) : composite=door_status_decoder_lua_composite -> out=door_close_a_local_read_out
+  inst BOOL_FUNC_4 own_car_isolation_or (expression="x|y|z|w") : x=isolate_via_neighbor_latch_q, y=own_car_isolate_direct_read_out, z=doorcut_front_local_isolate_check_out, w=doorcut_back_local_isolate_check_out -> out=own_car_isolation_or_out
+  inst GREATER_THAN doorcut_front_local_isolate_check : a=doorcut_front_local_passthrough_out -> out=doorcut_front_local_isolate_check_out
+  inst GREATER_THAN doorcut_back_local_isolate_check : a=doorcut_back_local_passthrough_out -> out=doorcut_back_local_isolate_check_out
+
+  # --- Extended Commands: final composite assembly ---
+  inst COMPOSITE_WRITE_NUMBER extended_commands_number_write (count=30, offset=1) : in1=memory_register_1_out, in2=memory_register_2_out, in3=memory_register_3_out, in4=memory_register_4_out, in5=memory_register_5_out, in6=memory_register_6_out, in7=memory_register_7_out, in8=memory_register_8_out, in9=door_mode_passthrough_out, in10=doorcut_front_passthrough_out, in11=doorcut_back_passthrough_out, in12=doorcut_front_local_passthrough_out, in13=doorcut_back_local_passthrough_out, in27=packed_car_power_brake_number_read_out, in28=packed_car_fault_status_number_read_out, in29=packed_car_door_status_number_read_out, in30=car_position_number_out -> out=extended_commands_number_write_out
+  inst COMPOSITE_WRITE_BOOLEAN extended_commands_bool_write (count=32, offset=1) : in1=local_mode_timer_out, in2=room_light_latch_q, in3=passenger_info_display_latch_q, in4=front_pantograph_lock_local_read_out, in5=front_pantograph_raise_lower_local_read_out, in6=pantograph_raise_signal_read_out, in7=pantograph_lower_signal_read_out, in8=rear_pantograph_lock_local_read_out, in9=rear_pantograph_raise_lower_local_read_out, in10=own_car_isolation_or_out, in11=heater_latch_q, in12=brake_boost_latch_q, in13=cp_running_latch_q, in14=high_accel_latch_q, in15=cp_start_prohibit_latch_not_q, in16=siv_permission_latch_not_q, in17=cross_seat_shiokata_remote_read_out, in18=cross_seat_suhou_remote_read_out, in19=long_seat_remote_read_out, in20=traffic_bureau_chime_gate_and_out, in21=chuso_chime_gate_and_out, in22=chime_stop_remote_read_out, in27=door_open_b_local_read_out, in28=door_close_b_local_read_out, in29=door_open_a_local_read_out, in30=door_close_a_local_read_out, in31=front_neighbor_car_isolated_read_out, in32=rear_neighbor_car_isolated_read_out, inc=extended_commands_number_write_out -> out=extended_commands_bool_write_out, out="Extended Commands RX"
+
+  # --- Car Status (0x4B) composite for Simple IF TX ---
+  inst COMPOSITE_READ_BOOLEAN pantograph1_lock_status_read (channel=5) : composite="Rolling Stock Status w/ Inertia Composite" -> out=pantograph1_lock_status_read_out
+  inst COMPOSITE_READ_BOOLEAN pantograph1_raised_status_read (channel=6) : composite="Rolling Stock Status w/ Inertia Composite" -> out=pantograph1_raised_status_read_out
+  inst COMPOSITE_READ_BOOLEAN pantograph2_lock_status_read (channel=7) : composite="Rolling Stock Status w/ Inertia Composite" -> out=pantograph2_lock_status_read_out
+  inst COMPOSITE_READ_BOOLEAN pantograph2_raised_status_read (channel=8) : composite="Rolling Stock Status w/ Inertia Composite" -> out=pantograph2_raised_status_read_out
+  inst COMPOSITE_READ_BOOLEAN heater_latch_readback (channel=11) : composite=extended_commands_bool_write_out -> out=heater_latch_readback_out
+  inst COMPOSITE_READ_BOOLEAN room_light_latch_readback (channel=2) : composite=extended_commands_bool_write_out -> out=room_light_latch_readback_out
+  inst COMPOSITE_READ_BOOLEAN passenger_info_display_latch_readback (channel=3) : composite=extended_commands_bool_write_out -> out=passenger_info_display_latch_readback_out
+  inst COMPOSITE_READ_BOOLEAN own_car_isolation_readback (channel=10) : composite=extended_commands_bool_write_out -> out=own_car_isolation_readback_out
+  inst GREATER_THAN powering_check : a=motor_current_gated_by_axle_out -> out=powering_check_out
+  inst LESS_THAN regen_check : a=motor_current_gated_by_axle_out -> out=regen_check_out
+  inst CONST_BOOL pantograph_status_placeholder_const : -> out=pantograph_status_placeholder_const_out
+  inst NOT pantograph_status_placeholder_true : a=pantograph_status_placeholder_const_out -> out=pantograph_status_placeholder_true_out
+  inst OR pantograph_status_placeholder_false : a=pantograph_status_placeholder_const_out -> out=pantograph_status_placeholder_false_out
+  inst COMPOSITE_WRITE_BOOLEAN car_status_bool_write (count=31, offset=2) : in1="Door Open (B)", in2="Door Open (B)", in3="Door Open (B)", in4="Door Open (B)", in5="Door Open (B)", in6="Door Open (B)", in7="Door Open (A)", in8="Door Open (A)", in9="Door Open (A)", in10="Door Open (A)", in11="Door Open (A)", in12="Door Open (A)", in13=pantograph1_lock_status_read_out, in14=pantograph1_raised_status_read_out, in15=pantograph2_lock_status_read_out, in16=pantograph2_raised_status_read_out, in17=heater_latch_readback_out, in18=room_light_latch_readback_out, in19=passenger_info_display_latch_readback_out, in20=own_car_isolation_readback_out, in21=sos_button_or_out, in22=regen_check_out, in23=powering_check_out, in24=pantograph_status_placeholder_false_out, in25=pantograph_status_placeholder_false_out, in26=pantograph_status_placeholder_true_out, in27=pantograph_status_placeholder_false_out, in28=pantograph_status_placeholder_true_out, in29=pantograph_status_placeholder_true_out, in30=pantograph_status_placeholder_false_out, in31=pantograph_status_placeholder_true_out -> out=car_status_bool_write_out
+  inst COMPOSITE_TO_NUMBER car_status_number_encode : composite=car_status_bool_write_out -> out=car_status_number_encode_out
+
+  # --- Simple IF TX: encode own status to NITS bus ---
+  inst COMPOSITE_READ_NUMBER cc3_ext_packed_bool_number_read (channel=7) : composite="Control Commands Type 3 front" -> out=cc3_ext_packed_bool_number_read_out
+  inst COMPOSITE_READ_NUMBER cc3_ext_0x4c_info_read (channel=6) : composite="Control Commands Type 3 front" -> out=cc3_ext_0x4c_info_read_out
+  inst NUMBER_TO_COMPOSITE cc3_ext_packed_bool_to_composite : number=cc3_ext_packed_bool_number_read_out -> out=cc3_ext_packed_bool_to_composite_out
+  inst COMPOSITE_WRITE_NUMBER simpleif_tx_number_write (count=7, offset=1) : in1=car_status_number_encode_out, in2=cc3_ext_0x4c_info_read_out, in3=car_position_number_out, in4=total_car_count_for_door_calc_read_out, in5=door_mode_register_out, in6=doorcut_front_register_out, in7=doorcut_back_register_out, inc=cc3_ext_packed_bool_to_composite_out -> out=simpleif_tx_number_write_out
+  inst BLINKER local_mode_blinker_5s (on_time=5, off_time=5) : enable=local_mode_timer_out -> out=local_mode_blinker_5s_out
+  inst PULSE local_mode_blinker_rise_pulse (mode="rise") : a=local_mode_blinker_5s_out -> out=local_mode_blinker_rise_pulse_out
+  inst OR cp_command_or : a=local_mode_blinker_rise_pulse_out, b=rx_addr_matched_read_out -> out=cp_command_or_out
+  inst AND cp_request_and_local_mode_and : a=local_mode_timer_out, b="CP Request" -> out=cp_request_and_local_mode_and_out
+  inst CONST nits_ext_enabled_const_one (value=1) : -> value=nits_ext_enabled_const_one_value
+  inst NUM_SWITCHBOX nits_ext_enabled_flag_number : a=nits_ext_enabled_const_one_value, switch=local_mode_timer_out -> out=nits_ext_enabled_flag_number_out
+  inst COMPOSITE_WRITE_BOOLEAN simpleif_tx_encoder_input_write (count=8, offset=16) : in1=local_mode_timer_out, in3=cc3_front_id_tx_flag_read_out, in4=sos_button_or_out, in5=low_battery_check_out, in6=motor_lua_fault_read_out, in7=cp_request_and_local_mode_and_out, in8=cp_command_or_out, inc=simpleif_tx_number_write_out -> out=simpleif_tx_encoder_input_write_out
+  inst LUA simpleif_tx_encoder_lua (script_ref="scripts/n458.lua") : composite=simpleif_tx_encoder_input_write_out -> composite=simpleif_tx_encoder_lua_composite
+  inst COMPOSITE_READ_BOOLEAN simpleif_cmd_ready_mode13_read (channel=13) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_ready_mode13_read_out
+  inst COMPOSITE_READ_BOOLEAN simpleif_cmd_ready_mode15_read (channel=15) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_ready_mode15_read_out
+  inst COMPOSITE_READ_BOOLEAN simpleif_cmd_ready_mode14_read (channel=14) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_ready_mode14_read_out
+  inst OR simpleif_push_trigger_or : a=simpleif_cmd_ready_mode14_read_out -> out=simpleif_push_trigger_or_out
+  inst COMPOSITE_READ_NUMBER simpleif_cmd_value_back_read (channel=6) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_value_back_read_out
+  inst COMPOSITE_READ_NUMBER simpleif_cmd_value_front_read (channel=7) : composite=simpleif_tx_encoder_lua_composite -> out=simpleif_cmd_value_front_read_out
+  inst OR simpleif_interrupt_trigger_or : a=simpleif_cmd_ready_mode13_read_out -> out=simpleif_interrupt_trigger_or_out
+  inst OR simpleif_override_trigger_or : a=simpleif_cmd_ready_mode15_read_out -> out=simpleif_override_trigger_or_out
+
+  # --- NITS TX: assemble command composite & write to bus ---
+  inst COMPOSITE_WRITE_NUMBER nits_tx_number_write (count=6, offset=4) : in1=brake_cylinder_pressure_read_out, in2=motor_current_gated_by_axle_out, in3=simpleif_cmd_value_back_read_out, in4=simpleif_cmd_value_front_read_out, in5=nits_ext_enabled_flag_number_out, in6=total_car_count_for_nits_read_out, inc="Control Commands Type 3 front" -> out=nits_tx_number_write_out
+  inst COMPOSITE_WRITE_BOOLEAN nits_tx_command_write (count=7, offset=3) : in1=car_fault_report_or_out, in2="Door Open (A)", in3="Door Open (B)", in4=rx_addr_conflict_read_out, in5=simpleif_interrupt_trigger_or_out, in6=simpleif_push_trigger_or_out, in7=simpleif_override_trigger_or_out, inc=nits_tx_number_write_out -> out=nits_tx_command_write_out
+  inst COMPOSITE_WRITE_BOOLEAN nits_tx_bus_write (count=6, offset=1) : in1=nits_tx_strobe_cap_out, in2=cc3_front_direction_select_front_read_out, in3=cc3_front_direction_select_back_read_out, in4=cc3_front_emergency_brake_read_out, in5=to_nits_reserved_bit_fixed_value_out, in6=cc3_front_direction_select_conflict_read_out, inc=nits_tx_encoder_lua_composite -> out="to NITS"
+
 end
