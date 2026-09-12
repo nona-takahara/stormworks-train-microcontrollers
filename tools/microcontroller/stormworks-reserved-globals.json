@@ -1,5 +1,5 @@
 {
-  "neverRenameGlobals": [
+  "never-rename-globals": [
     "onTick",
     "onDraw",
     "httpReply"

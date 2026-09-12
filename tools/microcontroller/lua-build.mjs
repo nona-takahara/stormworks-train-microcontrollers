@@ -52,7 +52,7 @@ export function buildLua(repoRoot, build, options = {}) {
         removeIfExists(generated);
         removeIfExists(generatedMap);
         runProcess(process.execPath, [
-            minifyCli, entry, "--reserved-globals-config", reservedGlobals,
+            minifyCli, entry, "--config", reservedGlobals,
         ], { cwd: repoRoot });
         if (!fs.existsSync(generated)) throw new Error(`Minifier did not create expected output: ${generated}`);
         const size = fs.readFileSync(generated, "utf8").length;
