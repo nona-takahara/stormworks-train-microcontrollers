@@ -12,6 +12,6 @@
   },
   "devDependencies": {
     "storm-lua-minify": "^0.9.1",
-    "storm-microcontroller-language": "^0.10.1"
+    "storm-microcontroller-language": "^0.10.2"
   }
 }

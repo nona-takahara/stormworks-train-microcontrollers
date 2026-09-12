@@ -12,8 +12,8 @@ importers:
         specifier: ^0.9.1
         version: 0.9.1
       storm-microcontroller-language:
-        specifier: ^0.10.1
-        version: 0.10.1(zod@4.4.3)
+        specifier: ^0.10.2
+        version: 0.10.2(zod@4.4.3)
 
 packages:
 
@@ -407,8 +407,8 @@ packages:
     engines: {node: '>=22'}
     hasBin: true
 
-  storm-microcontroller-language@0.10.1:
-    resolution: {integrity: sha512-4Lcs0DLK7d49x65F7kpROnHH7QNgzZqYhA74sk9q8CozZrxKhRVifbDzhXhAFlS0J9++ke2lR2v1XtmYtsDn6w==}
+  storm-microcontroller-language@0.10.2:
+    resolution: {integrity: sha512-PS7lArcpbfB8SgNLpIBnqgr+91lgdnRBO7YCsQxcuDFJ/Ja/hwAz2WvWbB378kdDqBOSmiGEz1RIlHO+TBk1VQ==}
     hasBin: true
 
   strnum@2.4.2:
@@ -871,7 +871,7 @@ snapshots:
       luaparse: 0.3.1
       source-map: 0.7.6
 
-  storm-microcontroller-language@0.10.1(zod@4.4.3):
+  storm-microcontroller-language@0.10.2(zod@4.4.3):
     dependencies:
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
       elkjs: 0.11.1
