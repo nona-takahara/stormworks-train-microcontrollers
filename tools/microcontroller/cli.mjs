@@ -19,7 +19,7 @@ function usage() {
   pnpm microcontroller import <project-path...> | --all
 
 <project-path> はプロジェクトディレクトリのリポジトリルートからの相対パス
-(例: CHUSO1800_Traction_Controller_LuaCore)。--allは発見された全build.jsonを対象にする。`;
+(例: CHUSO/CHUSO1800_Traction_Controller_LuaCore)。--allは発見された全build.jsonを対象にする。`;
 }
 
 function parseArguments(argv) {

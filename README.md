@@ -34,7 +34,7 @@ pnpm microcontroller import <project-path...>
 ```
 
 `<project-path>`はプロジェクトディレクトリのリポジトリルートからの相対パス
-です(例: `CHUSO1800_Traction_Controller_LuaCore`)。ネストしたディレクトリも
+です(例: `CHUSO/CHUSO1800_Traction_Controller_LuaCore`)。ネストしたディレクトリも
 可能です。全登録対象を操作するときだけ、対象パスの代わりに`--all`を指定します。
 `export`はLua生成、DSL検査、XML生成、バックアップ、Stormworks保存領域への
 配置を行います。変更を伴う配置にはTTY上の確認が必要です。PNGは扱いません。

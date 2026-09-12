@@ -51,7 +51,7 @@
 `SR_LATCH`/`CAPACITOR`/`BLINKER`/`PULSE`/`PROPERTY_NUMBER`/
 `PROPERTY_TOGGLE`/`PROPERTY_DROPDOWN`/`COMPOSITE_READ_NUMBER`/
 `COMPOSITE_READ_BOOLEAN`/`COMPOSITE_WRITE_NUMBER`/`COMPOSITE_WRITE_BOOLEAN`/
-`LUA`（`CHUSO1800_Traction_Controller/main.sw-net`で使われている25種）。
+`LUA`（`CHUSO/CHUSO1800_Traction_Controller/main.sw-net`で使われている25種）。
 他のゲート型が出てきたら`sim.lua`の`PORT_KINDS`/`EVAL`に追加が必要
 （未対応の型は`Sim.new`で即エラーになる）。
 
@@ -76,6 +76,6 @@ off_ticks待ってから点灯」という経験則（同SIGNAL_MAP.md）に従�
 
 ```sh
 cd tools/sw-net-sim
-node build.mjs ../../CHUSO1800_Traction_Controller/main.sw-net chuso1800_original.graph.lua
+node build.mjs ../../CHUSO/CHUSO1800_Traction_Controller/main.sw-net chuso1800_original.graph.lua
 lua smoke_scenario.lua
 ```

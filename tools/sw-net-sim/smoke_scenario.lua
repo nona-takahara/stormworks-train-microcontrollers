@@ -19,7 +19,7 @@ for _, n in ipairs(graph.nodes) do
     if n.type == "LUA" then lua_node_id = n.id end
 end
 
-local n409_tick = bridge_mod.wrap(this_dir .. "../../CHUSO1800_Traction_Controller/scripts/n409.lua")
+local n409_tick = bridge_mod.wrap(this_dir .. "../../CHUSO/CHUSO1800_Traction_Controller/scripts/n409.lua")
 local sim = sim_mod.new(graph, { lua_bridges = { [lua_node_id] = n409_tick } })
 
 local function empty_composite() return { n = {}, b = {} } end

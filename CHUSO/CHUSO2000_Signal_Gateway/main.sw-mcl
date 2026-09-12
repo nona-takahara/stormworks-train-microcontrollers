@@ -1,0 +1,1819 @@
+{
+  "formatVersion": "stormworks-sw-mcl-v1",
+  "sourceName": "CHUSO2000_Signal_Gateway.xml",
+  "moduleId": "main",
+  "ports": [
+    {
+      "name": "Battery",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -3.5,
+        "y": -5.75
+      }
+    },
+    {
+      "name": "Control Commands Type 3 front",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": 4,
+        "y": 1.75
+      }
+    },
+    {
+      "name": "CP Request",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -3.5,
+        "y": -0.75
+      }
+    },
+    {
+      "name": "Door Open (A)",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": 1,
+        "y": -3.5
+      }
+    },
+    {
+      "name": "Door Open (B)",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": 1,
+        "y": -4
+      }
+    },
+    {
+      "name": "from NITS",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -8.5,
+        "y": 6
+      }
+    },
+    {
+      "name": "Inertia Composite",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -7.25,
+        "y": -7.25
+      }
+    },
+    {
+      "name": "Rolling Stock Status w/ Inertia Composite",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -3.5,
+        "y": -3
+      }
+    },
+    {
+      "name": "SOS Button 1",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -3.5,
+        "y": -2
+      }
+    },
+    {
+      "name": "SOS Button 2",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": -3.5,
+        "y": -2.5
+      }
+    },
+    {
+      "name": "Extended Commands RX",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 16,
+        "y": 27
+      }
+    },
+    {
+      "name": "Rolling Stock Settings",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": -4.75,
+        "y": -7.25
+      }
+    },
+    {
+      "name": "Simple IF RX",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": -2.25,
+        "y": 6
+      }
+    },
+    {
+      "name": "SOS Button",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": -1,
+        "y": -2.5
+      }
+    },
+    {
+      "name": "to NITS",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 11.5,
+        "y": 1
+      }
+    }
+  ],
+  "instances": [
+    {
+      "id": "n440",
+      "type": "LUA",
+      "position": {
+        "x": 6.5,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "n441",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 10.25,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "n442",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 6.5,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n443",
+      "type": "NOT",
+      "position": {
+        "x": 6.5,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "n444",
+      "type": "XOR",
+      "position": {
+        "x": 7.75,
+        "y": 0
+      }
+    },
+    {
+      "id": "n445",
+      "type": "NOT",
+      "position": {
+        "x": 7.75,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "n446",
+      "type": "CAPACITOR",
+      "position": {
+        "x": 9,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "n457",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -3.5,
+        "y": 4
+      }
+    },
+    {
+      "id": "n458",
+      "type": "LUA",
+      "position": {
+        "x": 0.25,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "n459",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": -1
+      }
+    },
+    {
+      "id": "n461",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 2.75,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "n462",
+      "type": "SR_LATCH",
+      "position": {
+        "x": -4.75,
+        "y": 4.25
+      }
+    },
+    {
+      "id": "n463",
+      "type": "CAPACITOR",
+      "position": {
+        "x": -3.5,
+        "y": 4.5
+      }
+    },
+    {
+      "id": "n464",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6,
+        "y": 4
+      }
+    },
+    {
+      "id": "n465",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6,
+        "y": 4.5
+      }
+    },
+    {
+      "id": "n466",
+      "type": "LUA",
+      "position": {
+        "x": -7.25,
+        "y": 5.5
+      }
+    },
+    {
+      "id": "n486",
+      "type": "OR",
+      "position": {
+        "x": 4,
+        "y": -2
+      }
+    },
+    {
+      "id": "n487",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 2.75,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "n488",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 2.75,
+        "y": 0
+      }
+    },
+    {
+      "id": "n489",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n490",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n491",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9,
+        "y": -2
+      }
+    },
+    {
+      "id": "n492",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9,
+        "y": -3
+      }
+    },
+    {
+      "id": "n493",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 5.25,
+        "y": -0.75
+      }
+    },
+    {
+      "id": "n502",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": 14.75,
+        "y": 19
+      }
+    },
+    {
+      "id": "n503",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -3.5,
+        "y": 5.75
+      }
+    },
+    {
+      "id": "n504",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6,
+        "y": 6
+      }
+    },
+    {
+      "id": "n506",
+      "type": "OR",
+      "position": {
+        "x": -4.75,
+        "y": 5.5
+      }
+    },
+    {
+      "id": "n507",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6,
+        "y": 5.5
+      }
+    },
+    {
+      "id": "n508",
+      "type": "NOT",
+      "position": {
+        "x": 9,
+        "y": -0.25
+      }
+    },
+    {
+      "id": "n509",
+      "type": "CONST_BOOL",
+      "position": {
+        "x": 9,
+        "y": -0.75
+      }
+    },
+    {
+      "id": "n523",
+      "type": "LUA",
+      "position": {
+        "x": -4.75,
+        "y": 9.25
+      }
+    },
+    {
+      "id": "n525",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -6,
+        "y": 9.25
+      }
+    },
+    {
+      "id": "n553",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -2.25,
+        "y": 0
+      }
+    },
+    {
+      "id": "n639",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": -1,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n642",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -2.25,
+        "y": -3.25
+      }
+    },
+    {
+      "id": "n645",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0.25,
+        "y": 15.25
+      }
+    },
+    {
+      "id": "n646",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 1.5,
+        "y": 15.75
+      }
+    },
+    {
+      "id": "n647",
+      "type": "PROPERTY_TOGGLE",
+      "position": {
+        "x": -1,
+        "y": 15
+      }
+    },
+    {
+      "id": "n648",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 16
+      }
+    },
+    {
+      "id": "n649",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 15.5
+      }
+    },
+    {
+      "id": "n652",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -3.5,
+        "y": -4.5
+      }
+    },
+    {
+      "id": "n663",
+      "type": "PROPERTY_TEXT",
+      "position": {
+        "x": -7.25,
+        "y": 6.25
+      }
+    },
+    {
+      "id": "n664",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 1.5,
+        "y": -0.75
+      }
+    },
+    {
+      "id": "n665",
+      "type": "CONST",
+      "position": {
+        "x": 1.5,
+        "y": 0.25
+      }
+    },
+    {
+      "id": "n667",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 2.75,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "n672",
+      "type": "BLINKER",
+      "position": {
+        "x": -4.75,
+        "y": -1.25
+      }
+    },
+    {
+      "id": "n673",
+      "type": "PULSE",
+      "position": {
+        "x": -3.5,
+        "y": -1.25
+      }
+    },
+    {
+      "id": "n674",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 2.75,
+        "y": -1
+      }
+    },
+    {
+      "id": "n675",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 2.75,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n676",
+      "type": "OR",
+      "position": {
+        "x": 4,
+        "y": -1.25
+      }
+    },
+    {
+      "id": "n677",
+      "type": "OR",
+      "position": {
+        "x": 4,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "n686",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": -2.25,
+        "y": 0.5
+      }
+    },
+    {
+      "id": "n687",
+      "type": "OR",
+      "position": {
+        "x": -2.25,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n688",
+      "type": "LUA",
+      "position": {
+        "x": -2.25,
+        "y": 26.75
+      }
+    },
+    {
+      "id": "n689",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -3.5,
+        "y": 26.75
+      }
+    },
+    {
+      "id": "n690",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 25
+      }
+    },
+    {
+      "id": "n691",
+      "type": "LUA",
+      "position": {
+        "x": 0.25,
+        "y": 26.75
+      }
+    },
+    {
+      "id": "n692",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 1.5,
+        "y": 26.5
+      }
+    },
+    {
+      "id": "n693",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 1.5,
+        "y": 26
+      }
+    },
+    {
+      "id": "n694",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 2.75,
+        "y": 26
+      }
+    },
+    {
+      "id": "n695",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 1.5,
+        "y": 25.5
+      }
+    },
+    {
+      "id": "n696",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 1.5,
+        "y": 25
+      }
+    },
+    {
+      "id": "n697",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 2.75,
+        "y": 25
+      }
+    },
+    {
+      "id": "n698",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 1.5,
+        "y": 24.5
+      }
+    },
+    {
+      "id": "n699",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 1.5,
+        "y": 24
+      }
+    },
+    {
+      "id": "n700",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 2.75,
+        "y": 24
+      }
+    },
+    {
+      "id": "n701",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 1.5,
+        "y": 23.5
+      }
+    },
+    {
+      "id": "n702",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 1.5,
+        "y": 23
+      }
+    },
+    {
+      "id": "n703",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 2.75,
+        "y": 23
+      }
+    },
+    {
+      "id": "n704",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 4,
+        "y": 26.5
+      }
+    },
+    {
+      "id": "n705",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 4,
+        "y": 26
+      }
+    },
+    {
+      "id": "n706",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 5.25,
+        "y": 26
+      }
+    },
+    {
+      "id": "n707",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 4,
+        "y": 25.5
+      }
+    },
+    {
+      "id": "n708",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 4,
+        "y": 25
+      }
+    },
+    {
+      "id": "n709",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 5.25,
+        "y": 25
+      }
+    },
+    {
+      "id": "n710",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 4,
+        "y": 24.5
+      }
+    },
+    {
+      "id": "n711",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 4,
+        "y": 24
+      }
+    },
+    {
+      "id": "n712",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 5.25,
+        "y": 24
+      }
+    },
+    {
+      "id": "n713",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 4,
+        "y": 23.5
+      }
+    },
+    {
+      "id": "n714",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 4,
+        "y": 23
+      }
+    },
+    {
+      "id": "n715",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 5.25,
+        "y": 23
+      }
+    },
+    {
+      "id": "n717",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 13.5,
+        "y": 19
+      }
+    },
+    {
+      "id": "n718",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 22.25
+      }
+    },
+    {
+      "id": "n719",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 21.75
+      }
+    },
+    {
+      "id": "n720",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": 21.75
+      }
+    },
+    {
+      "id": "n721",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 21.25
+      }
+    },
+    {
+      "id": "n722",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 20.75
+      }
+    },
+    {
+      "id": "n723",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": 20.75
+      }
+    },
+    {
+      "id": "n724",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 18.75
+      }
+    },
+    {
+      "id": "n725",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": 18.75
+      }
+    },
+    {
+      "id": "n726",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -1,
+        "y": 20.25
+      }
+    },
+    {
+      "id": "n727",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 19.75
+      }
+    },
+    {
+      "id": "n728",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": 19.75
+      }
+    },
+    {
+      "id": "n729",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -1,
+        "y": 17.75
+      }
+    },
+    {
+      "id": "n730",
+      "type": "MEMORY_REGISTER",
+      "position": {
+        "x": 0.25,
+        "y": 17.75
+      }
+    },
+    {
+      "id": "n731",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 1.5,
+        "y": 22.25
+      }
+    },
+    {
+      "id": "n732",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 1.5,
+        "y": 21.25
+      }
+    },
+    {
+      "id": "n733",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 1.5,
+        "y": 20.25
+      }
+    },
+    {
+      "id": "n734",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 1.5,
+        "y": 19.25
+      }
+    },
+    {
+      "id": "n735",
+      "type": "FUNC_NUM_1",
+      "position": {
+        "x": 1.5,
+        "y": 18.25
+      }
+    },
+    {
+      "id": "n737",
+      "type": "NUMBER_TO_COMPOSITE",
+      "position": {
+        "x": -3.5,
+        "y": 2.25
+      }
+    },
+    {
+      "id": "n738",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.75,
+        "y": 2.25
+      }
+    },
+    {
+      "id": "n739",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.75,
+        "y": 1.25
+      }
+    },
+    {
+      "id": "n740",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -2.25,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n741",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 4,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "n742",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -3.5,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n744",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 12.25,
+        "y": 26.25
+      }
+    },
+    {
+      "id": "n745",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 25.5
+      }
+    },
+    {
+      "id": "n746",
+      "type": "OR",
+      "position": {
+        "x": 11,
+        "y": 25.25
+      }
+    },
+    {
+      "id": "n747",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 26.5
+      }
+    },
+    {
+      "id": "n748",
+      "type": "OR",
+      "position": {
+        "x": 11,
+        "y": 26.25
+      }
+    },
+    {
+      "id": "n749",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 26
+      }
+    },
+    {
+      "id": "n750",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 25
+      }
+    },
+    {
+      "id": "n751",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 12.25,
+        "y": 24
+      }
+    },
+    {
+      "id": "n752",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 23.25
+      }
+    },
+    {
+      "id": "n753",
+      "type": "OR",
+      "position": {
+        "x": 11,
+        "y": 23
+      }
+    },
+    {
+      "id": "n754",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 24.25
+      }
+    },
+    {
+      "id": "n755",
+      "type": "OR",
+      "position": {
+        "x": 11,
+        "y": 24
+      }
+    },
+    {
+      "id": "n756",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 23.75
+      }
+    },
+    {
+      "id": "n757",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 22.75
+      }
+    },
+    {
+      "id": "n758",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 26.25
+      }
+    },
+    {
+      "id": "n759",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 26
+      }
+    },
+    {
+      "id": "n762",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 25.25
+      }
+    },
+    {
+      "id": "n763",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 25
+      }
+    },
+    {
+      "id": "n764",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 24.25
+      }
+    },
+    {
+      "id": "n765",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 24
+      }
+    },
+    {
+      "id": "n766",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 11,
+        "y": 21.75
+      }
+    },
+    {
+      "id": "n768",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -2.25,
+        "y": 2.75
+      }
+    },
+    {
+      "id": "n769",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 22.5
+      }
+    },
+    {
+      "id": "n770",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 22.25
+      }
+    },
+    {
+      "id": "n771",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 12.25,
+        "y": 20.5
+      }
+    },
+    {
+      "id": "n772",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 19.75
+      }
+    },
+    {
+      "id": "n773",
+      "type": "OR",
+      "position": {
+        "x": 11,
+        "y": 19.5
+      }
+    },
+    {
+      "id": "n774",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 20.75
+      }
+    },
+    {
+      "id": "n775",
+      "type": "OR",
+      "position": {
+        "x": 11,
+        "y": 20.5
+      }
+    },
+    {
+      "id": "n776",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 20.25
+      }
+    },
+    {
+      "id": "n777",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 19.25
+      }
+    },
+    {
+      "id": "n778",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 12.25,
+        "y": 18.5
+      }
+    },
+    {
+      "id": "n779",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 12.25,
+        "y": 17.75
+      }
+    },
+    {
+      "id": "n780",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 12.25,
+        "y": 17
+      }
+    },
+    {
+      "id": "n781",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 12.25,
+        "y": 16.25
+      }
+    },
+    {
+      "id": "n782",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 12.25,
+        "y": 15.5
+      }
+    },
+    {
+      "id": "n783",
+      "type": "SR_LATCH",
+      "position": {
+        "x": 9.75,
+        "y": 14.5
+      }
+    },
+    {
+      "id": "n784",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 11,
+        "y": 13.75
+      }
+    },
+    {
+      "id": "n785",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 11,
+        "y": 13.25
+      }
+    },
+    {
+      "id": "n786",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 12.25,
+        "y": 12.5
+      }
+    },
+    {
+      "id": "n787",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 12.25,
+        "y": 12
+      }
+    },
+    {
+      "id": "n788",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 12.25,
+        "y": 11.5
+      }
+    },
+    {
+      "id": "n789",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 12.25,
+        "y": 11
+      }
+    },
+    {
+      "id": "n790",
+      "type": "AND",
+      "position": {
+        "x": 12.25,
+        "y": 14.5
+      }
+    },
+    {
+      "id": "n791",
+      "type": "AND",
+      "position": {
+        "x": 12.25,
+        "y": 13.75
+      }
+    },
+    {
+      "id": "n792",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": 12.25,
+        "y": 21.25
+      }
+    },
+    {
+      "id": "n793",
+      "type": "GREATER_THAN",
+      "position": {
+        "x": 8.5,
+        "y": 21.25
+      }
+    },
+    {
+      "id": "n794",
+      "type": "GREATER_THAN",
+      "position": {
+        "x": 8.5,
+        "y": 20.5
+      }
+    },
+    {
+      "id": "n799",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 7.25,
+        "y": 19.25
+      }
+    },
+    {
+      "id": "n800",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 7.25,
+        "y": 18.75
+      }
+    },
+    {
+      "id": "n801",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 11,
+        "y": 18.25
+      }
+    },
+    {
+      "id": "n802",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 11,
+        "y": 18.75
+      }
+    },
+    {
+      "id": "n803",
+      "type": "AND",
+      "position": {
+        "x": 9.75,
+        "y": 17.75
+      }
+    },
+    {
+      "id": "n804",
+      "type": "OR",
+      "position": {
+        "x": 9.75,
+        "y": 17
+      }
+    },
+    {
+      "id": "n805",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 17.75
+      }
+    },
+    {
+      "id": "n806",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 17.25
+      }
+    },
+    {
+      "id": "n807",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 11,
+        "y": 17.25
+      }
+    },
+    {
+      "id": "n808",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 11,
+        "y": 16.75
+      }
+    },
+    {
+      "id": "n809",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 16
+      }
+    },
+    {
+      "id": "n810",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 9.75,
+        "y": 16.5
+      }
+    },
+    {
+      "id": "n811",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 11,
+        "y": 15.25
+      }
+    },
+    {
+      "id": "n812",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 11,
+        "y": 15.75
+      }
+    },
+    {
+      "id": "n813",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 14.75
+      }
+    },
+    {
+      "id": "n814",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 14.25
+      }
+    },
+    {
+      "id": "n815",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 7.25,
+        "y": 19.75
+      }
+    },
+    {
+      "id": "n816",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": -14.5,
+        "y": 0
+      }
+    },
+    {
+      "id": "n817",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": -14.5,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "n818",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": -14.5,
+        "y": -1
+      }
+    },
+    {
+      "id": "n820",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": -14.5,
+        "y": -2
+      }
+    },
+    {
+      "id": "n821",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": -14.5,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n825",
+      "type": "PROPERTY_DROPDOWN",
+      "position": {
+        "x": -14.5,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n828",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 13.5,
+        "y": 18.25
+      }
+    },
+    {
+      "id": "n829",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 13.5,
+        "y": 17.75
+      }
+    },
+    {
+      "id": "n830",
+      "type": "PULSE",
+      "position": {
+        "x": 8.5,
+        "y": 22
+      }
+    },
+    {
+      "id": "n831",
+      "type": "OR",
+      "position": {
+        "x": 9.75,
+        "y": 21.5
+      }
+    },
+    {
+      "id": "n832",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -4.75,
+        "y": 0.75
+      }
+    },
+    {
+      "id": "n835",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 13.5
+      }
+    },
+    {
+      "id": "n836",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 13
+      }
+    },
+    {
+      "id": "n837",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": 8.5,
+        "y": 12.5
+      }
+    },
+    {
+      "id": "n841",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -6,
+        "y": -6
+      }
+    },
+    {
+      "id": "n842",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": -2.25
+      }
+    },
+    {
+      "id": "n843",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n844",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "n845",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": -3
+      }
+    },
+    {
+      "id": "n846",
+      "type": "GREATER_THAN",
+      "position": {
+        "x": -7.25,
+        "y": -4.5
+      }
+    },
+    {
+      "id": "n847",
+      "type": "LESS_THAN",
+      "position": {
+        "x": -7.25,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n848",
+      "type": "CONST_BOOL",
+      "position": {
+        "x": -8.5,
+        "y": -5.25
+      }
+    },
+    {
+      "id": "n849",
+      "type": "NOT",
+      "position": {
+        "x": -7.25,
+        "y": -6
+      }
+    },
+    {
+      "id": "n850",
+      "type": "OR",
+      "position": {
+        "x": -7.25,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "n851",
+      "type": "COMPOSITE_TO_NUMBER",
+      "position": {
+        "x": -4.75,
+        "y": 1.75
+      }
+    },
+    {
+      "id": "n855",
+      "type": "LESS_THAN",
+      "position": {
+        "x": -2.25,
+        "y": -6
+      }
+    },
+    {
+      "id": "n856",
+      "type": "CONST",
+      "position": {
+        "x": -3.5,
+        "y": -6.25
+      }
+    },
+    {
+      "id": "n859",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": -2.25,
+        "y": -5.25
+      }
+    },
+    {
+      "id": "n860",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -3.5,
+        "y": -5.25
+      }
+    },
+    {
+      "id": "n861",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": -1
+      }
+    },
+    {
+      "id": "n862",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": -1.25
+      }
+    },
+    {
+      "id": "n863",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": -1.5
+      }
+    },
+    {
+      "id": "n864",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.25,
+        "y": -1.75
+      }
+    },
+    {
+      "id": "n867",
+      "type": "OR",
+      "position": {
+        "x": -2.25,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "n868",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -6,
+        "y": -7.75
+      }
+    },
+    {
+      "id": "n869",
+      "type": "GREATER_THAN",
+      "position": {
+        "x": -13.25,
+        "y": -0.75
+      }
+    },
+    {
+      "id": "n872",
+      "type": "AND",
+      "position": {
+        "x": -2.25,
+        "y": -0.75
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 239 nodes, 387 links, and 1 submodules from XML."
+  ]
+}

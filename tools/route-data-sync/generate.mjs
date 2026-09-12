@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const snapshotPath = path.join(here, "vendor", "route_data.snapshot.json");
 const metaPath = path.join(here, "vendor", "route_data.snapshot.meta.json");
-const outDir = path.resolve(here, "../../CHUSO2000_Driver_Assistance_IV/src");
+const outDir = path.resolve(here, "../../CHUSO/CHUSO2000_Driver_Assistance_IV/src");
 
 // ---- route_data.json の読み込み・平坦化 ----
 

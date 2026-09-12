@@ -1,0 +1,185 @@
+{
+  "formatVersion": "stormworks-project-json-v11",
+  "sourceName": "CHUSO2000_Signal_Gateway.xml",
+  "name": "CHUSO Series 2000 Signal Gateway",
+  "description": "v0.4.0",
+  "width": 4,
+  "length": 2,
+  "icon": [
+    ".#.#.#.#.#..#..#",
+    "#..###.#.#.#..#.",
+    "#..#.#.#.#..#.#.",
+    ".#.#.#.###.#...#",
+    "................",
+    "##...#...#...#..",
+    "..#.#.#.#.#.#.#.",
+    ".#..#.#.#.#.#.#.",
+    "#...#.#.#.#.#.#.",
+    "###..#...#...#..",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  "nodes": [
+    {
+      "id": "from NITS",
+      "type": "composite_in",
+      "label": "from NITS",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      }
+    },
+    {
+      "id": "to NITS",
+      "type": "composite_out",
+      "label": "to NITS",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "Control Commands Type 3 front",
+      "type": "composite_in",
+      "label": "Control Commands Type 3 front",
+      "description": null,
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "id": "Simple IF RX",
+      "type": "composite_out",
+      "label": "Simple IF RX",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 0
+      }
+    },
+    {
+      "id": "Extended Commands RX",
+      "type": "composite_out",
+      "label": "Extended Commands RX",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 0
+      }
+    },
+    {
+      "id": "Rolling Stock Status w/ Inertia Composite",
+      "type": "composite_in",
+      "label": "Rolling Stock Status w/ Inertia Composite",
+      "description": "B1: SOS, B2: Low battery, B3: Motor Error",
+      "nodePosition": {
+        "x": 3,
+        "y": 1
+      }
+    },
+    {
+      "id": "CP Request",
+      "type": "boolean_in",
+      "label": "CP Request",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 0
+      }
+    },
+    {
+      "id": "Door Open (A)",
+      "type": "boolean_in",
+      "label": "Door Open (A)",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "id": "Door Open (B)",
+      "type": "boolean_in",
+      "label": "Door Open (B)",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      }
+    },
+    {
+      "id": "SOS Button 1",
+      "type": "boolean_in",
+      "label": "SOS Button 1",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 1
+      }
+    },
+    {
+      "id": "Battery",
+      "type": "number_in",
+      "label": "Battery",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 1
+      }
+    },
+    {
+      "id": "SOS Button 2",
+      "type": "boolean_in",
+      "label": "SOS Button 2",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 3,
+        "y": 0
+      }
+    },
+    {
+      "id": "Rolling Stock Settings",
+      "type": "composite_out",
+      "label": "Rolling Stock Settings",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      }
+    },
+    {
+      "id": "Inertia Composite",
+      "type": "composite_in",
+      "label": "Inertia Composite",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 2,
+        "y": 1
+      }
+    },
+    {
+      "id": "SOS Button",
+      "type": "boolean_out",
+      "label": "SOS Button",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      }
+    }
+  ],
+  "submodule": {
+    "name": "main",
+    "relativePath": "main.sw-net"
+  },
+  "warnings": [
+    "Imported 239 nodes, 387 links, and 1 submodules from XML."
+  ]
+}

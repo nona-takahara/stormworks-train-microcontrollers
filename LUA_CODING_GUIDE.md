@@ -1,7 +1,7 @@
 # Stormworks Vehicle Lua コーディング指針（このリポジトリ共通）
 
 このリポジトリで実機投入用のLuaを書く際の共通ルール。
-`CHUSO1800_Traction_Controller_LuaCore/`（トラクション制御の純関数Luaコア
+`CHUSO/CHUSO1800_Traction_Controller_LuaCore/`（トラクション制御の純関数Luaコア
 移植）で確立した設計を一般化したもので、詳しい経緯・実測値は同ディレクトリの
 `DESIGN_LOG.md`（特に#12〜#15）を参照。今後の他マイコン移植でも、特に理由が
 なければここに従うこと。
@@ -63,7 +63,7 @@ gitignore対象であり、編集用や再取り込み用の`scripts/`へビル�
 - ファイル同士は`require`ではなく`dofile`で連結する（前節参照）。
 - 名前空間がリポジトリ全体で単一のグローバルスコープに統合されるため、
   複数ファイルをまたいで**関数名の衝突を手動で避ける**必要がある。
-  例：`CHUSO1800_Traction_Controller_LuaCore`では、共有ライブラリ
+  例：`CHUSO/CHUSO1800_Traction_Controller_LuaCore`では、共有ライブラリ
   `lib/state_sync.lua`が毎tick呼ぶ`calculateTick`という名前が固定で
   予約されているため、各マイコン固有のtick処理本体には
   （`M.calculateTick`ではなく）`core_tick`のような別名を与えている。
@@ -112,5 +112,5 @@ AST上のdofileインライン展開）でも、素の`lua`によるユニット
   制約はあくまでStormworksへ実際に貼り付けるスクリプトの生成経路にのみ
   適用する。
 
-参考実装：`CHUSO1800_Traction_Controller_LuaCore/`
+参考実装：`CHUSO/CHUSO1800_Traction_Controller_LuaCore/`
 （`src/chuso1800_core.lua`・`src/chuso1800.lua`・`test/run_all.lua`）。
