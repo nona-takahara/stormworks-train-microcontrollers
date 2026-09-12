@@ -73,13 +73,13 @@
 
 ## #11 state_syncとの境界
 
-- `lib/state_sync.lua`が要求する整数stateへ合わせ、`deploy/main.lua`で
+- `lib/state_sync.lua`が要求する整数stateへ合わせ、`src/chuso1800.lua`で
   stateスロット3～7だけを`f2i`/`i2f`変換する。
 - コア内部はdoubleを維持する。float32丸めは実機composite境界と同等である。
 
 ## #12 ビルドをstorm-lua-minifyへ委譲
 
-- リポジトリ共通のLuaビルダーが依存ファイルを一時コピーし、`deploy/main.lua`を入口に
+- リポジトリ共通のLuaビルダーが依存ファイルを一時コピーし、`src/chuso1800.lua`を入口に
   `deploy/chuso1800_deploy.lua`を生成する。
 - 親ディレクトリ参照を扱えない制約への回避策である。
 - 読み込み方式は#15で全面的な`dofile`へ更新した。

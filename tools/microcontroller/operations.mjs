@@ -4,6 +4,7 @@ import path from "node:path";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { buildLua } from "./lua-build.mjs";
+import { resolveLuaBuilds } from "./lua-node-resolution.mjs";
 
 // Windowsでファイル名に使えない":"を避けたISO時刻。バックアップを対象名と
 // 時刻だけで追跡でき、同名を黙って上書きしない構成にする。
@@ -28,21 +29,23 @@ export async function confirmOverwrite(message, io = {}) {
     }
 }
 
-export function buildProject(config, project, dependencies = {}) {
+export async function buildProject(config, project, dependencies = {}) {
+    const resolve = dependencies.resolveLuaBuilds ?? resolveLuaBuilds;
     const builder = dependencies.buildLua ?? buildLua;
-    return project.luaBuilds.map((build) => builder(config.repoRoot, build, dependencies.luaOptions));
+    const luaBuilds = await resolve(config.repoRoot, project, dependencies.resolveOptions);
+    const results = luaBuilds.map((build) => builder(config.repoRoot, build, dependencies.luaOptions));
+    return { luaBuilds, results };
 }
 
 export function checkProject(config, project, adapter) {
-    const projectPath = path.resolve(config.repoRoot, project.project);
-    if (!fs.existsSync(projectPath)) throw new Error(`Project file not found: ${projectPath}`);
-    adapter.check(projectPath);
+    if (!fs.existsSync(project.projectJsonPath)) throw new Error(`Project file not found: ${project.projectJsonPath}`);
+    adapter.check(project.projectJsonPath);
 }
 
-function copyOverlays(config, project, stagedRoot) {
+function copyOverlays(config, luaBuilds, stagedRoot) {
     // deploy成果物はリポジトリ内のscriptsへ直接戻さない。export用に複製した
     // DSLツリーだけを書き換え、XML同期とLuaビルドの書込先を分離する。
-    for (const build of project.luaBuilds) {
+    for (const build of luaBuilds) {
         const source = path.resolve(config.repoRoot, build.output);
         if (!fs.existsSync(source)) throw new Error(`Lua build output not found: ${source}`);
         const destination = path.resolve(stagedRoot, build.overlay);
@@ -89,9 +92,8 @@ function installWithRollback(generatedXml, destination, backup, fsApi = fs) {
 export async function exportProject(config, project, adapter, dependencies = {}) {
     // exportは「Lua生成→一時DSLへ差替え→DSL検査→XML生成→利用者確認→配置」の順。
     // Stormworks側へ触るのは全生成・検査が成功した後だけにする。
-    buildProject(config, project, dependencies);
-    const sourceProject = path.resolve(config.repoRoot, project.project);
-    if (!fs.existsSync(sourceProject)) throw new Error(`Project file not found: ${sourceProject}`);
+    const { luaBuilds } = await buildProject(config, project, dependencies);
+    const sourceProject = project.projectJsonPath;
     const sourceRoot = path.dirname(sourceProject);
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stormworks-export-"));
     const stagedRoot = path.join(tempRoot, "project");
@@ -100,7 +102,7 @@ export async function exportProject(config, project, adapter, dependencies = {})
         // project.jsonと相対参照される.sw-net/scriptsを一体で扱うため、
         // project.json単体ではなく所属ディレクトリ全体を複製する。
         fs.cpSync(sourceRoot, stagedRoot, { recursive: true });
-        copyOverlays(config, project, stagedRoot);
+        copyOverlays(config, luaBuilds, stagedRoot);
         const stagedProject = path.join(stagedRoot, path.basename(sourceProject));
         adapter.check(stagedProject);
         adapter.exportXml(stagedProject, generatedXml);
@@ -115,7 +117,7 @@ export async function exportProject(config, project, adapter, dependencies = {})
         if (!(await confirm(`Overwrite Stormworks microcontroller ${destination}?`))) {
             return { changed: false, declined: true, destination };
         }
-        const backup = path.join(config.backupDir, project.name,
+        const backup = path.join(config.backupDir, ...project.id.split("/"),
             `${path.basename(project.stormworksFile, ".xml")}-${timestamp(dependencies.now?.())}.xml`);
         installWithRollback(generatedXml, destination, backup, dependencies.fs ?? fs);
         return { changed: true, destination, backup: fs.existsSync(backup) ? backup : undefined };
@@ -130,8 +132,7 @@ export async function importProject(config, project, adapter, dependencies = {})
     // 一時領域へ固定する。ゲーム側で同時に保存されても、同期途中で入力が変わらない。
     const source = path.join(config.stormworksDir, project.stormworksFile);
     if (!fs.existsSync(source)) throw new Error(`Stormworks XML not found: ${source}`);
-    const projectPath = path.resolve(config.repoRoot, project.project);
-    if (!fs.existsSync(projectPath)) throw new Error(`Project file not found: ${projectPath}`);
+    const projectPath = project.projectJsonPath;
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stormworks-import-"));
     const importedXml = path.join(tempRoot, project.stormworksFile);
     try {

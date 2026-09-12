@@ -491,7 +491,7 @@ end
 -- tick本体
 --------------------------------------------------------------------------
 
--- calculateTickはdeploy/main.luaのstate_sync境界が使う。
+-- calculateTickはsrc/chuso1800.luaのstate_sync境界が使う。
 function core_tick(stateless_in, state_in)
     local st_position_counter, st_phase1_latch, st_phase2_latch, st_regen_latch,
         st_traction_advance_counter, st_field_current_excess_counter,

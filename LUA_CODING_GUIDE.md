@@ -15,20 +15,22 @@
 
 スクリプトのフラット化・minifyは手書きではなく
 [`storm-lua-minify`](https://www.npmjs.com/package/storm-lua-minify)
-（npm、リポジトリ作者自身のツール）に行わせる。対象固有のentry、出力、
-一時ステージング依存、XML生成時のsidecar差し替え先は
-`microcontrollers.local.json`へ宣言し、リポジトリ共通のNode.js製CLIを使う。
-`pnpm microcontroller build <name>`で`deploy/`以下の最終成果物を生成し、
-`export`時だけ一時DSLツリーへ差し込む。編集用や再取り込み用の`scripts/`へ
-ビルドが直接書き込むことはない。
+（npm、リポジトリ作者自身のツール）に行わせる。手書きLuaは各マイコンの
+`src/`に置く。`main.sw-net`のLUAノードが持つ`script_ref`と`src/<name>.lua`の
+対応で、どのノードをビルド対象とするかは自動的に決まる。マイコンごとの
+`build.json`にはゲーム側保存領域での現在のファイル名(`stormworksFile`)だけを
+書く。`pnpm microcontroller build <project-path>`で`deploy/`以下の最終成果物を
+生成し、`export`時だけ一時DSLツリーへ差し込む。`deploy/`は生成物専用で
+gitignore対象であり、編集用や再取り込み用の`scripts/`へビルドが直接
+書き込むこともない。
 
 `storm-lua-minify`（0.2.0）は`dofile(...)`/`require(...)`によるマルチファイル
 構成をAST上で解決する。仕様・制約は以下の通り：
 
 - モジュール名の解決は**entryファイル自身のディレクトリからの下り専用**。
   `..`による親ディレクトリ参照はできない。複数マイコンで共有する
-  `lib/*.lua`を使う場合、設定の`stage`へ依存元とentry直下での一時ファイル名を
-  宣言する。統合CLIがコピー、minify、後始末を行う。
+  `lib/*.lua`は統合CLIがビルドのたびに自動で`deploy/`側へコピーする
+  （同名がsrc側に既にあればそちらを優先し上書きしない）。設定での宣言は不要。
 - `dofile(...)`は常に生の文としてその場にインライン展開される
   （文位置でも式位置でも）。
 - StormworksがLua外から名前で呼ぶ`onTick`、`onDraw`、`httpReply`の宣言直前には
@@ -111,4 +113,4 @@ AST上のdofileインライン展開）でも、素の`lua`によるユニット
   適用する。
 
 参考実装：`CHUSO1800_Traction_Controller_LuaCore/`
-（`src/chuso1800_core.lua`・`deploy/main.lua`・`test/run_all.lua`）。
+（`src/chuso1800_core.lua`・`src/chuso1800.lua`・`test/run_all.lua`）。

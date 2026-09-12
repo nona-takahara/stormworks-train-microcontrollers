@@ -20,9 +20,10 @@ CHUSO1800牽引制御の状態機械、カム進段、電流モデル、回生�
 ## 構成
 
 - `src/chuso1800_core.lua`: 純関数`core_tick(stateless_in, state_in)`と補助関数
-- `deploy/main.lua`: `state_sync.lua`とのfloat/integer境界
-- リポジトリ共通の`pnpm microcontroller build <name>`: storm-lua-minifyによる単一ファイル生成
-- `deploy/chuso1800_deploy.lua`: Stormworksへ貼り付ける生成物
+- `src/chuso1800.lua`: `state_sync.lua`とのfloat/integer境界(ビルドentry)
+- リポジトリ共通の`pnpm microcontroller build <project-path>`: storm-lua-minifyによる単一ファイル生成
+- `deploy/chuso1800_deploy.lua`: Stormworksへ貼り付ける生成物(gitignore対象)
+- `build.json`: `stormworksFile`(ゲーム側保存領域での現在のファイル名)
 - `main.sw-net`: Lua Coreと、ゲート側に残した処理の結線
 - `test/`: ソースと生成物の回帰テスト
 
@@ -84,15 +85,18 @@ lua test/verify_deploy_artifact.lua
 
 ## ビルド
 
-`CHUSO1800_Traction_Controller_LuaCore/deploy`で実行します。
+リポジトリルートから実行します。
 
 ```sh
-pnpm microcontroller build <microcontrollers.local.jsonで登録したname>
+pnpm microcontroller build CHUSO1800_Traction_Controller_LuaCore
 ```
 
-共通ビルダーは`lib/state_sync.lua`と`src/chuso1800_core.lua`を一時的に同じ
-ディレクトリへ置き、`deploy/main.lua`を入口にフラット化・minifyします。
-生成後は次を確認してください。
+`main.sw-net`の`core_logic`ノードは`script_ref="deploy/chuso1800_deploy.lua"`を
+持ち、ここから拡張子と`_deploy`サフィックスを除いた名前`chuso1800`に対応する
+`src/chuso1800.lua`が実在するため、このノードは自動的にビルド対象として検出
+されます。共通ビルダーは`src/chuso1800.lua`とその同ディレクトリの依存
+(`src/chuso1800_core.lua`)、および`lib/state_sync.lua`を一時的に`deploy/`へ
+コピーし、そこでフラット化・minifyします。生成後は次を確認してください。
 
 1. `deploy/chuso1800_deploy.lua`が`storm-mcl spec LUA`の制約を満たす。
 2. `lua test/run_all.lua`が通る。

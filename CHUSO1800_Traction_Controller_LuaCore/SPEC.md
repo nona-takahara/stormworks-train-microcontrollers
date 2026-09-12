@@ -1,6 +1,6 @@
 # CHUSO1800 Lua Core 仕様書
 
-> 対象: `src/chuso1800_core.lua`、`deploy/main.lua`、`main.sw-net`  
+> 対象: `src/chuso1800_core.lua`、`src/chuso1800.lua`、`main.sw-net`  
 > 原型: [`../CHUSO1800_Traction_Controller/SPEC.md`](../CHUSO1800_Traction_Controller/SPEC.md)  
 > 信号の正確な割付: [`SIGNAL_MAP.md`](./SIGNAL_MAP.md)
 
@@ -39,7 +39,7 @@ stateless_out, state_out = core_tick(stateless_in, state_in)
 - その他の組合せ論理は1回の`core_tick`内で確定する。
 - 原型ゲート網の「ゲート1段につき1tick」を逐語再現しないため、過渡のtick数は
   短縮されうる。定常状態と安全上の出力条件を互換性の基準とする。
-- `deploy/main.lua`は`state_sync.lua`との境界で、stateスロット3～7だけを
+- `src/chuso1800.lua`は`state_sync.lua`との境界で、stateスロット3～7だけを
   float32のビットパターンと整数の間で変換する。
 
 ## 3. 入出力
