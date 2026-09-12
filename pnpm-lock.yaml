@@ -9,10 +9,10 @@ importers:
   .:
     devDependencies:
       storm-lua-minify:
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^0.9.1
+        version: 0.9.1
       storm-microcontroller-language:
-        specifier: 0.10.1
+        specifier: ^0.10.1
         version: 0.10.1(zod@4.4.3)
 
 packages:
@@ -402,8 +402,8 @@ packages:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
     engines: {node: '>= 0.8'}
 
-  storm-lua-minify@0.3.0:
-    resolution: {integrity: sha512-iaZA7HcTtZSrUCC1CNAgkSkW6IGuxn0qb+U9iOXpzyz1oHhSRBYyBsi/qUKRKMv2tfrj9v7dYw2Vj30M9Z6+UA==}
+  storm-lua-minify@0.9.1:
+    resolution: {integrity: sha512-XCqLH6pHhrZKdBNFtzyEKIBGnvBGryR+Il6ZIzsJ5Ph5km8T7Od8JAIwJH3TNnxsILWmW5rSTAuqhRgyKnJzRQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -865,7 +865,7 @@ snapshots:
 
   statuses@2.0.2: {}
 
-  storm-lua-minify@0.3.0:
+  storm-lua-minify@0.9.1:
     dependencies:
       commander: 12.1.0
       luaparse: 0.3.1

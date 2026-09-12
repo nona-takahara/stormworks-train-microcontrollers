@@ -11,7 +11,7 @@
     "build:driver-assistance": "node tools/microcontroller/cli.mjs build driver-assistance"
   },
   "devDependencies": {
-    "storm-lua-minify": "^0.3.0",
-    "storm-microcontroller-language": "0.10.1"
+    "storm-lua-minify": "^0.9.1",
+    "storm-microcontroller-language": "^0.10.1"
   }
 }
