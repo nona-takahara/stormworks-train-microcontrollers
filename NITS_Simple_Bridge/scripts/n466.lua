@@ -135,7 +135,10 @@ function onTick()
 	for j = 1, 5 do
 		output.setBool(j, op[j])
 	end
-	for j = 10, 30 do
+	for j = 10, 15 do
+		output.setBool(j, op[j])
+	end
+	for j = 19, 30 do
 		output.setBool(j, op[j])
 	end
 	output.setBool(9, s4x)

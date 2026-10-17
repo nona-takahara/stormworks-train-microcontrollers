@@ -15,7 +15,7 @@ end
 
 MODE={}
 for i=1,8 do
-	MODE[i]=_pg(("M%d/N%d Mode"):format(i,i+8))
+	MODE[i]=_pg(("N%d/N%d Mode"):format(i,i+8))
 	sig[i]={b=0,f=0,up=false}
 end
 
@@ -41,6 +41,8 @@ function onTick()
 				chgN[i+8]=false
 			end
 			if (MODE[i] & 2)==0 then
+				if not (b > -2^53 and b < 2^53) then b=0 end
+				if not (f > -2^53 and f < 2^53) then f=0 end
 				b=toi(b);f=toi(f)
 			else
 				b=unpk(b);f=unpk(f)

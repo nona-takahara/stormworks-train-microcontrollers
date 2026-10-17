@@ -3,10 +3,15 @@ function unpk(fl)
 	return r
 end
 
+function pk(intv)
+	local r=('f'):unpack(('I4'):pack(intv))
+	return r
+end
+
 _pg=function(l)return math.floor(property.getNumber(l))end
 MODE={}
 for i=1,8 do
-	MODE[i]=_pg(("M%d/N%d Mode"):format(i,i+8))
+	MODE[i]=_pg(("N%d/N%d Mode"):format(i,i+8))
 end
 
 opN={}
@@ -27,7 +32,7 @@ function onTick()
 			if (MODE[c] & 2)==0 then
 				opN[c]=(o & 0xffffff) * 1.0
 			else
-				opN[c]=f --binary
+				opN[c]=pk(o & 0xffffff) --binary
 			end
 			opB[c]=true
 		end

@@ -13,7 +13,10 @@ function bit_arr(ar, be, en)
 	return r
 end
 
-function shift(val, pos, len) return (toi(val) & toi(2 ^ len - 1)) << pos end
+function shift(val, pos, len)
+	local m = toi(2 ^ len - 1)
+	return (val >= m and m or val > 0 and toi(val) or 0) << pos
+end
 
 function arr_or(ar, be, en)
 	for i = be, en do
