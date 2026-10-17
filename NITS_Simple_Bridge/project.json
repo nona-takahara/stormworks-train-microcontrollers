@@ -28,7 +28,7 @@
       "id": "from NITS",
       "type": "composite_in",
       "label": "from NITS",
-      "description": "",
+      "description": null,
       "nodePosition": {
         "x": 2,
         "y": 0
@@ -38,7 +38,7 @@
       "id": "to NITS",
       "type": "composite_out",
       "label": "to NITS",
-      "description": "",
+      "description": null,
       "nodePosition": {
         "x": 2,
         "y": 1
@@ -48,7 +48,7 @@
       "id": "Simple IF TX",
       "type": "composite_in",
       "label": "Simple IF TX",
-      "description": "",
+      "description": null,
       "nodePosition": {
         "x": 0,
         "y": 1
@@ -58,7 +58,7 @@
       "id": "Simple IF RX",
       "type": "composite_out",
       "label": "Simple IF RX",
-      "description": "",
+      "description": null,
       "nodePosition": {
         "x": 0,
         "y": 0
@@ -90,6 +90,6 @@
     "relativePath": "main.sw-net"
   },
   "warnings": [
-    "Imported 84 nodes, 115 links, and 1 submodules from XML."
+    "Imported 83 nodes, 114 links, and 1 submodules from XML."
   ]
 }

@@ -63,24 +63,24 @@
       "id": "ext_input_interrupt_req",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 32.25,
-        "y": 35.5
+        "x": 2.75,
+        "y": -1
       }
     },
     {
       "id": "ext_input_override_req",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 32.25,
-        "y": 37
+        "x": 2.75,
+        "y": -2.5
       }
     },
     {
       "id": "ext_mode_latch",
       "type": "SR_LATCH",
       "position": {
-        "x": 27.25,
-        "y": 38.5
+        "x": -3.5,
+        "y": 0
       }
     },
     {
@@ -95,8 +95,8 @@
       "id": "local_mode_timer",
       "type": "CAPACITOR",
       "position": {
-        "x": 28.5,
-        "y": 38.75
+        "x": -2.25,
+        "y": 0.25
       }
     },
     {
@@ -111,328 +111,328 @@
       "id": "n1_n9_mode",
       "type": "PROPERTY_DROPDOWN",
       "position": {
-        "x": 13.25,
-        "y": 12
+        "x": -11,
+        "y": 2.5
       }
     },
     {
       "id": "n2_n10_mode",
       "type": "PROPERTY_DROPDOWN",
       "position": {
-        "x": 14.5,
-        "y": 12
+        "x": -11,
+        "y": 2
       }
     },
     {
       "id": "n3_n11_mode",
       "type": "PROPERTY_DROPDOWN",
       "position": {
-        "x": 15.75,
-        "y": 12
+        "x": -11,
+        "y": 1.5
       }
     },
     {
       "id": "n4_n12_mode",
       "type": "PROPERTY_DROPDOWN",
       "position": {
-        "x": 17,
-        "y": 12
+        "x": -11,
+        "y": 1
       }
     },
     {
       "id": "n5_n13_mode",
       "type": "PROPERTY_DROPDOWN",
       "position": {
-        "x": 18.25,
-        "y": 12
+        "x": -11,
+        "y": 0.5
       }
     },
     {
       "id": "n6_n14_mode",
       "type": "PROPERTY_DROPDOWN",
       "position": {
-        "x": 19.5,
-        "y": 12
+        "x": -11,
+        "y": 0
       }
     },
     {
       "id": "n7_n15_mode",
       "type": "PROPERTY_DROPDOWN",
       "position": {
-        "x": 20.75,
-        "y": 12
+        "x": -11,
+        "y": -0.5
       }
     },
     {
       "id": "n8_n16_mode",
       "type": "PROPERTY_DROPDOWN",
       "position": {
-        "x": 22,
-        "y": 12
+        "x": -11,
+        "y": -1
       }
     },
     {
       "id": "nits_ext_id_property",
       "type": "PROPERTY_TEXT",
       "position": {
-        "x": 12,
-        "y": 12
+        "x": -6,
+        "y": 2
       }
     },
     {
       "id": "nits_rx_decoder_lua",
       "type": "LUA",
       "position": {
-        "x": 24.75,
-        "y": 33
+        "x": -6,
+        "y": 1.25
       }
     },
     {
       "id": "nits_rx_gate_switch",
       "type": "COMPOSITE_SWITCHBOX",
       "position": {
-        "x": 29.75,
-        "y": 46.5
+        "x": -7.25,
+        "y": 7
       }
     },
     {
       "id": "nits_rx_raw_passthrough_bit",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 26,
-        "y": 43.75
+        "x": -4.75,
+        "y": 1.75
       }
     },
     {
       "id": "nits_tx_bus_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
-        "x": 31,
-        "y": 77.25
+        "x": 10.25,
+        "y": -0.5
       }
     },
     {
       "id": "nits_tx_command_composite",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
-        "x": 34.75,
-        "y": 35.75
+        "x": 5.25,
+        "y": 0
       }
     },
     {
       "id": "nits_tx_encoder_lua",
       "type": "LUA",
       "position": {
-        "x": 23.5,
-        "y": 80.5
+        "x": 6.5,
+        "y": 0.75
       }
     },
     {
       "id": "nits_tx_strobe_cap",
       "type": "CAPACITOR",
       "position": {
-        "x": 29.75,
-        "y": 81.75
+        "x": 9,
+        "y": 0.75
       }
     },
     {
       "id": "nits_tx_watchdog_not",
       "type": "NOT",
       "position": {
-        "x": 26,
-        "y": 81.5
+        "x": 6.5,
+        "y": -0.25
       }
     },
     {
       "id": "nits_tx_watchdog_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 24.75,
-        "y": 81.75
+        "x": 6.5,
+        "y": 0.25
       }
     },
     {
       "id": "nits_tx_watchdog_xor",
       "type": "XOR",
       "position": {
-        "x": 27.25,
-        "y": 81.5
+        "x": 7.75,
+        "y": 0
       }
     },
     {
       "id": "nits_tx_watchdog_xor_not",
       "type": "NOT",
       "position": {
-        "x": 28.5,
-        "y": 81.75
+        "x": 7.75,
+        "y": -0.5
       }
     },
     {
       "id": "rx_addr_conflict_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 27.25,
-        "y": 37.25
+        "x": 4,
+        "y": -0.5
       }
     },
     {
       "id": "rx_addr_matched_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 26,
-        "y": 38.5
+        "x": -4.75,
+        "y": 0.25
       }
     },
     {
       "id": "rx_addr_not_mine_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 26,
-        "y": 39.25
+        "x": -4.75,
+        "y": -0.25
       }
     },
     {
       "id": "rx_decoded_op1_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 26,
-        "y": 40
+        "x": -4.75,
+        "y": 1.25
       }
     },
     {
       "id": "rx_total_car_count_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
-        "x": 28.5,
-        "y": 32.75
+        "x": 2.75,
+        "y": -0.25
       }
     },
     {
       "id": "simpleif_cmd_ready_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 32.25,
-        "y": 36.25
+        "x": 2.75,
+        "y": -1.75
       }
     },
     {
       "id": "simpleif_cmd_value_back_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
-        "x": 32.25,
-        "y": 34
+        "x": 2.75,
+        "y": 0.75
       }
     },
     {
       "id": "simpleif_cmd_value_front_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
-        "x": 32.25,
-        "y": 34.75
+        "x": 2.75,
+        "y": 0.25
       }
     },
     {
       "id": "simpleif_input_mode_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
-        "x": 29.75,
-        "y": 34
+        "x": -1,
+        "y": 0.5
       }
     },
     {
       "id": "simpleif_push_flag",
       "type": "OR",
       "position": {
-        "x": 33.5,
-        "y": 36.25
+        "x": 4,
+        "y": -2
       }
     },
     {
       "id": "simpleif_rx_bus_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
-        "x": 28.5,
-        "y": 42.25
+        "x": -2.25,
+        "y": 1.5
       }
     },
     {
       "id": "simpleif_rx_status_bit",
       "type": "OR",
       "position": {
-        "x": 27.25,
-        "y": 43.5
+        "x": -3.5,
+        "y": 1.25
       }
     },
     {
       "id": "simpleif_tx_bit5_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 29.75,
-        "y": 72
+        "x": 9,
+        "y": 0.25
       }
     },
     {
       "id": "simpleif_tx_bit6_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 29.75,
-        "y": 74
+        "x": 9,
+        "y": -0.25
       }
     },
     {
       "id": "simpleif_tx_bit7_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 29.75,
-        "y": 78
+        "x": 9,
+        "y": -1.25
       }
     },
     {
       "id": "simpleif_tx_bit8_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 29.75,
-        "y": 80
+        "x": 9,
+        "y": -1.75
       }
     },
     {
       "id": "simpleif_tx_encoder_lua",
       "type": "LUA",
       "position": {
-        "x": 31,
-        "y": 34.25
+        "x": 0.25,
+        "y": 0.5
       }
     },
     {
       "id": "simpleif_tx_primary_bit_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
-        "x": 29.75,
-        "y": 76
+        "x": 9,
+        "y": -0.75
       }
     },
     {
       "id": "tx_interrupt_flag",
       "type": "OR",
       "position": {
-        "x": 33.5,
-        "y": 35.5
+        "x": 4,
+        "y": -1.25
       }
     },
     {
       "id": "tx_override_flag",
       "type": "OR",
       "position": {
-        "x": 33.5,
-        "y": 37
+        "x": 4,
+        "y": -2.75
       }
     },
     {
       "id": "tx_override_number_write",
       "type": "COMPOSITE_WRITE_NUMBER",
       "position": {
-        "x": 33.5,
-        "y": 32.5
+        "x": 4,
+        "y": 0.25
       }
     }
   ],

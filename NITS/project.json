@@ -1,0 +1,95 @@
+{
+  "formatVersion": "stormworks-project-json-v11",
+  "sourceName": "NITS.xml",
+  "name": "NITS Line Node (v1.0.0)",
+  "description": null,
+  "width": 3,
+  "length": 2,
+  "icon": [
+    "#...#.#.###..###",
+    "##..#.#..#..#...",
+    "#.#.#.#..#...##.",
+    "#..##.#..#.....#",
+    "#...#.#..#..###.",
+    "................",
+    "################",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  "nodes": [
+    {
+      "id": "NITS from Front",
+      "type": "composite_in",
+      "label": "NITS from Front",
+      "description": null,
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "id": "NITS to Front",
+      "type": "composite_out",
+      "label": "NITS to Front",
+      "description": null,
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "NITS from Back",
+      "type": "composite_in",
+      "label": "NITS from Back",
+      "description": null,
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      }
+    },
+    {
+      "id": "NITS to Back",
+      "type": "composite_out",
+      "label": "NITS to Back",
+      "description": null,
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      }
+    },
+    {
+      "id": "Control Input",
+      "type": "composite_in",
+      "label": "Control Input",
+      "description": "B1: No failure, B2: Head-end, B3: Tail-end, B4: Emg. stop w/o Lua, B5: Single car, B6: Short end con., N1: NITS-F, N2: NITS-B",
+      "nodePosition": {
+        "x": 2,
+        "y": 0
+      }
+    },
+    {
+      "id": "Informations",
+      "type": "composite_out",
+      "label": "Informations",
+      "description": "N1-15: NITS from Front, N16: NITS from this, N17-31: NITS from Back, N32: NITS Common Bus",
+      "nodePosition": {
+        "x": 2,
+        "y": 1
+      }
+    }
+  ],
+  "submodule": {
+    "name": "main",
+    "relativePath": "main.sw-net"
+  },
+  "warnings": [
+    "Imported 144 nodes, 311 links, and 1 submodules from XML."
+  ]
+}

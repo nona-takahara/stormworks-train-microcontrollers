@@ -1,0 +1,1122 @@
+{
+  "formatVersion": "stormworks-sw-mcl-v1",
+  "sourceName": "NITS.xml",
+  "moduleId": "main",
+  "ports": [
+    {
+      "name": "Control Input",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": 2,
+        "y": -6.5
+      }
+    },
+    {
+      "name": "NITS from Back",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": 6,
+        "y": -8.75
+      }
+    },
+    {
+      "name": "NITS from Front",
+      "direction": "in",
+      "occurrence": 1,
+      "position": {
+        "x": 6,
+        "y": -3.25
+      }
+    },
+    {
+      "name": "Informations",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 11,
+        "y": -3.25
+      }
+    },
+    {
+      "name": "NITS to Back",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 7.25,
+        "y": -4
+      }
+    },
+    {
+      "name": "NITS to Front",
+      "direction": "out",
+      "occurrence": 1,
+      "position": {
+        "x": 7.25,
+        "y": -9.5
+      }
+    }
+  ],
+  "instances": [
+    {
+      "id": "n1104",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 3.25,
+        "y": -6.5
+      }
+    },
+    {
+      "id": "n1105",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 3.25,
+        "y": -7
+      }
+    },
+    {
+      "id": "n1107",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 9.75,
+        "y": -11.25
+      }
+    },
+    {
+      "id": "n1110",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -11.75,
+        "y": -2.25
+      }
+    },
+    {
+      "id": "n1111",
+      "type": "NUMBER_TO_COMPOSITE",
+      "position": {
+        "x": -10.5,
+        "y": -2.25
+      }
+    },
+    {
+      "id": "n1112",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "n1113",
+      "type": "COMPOSITE_TO_NUMBER",
+      "position": {
+        "x": -2.5,
+        "y": -2.25
+      }
+    },
+    {
+      "id": "n1115",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": -9.25
+      }
+    },
+    {
+      "id": "n1116",
+      "type": "CONST_BOOL",
+      "position": {
+        "x": -13,
+        "y": -7.75
+      }
+    },
+    {
+      "id": "n1117",
+      "type": "NOT",
+      "position": {
+        "x": -13,
+        "y": -7.25
+      }
+    },
+    {
+      "id": "n1118",
+      "type": "COMPOSITE_TO_NUMBER",
+      "position": {
+        "x": -2.5,
+        "y": -16.75
+      }
+    },
+    {
+      "id": "n1119",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -3.75,
+        "y": -6.25
+      }
+    },
+    {
+      "id": "n1120",
+      "type": "XOR",
+      "position": {
+        "x": -10.5,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n1121",
+      "type": "OR",
+      "position": {
+        "x": -11.75,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n1122",
+      "type": "CAPACITOR",
+      "position": {
+        "x": -9.25,
+        "y": -3.25
+      }
+    },
+    {
+      "id": "n1123",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n1124",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -3.25
+      }
+    },
+    {
+      "id": "n1125",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -4
+      }
+    },
+    {
+      "id": "n1126",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n1128",
+      "type": "NOT",
+      "position": {
+        "x": -5,
+        "y": -2.5
+      }
+    },
+    {
+      "id": "n1129",
+      "type": "XOR",
+      "position": {
+        "x": -5,
+        "y": -3.25
+      }
+    },
+    {
+      "id": "n1130",
+      "type": "AND",
+      "position": {
+        "x": -6.25,
+        "y": -3.25
+      }
+    },
+    {
+      "id": "n1132",
+      "type": "XOR",
+      "position": {
+        "x": -5,
+        "y": -4
+      }
+    },
+    {
+      "id": "n1133",
+      "type": "AND",
+      "position": {
+        "x": -6.25,
+        "y": -4
+      }
+    },
+    {
+      "id": "n1134",
+      "type": "XOR",
+      "position": {
+        "x": -5,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n1135",
+      "type": "AND",
+      "position": {
+        "x": -6.25,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n1147",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": -11.75,
+        "y": -17
+      }
+    },
+    {
+      "id": "n1148",
+      "type": "NUMBER_TO_COMPOSITE",
+      "position": {
+        "x": -10.5,
+        "y": -17
+      }
+    },
+    {
+      "id": "n1149",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": -17.5
+      }
+    },
+    {
+      "id": "n1153",
+      "type": "XOR",
+      "position": {
+        "x": -10.5,
+        "y": -18.25
+      }
+    },
+    {
+      "id": "n1154",
+      "type": "OR",
+      "position": {
+        "x": -11.75,
+        "y": -18.25
+      }
+    },
+    {
+      "id": "n1155",
+      "type": "CAPACITOR",
+      "position": {
+        "x": -9.25,
+        "y": -18
+      }
+    },
+    {
+      "id": "n1156",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -17
+      }
+    },
+    {
+      "id": "n1157",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -17.75
+      }
+    },
+    {
+      "id": "n1158",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -18.5
+      }
+    },
+    {
+      "id": "n1159",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -19.25
+      }
+    },
+    {
+      "id": "n1160",
+      "type": "NOT",
+      "position": {
+        "x": -5,
+        "y": -17
+      }
+    },
+    {
+      "id": "n1161",
+      "type": "XOR",
+      "position": {
+        "x": -5,
+        "y": -17.75
+      }
+    },
+    {
+      "id": "n1162",
+      "type": "AND",
+      "position": {
+        "x": -6.25,
+        "y": -17.75
+      }
+    },
+    {
+      "id": "n1163",
+      "type": "XOR",
+      "position": {
+        "x": -5,
+        "y": -18.5
+      }
+    },
+    {
+      "id": "n1164",
+      "type": "AND",
+      "position": {
+        "x": -6.25,
+        "y": -18.5
+      }
+    },
+    {
+      "id": "n1165",
+      "type": "XOR",
+      "position": {
+        "x": -5,
+        "y": -19.25
+      }
+    },
+    {
+      "id": "n1166",
+      "type": "AND",
+      "position": {
+        "x": -6.25,
+        "y": -19.25
+      }
+    },
+    {
+      "id": "n1167",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -3.75,
+        "y": -20.25
+      }
+    },
+    {
+      "id": "n1168",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -20
+      }
+    },
+    {
+      "id": "n1169",
+      "type": "OR",
+      "position": {
+        "x": -5,
+        "y": -20
+      }
+    },
+    {
+      "id": "n1170",
+      "type": "OR",
+      "position": {
+        "x": -5,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "n1171",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "n1172",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -11.75,
+        "y": -10
+      }
+    },
+    {
+      "id": "n1176",
+      "type": "NOT",
+      "position": {
+        "x": -10.5,
+        "y": -10
+      }
+    },
+    {
+      "id": "n1177",
+      "type": "OR",
+      "position": {
+        "x": -6.5,
+        "y": -7.25
+      }
+    },
+    {
+      "id": "n1178",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.75,
+        "y": -7
+      }
+    },
+    {
+      "id": "n1180",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.5,
+        "y": -16
+      }
+    },
+    {
+      "id": "n1181",
+      "type": "OR",
+      "position": {
+        "x": -6.25,
+        "y": -16.25
+      }
+    },
+    {
+      "id": "n1189",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -10.5,
+        "y": -9.5
+      }
+    },
+    {
+      "id": "n1190",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.25,
+        "y": -6.25
+      }
+    },
+    {
+      "id": "n1192",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -6.25,
+        "y": -20.75
+      }
+    },
+    {
+      "id": "n1193",
+      "type": "COMPOSITE_WRITE_BOOLEAN",
+      "position": {
+        "x": -2.5,
+        "y": -12.25
+      }
+    },
+    {
+      "id": "n1194",
+      "type": "COMPOSITE_TO_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -11.75
+      }
+    },
+    {
+      "id": "n1203",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -3.5
+      }
+    },
+    {
+      "id": "n1204",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n1205",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -4
+      }
+    },
+    {
+      "id": "n1206",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -4.25
+      }
+    },
+    {
+      "id": "n1207",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -4.5
+      }
+    },
+    {
+      "id": "n1208",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n1209",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -5
+      }
+    },
+    {
+      "id": "n1210",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -5.25
+      }
+    },
+    {
+      "id": "n1211",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -5.5
+      }
+    },
+    {
+      "id": "n1212",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -5.75
+      }
+    },
+    {
+      "id": "n1213",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -6
+      }
+    },
+    {
+      "id": "n1214",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -6.25
+      }
+    },
+    {
+      "id": "n1215",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -6.5
+      }
+    },
+    {
+      "id": "n1216",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -6.75
+      }
+    },
+    {
+      "id": "n1217",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -7
+      }
+    },
+    {
+      "id": "n1219",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -7.5
+      }
+    },
+    {
+      "id": "n1220",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -7.75
+      }
+    },
+    {
+      "id": "n1221",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -8
+      }
+    },
+    {
+      "id": "n1222",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -8.25
+      }
+    },
+    {
+      "id": "n1223",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -8.5
+      }
+    },
+    {
+      "id": "n1224",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -8.75
+      }
+    },
+    {
+      "id": "n1225",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -9
+      }
+    },
+    {
+      "id": "n1226",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -9.25
+      }
+    },
+    {
+      "id": "n1227",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -9.5
+      }
+    },
+    {
+      "id": "n1228",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -9.75
+      }
+    },
+    {
+      "id": "n1229",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -10
+      }
+    },
+    {
+      "id": "n1230",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -10.25
+      }
+    },
+    {
+      "id": "n1231",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -10.5
+      }
+    },
+    {
+      "id": "n1232",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -10.75
+      }
+    },
+    {
+      "id": "n1233",
+      "type": "COMPOSITE_READ_NUMBER",
+      "position": {
+        "x": 8.5,
+        "y": -11
+      }
+    },
+    {
+      "id": "n1235",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 6,
+        "y": -8
+      }
+    },
+    {
+      "id": "n1236",
+      "type": "COMPOSITE_WRITE_NUMBER",
+      "position": {
+        "x": 6,
+        "y": -13.5
+      }
+    },
+    {
+      "id": "n1237",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "n1238",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -3.75
+      }
+    },
+    {
+      "id": "n1239",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -4.75
+      }
+    },
+    {
+      "id": "n1240",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -5.75
+      }
+    },
+    {
+      "id": "n1241",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -6.75
+      }
+    },
+    {
+      "id": "n1242",
+      "type": "FUNC_NUM_8",
+      "position": {
+        "x": 1.25,
+        "y": -4
+      }
+    },
+    {
+      "id": "n1243",
+      "type": "CONST",
+      "position": {
+        "x": -1.25,
+        "y": -2.25
+      }
+    },
+    {
+      "id": "n1244",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -17.25
+      }
+    },
+    {
+      "id": "n1245",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -18.25
+      }
+    },
+    {
+      "id": "n1246",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -19.25
+      }
+    },
+    {
+      "id": "n1247",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -20.25
+      }
+    },
+    {
+      "id": "n1248",
+      "type": "NUM_SWITCHBOX",
+      "position": {
+        "x": 0,
+        "y": -21.25
+      }
+    },
+    {
+      "id": "n1249",
+      "type": "FUNC_NUM_8",
+      "position": {
+        "x": 1.25,
+        "y": -18.5
+      }
+    },
+    {
+      "id": "n1250",
+      "type": "CONST",
+      "position": {
+        "x": -1.25,
+        "y": -16.75
+      }
+    },
+    {
+      "id": "n1251",
+      "type": "NOR",
+      "position": {
+        "x": -2.5,
+        "y": -14.25
+      }
+    },
+    {
+      "id": "n1254",
+      "type": "OR",
+      "position": {
+        "x": -5,
+        "y": -6.5
+      }
+    },
+    {
+      "id": "n1255",
+      "type": "OR",
+      "position": {
+        "x": -5,
+        "y": -21
+      }
+    },
+    {
+      "id": "n1257",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.75,
+        "y": -8.25
+      }
+    },
+    {
+      "id": "n1258",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.75,
+        "y": -10.25
+      }
+    },
+    {
+      "id": "n1259",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -10.5,
+        "y": -11.25
+      }
+    },
+    {
+      "id": "n1260",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -10.5,
+        "y": -12.75
+      }
+    },
+    {
+      "id": "n1265",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.75,
+        "y": -12.5
+      }
+    },
+    {
+      "id": "n1266",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -7.75,
+        "y": -14.25
+      }
+    },
+    {
+      "id": "n1271",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -10.5,
+        "y": -15
+      }
+    },
+    {
+      "id": "n1273",
+      "type": "AND",
+      "position": {
+        "x": -11.75,
+        "y": -12.75
+      }
+    },
+    {
+      "id": "n1274",
+      "type": "COMPOSITE_READ_BOOLEAN",
+      "position": {
+        "x": -13,
+        "y": -12.25
+      }
+    },
+    {
+      "id": "n1279",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": -6.5,
+        "y": -9
+      }
+    },
+    {
+      "id": "n1280",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": -6.5,
+        "y": -13
+      }
+    },
+    {
+      "id": "n1282",
+      "type": "NOR",
+      "position": {
+        "x": -13,
+        "y": -13
+      }
+    },
+    {
+      "id": "n1306",
+      "type": "COMPOSITE_SWITCHBOX",
+      "position": {
+        "x": -9.25,
+        "y": -2.75
+      }
+    },
+    {
+      "id": "n1307",
+      "type": "COMPOSITE_SWITCHBOX",
+      "position": {
+        "x": -9.25,
+        "y": -17.5
+      }
+    },
+    {
+      "id": "n1308",
+      "type": "BOOL_FUNC_8",
+      "position": {
+        "x": -6.5,
+        "y": -15.25
+      }
+    },
+    {
+      "id": "n1309",
+      "type": "BOOL_FUNC_8",
+      "position": {
+        "x": -6.5,
+        "y": -11.25
+      }
+    },
+    {
+      "id": "n1310",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": -2.5,
+        "y": -13.5
+      }
+    },
+    {
+      "id": "n1315",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": -3.75,
+        "y": -11.5
+      }
+    },
+    {
+      "id": "n1316",
+      "type": "XOR",
+      "position": {
+        "x": -11.75,
+        "y": -12
+      }
+    },
+    {
+      "id": "n1317",
+      "type": "NOT",
+      "position": {
+        "x": -10.5,
+        "y": -12
+      }
+    },
+    {
+      "id": "n1318",
+      "type": "AND",
+      "position": {
+        "x": -9.25,
+        "y": -12.25
+      }
+    },
+    {
+      "id": "n1319",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": -3.75,
+        "y": -12.75
+      }
+    },
+    {
+      "id": "n1320",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": -5,
+        "y": -14
+      }
+    },
+    {
+      "id": "n1325",
+      "type": "BOOL_FUNC_4",
+      "position": {
+        "x": -3.75,
+        "y": -14.25
+      }
+    }
+  ],
+  "warnings": [
+    "Imported 144 nodes, 311 links, and 1 submodules from XML."
+  ]
+}

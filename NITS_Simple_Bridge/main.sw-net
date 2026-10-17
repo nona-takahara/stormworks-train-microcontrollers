@@ -31,7 +31,6 @@ module main
   # --- Address match latch / local mode timer ---
   inst SR_LATCH ext_mode_latch : r=rx_addr_not_mine_read_out, s=rx_addr_matched_read_out -> q=ext_mode_latch_q
   inst CAPACITOR local_mode_timer (charge_time=3, discharge_time=0) : enable=ext_mode_latch_q -> out=local_mode_timer_out
-  inst TOOLTIP_BOOLEAN local_mode_tooltip (label="value", on_label="on", off_label="off") : value=local_mode_timer_out ->
   inst COMPOSITE_SWITCHBOX nits_rx_gate_switch : a="from NITS", switch=local_mode_timer_out -> out=nits_rx_gate_switch_out
 
   # --- NITS TX: strobe / watchdog logic ---

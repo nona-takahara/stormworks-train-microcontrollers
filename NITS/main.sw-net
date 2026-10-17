@@ -1,0 +1,141 @@
+module main
+  port in "NITS from Front" : composite
+  port out "NITS to Front" : composite
+  port in "NITS from Back" : composite
+  port out "NITS to Back" : composite
+  port in "Control Input" : composite
+  port out "Informations" : composite
+
+  inst COMPOSITE_READ_NUMBER n1104 (channel=1) : composite="Control Input" -> out=n1104_out
+  inst COMPOSITE_READ_NUMBER n1105 (channel=2) : composite="Control Input" -> out=n1105_out
+  inst COMPOSITE_WRITE_NUMBER n1107 (count=32, offset=1) : in1=n1203_out, in2=n1204_out, in3=n1205_out, in4=n1206_out, in5=n1207_out, in6=n1208_out, in7=n1209_out, in8=n1210_out, in9=n1211_out, in10=n1212_out, in11=n1213_out, in12=n1214_out, in13=n1215_out, in14=n1216_out, in15=n1217_out, in16=n1104_out, in17=n1233_out, in18=n1232_out, in19=n1231_out, in20=n1230_out, in21=n1229_out, in22=n1228_out, in23=n1227_out, in24=n1226_out, in25=n1225_out, in26=n1224_out, in27=n1223_out, in28=n1222_out, in29=n1221_out, in30=n1220_out, in31=n1219_out, in32=n1194_out, inc=n1193_out -> out="Informations"
+  inst COMPOSITE_READ_NUMBER n1110 (channel=16) : composite="NITS from Front" -> out=n1110_out
+  inst NUMBER_TO_COMPOSITE n1111 : number=n1110_out -> out=n1111_out
+  inst COMPOSITE_READ_BOOLEAN n1112 (channel=24) : composite=n1111_out -> out=n1112_out
+  inst COMPOSITE_TO_NUMBER n1113 : composite=n1119_out -> out=n1113_out
+  inst COMPOSITE_WRITE_BOOLEAN n1115 (count=9, offset=24) : in1=n1117_out, in3=n1116_out, in4=n1116_out, in8=n1116_out -> out=n1115_out
+  inst CONST_BOOL n1116 : -> out=n1116_out
+  inst NOT n1117 : a=n1117_out -> out=n1117_out
+  inst COMPOSITE_TO_NUMBER n1118 : composite=n1167_out -> out=n1118_out
+  inst COMPOSITE_WRITE_BOOLEAN n1119 (count=14, offset=1) : in1=n1128_out, in2=n1129_out, in3=n1132_out, in4=n1134_out, in5=n1170_out, in11=n1254_out, in12=n1279_out, in13=n1309_out, in14=n1177_out, inc=n1115_out -> out=n1119_out
+  inst XOR n1120 : a=n1112_out, b=n1121_out -> out=n1120_out
+  inst OR n1121 : a=n1112_out -> out=n1121_out
+  inst CAPACITOR n1122 (charge_time=0, discharge_time=0.1) : enable=n1120_out -> out=n1122_out
+  inst COMPOSITE_READ_BOOLEAN n1123 (channel=1) : composite=n1306_out -> out=n1123_out
+  inst COMPOSITE_READ_BOOLEAN n1124 (channel=2) : composite=n1306_out -> out=n1124_out
+  inst COMPOSITE_READ_BOOLEAN n1125 (channel=3) : composite=n1306_out -> out=n1125_out
+  inst COMPOSITE_READ_BOOLEAN n1126 (channel=4) : composite=n1306_out -> out=n1126_out
+  inst NOT n1128 : a=n1123_out -> out=n1128_out
+  inst XOR n1129 : a=n1123_out, b=n1124_out -> out=n1129_out
+  inst AND n1130 : a=n1123_out, b=n1124_out -> out=n1130_out
+  inst XOR n1132 : a=n1130_out, b=n1125_out -> out=n1132_out
+  inst AND n1133 : a=n1130_out, b=n1125_out -> out=n1133_out
+  inst XOR n1134 : a=n1133_out, b=n1126_out -> out=n1134_out
+  inst AND n1135 : a=n1125_out, b=n1126_out -> out=n1135_out
+  inst COMPOSITE_READ_NUMBER n1147 (channel=16) : composite="NITS from Back" -> out=n1147_out
+  inst NUMBER_TO_COMPOSITE n1148 : number=n1147_out -> out=n1148_out
+  inst COMPOSITE_READ_BOOLEAN n1149 (channel=24) : composite=n1148_out -> out=n1149_out
+  inst XOR n1153 : a=n1149_out, b=n1154_out -> out=n1153_out
+  inst OR n1154 : a=n1149_out -> out=n1154_out
+  inst CAPACITOR n1155 (charge_time=0, discharge_time=0.1) : enable=n1153_out -> out=n1155_out
+  inst COMPOSITE_READ_BOOLEAN n1156 (channel=1) : composite=n1307_out -> out=n1156_out
+  inst COMPOSITE_READ_BOOLEAN n1157 (channel=2) : composite=n1307_out -> out=n1157_out
+  inst COMPOSITE_READ_BOOLEAN n1158 (channel=3) : composite=n1307_out -> out=n1158_out
+  inst COMPOSITE_READ_BOOLEAN n1159 (channel=4) : composite=n1307_out -> out=n1159_out
+  inst NOT n1160 : a=n1156_out -> out=n1160_out
+  inst XOR n1161 : a=n1156_out, b=n1157_out -> out=n1161_out
+  inst AND n1162 : a=n1156_out, b=n1157_out -> out=n1162_out
+  inst XOR n1163 : a=n1162_out, b=n1158_out -> out=n1163_out
+  inst AND n1164 : a=n1162_out, b=n1158_out -> out=n1164_out
+  inst XOR n1165 : a=n1164_out, b=n1159_out -> out=n1165_out
+  inst AND n1166 : a=n1158_out, b=n1159_out -> out=n1166_out
+  inst COMPOSITE_WRITE_BOOLEAN n1167 (count=14, offset=1) : in1=n1160_out, in2=n1161_out, in3=n1163_out, in4=n1165_out, in5=n1169_out, in11=n1255_out, in12=n1280_out, in13=n1308_out, in14=n1181_out, inc=n1115_out -> out=n1167_out
+  inst COMPOSITE_READ_BOOLEAN n1168 (channel=5) : composite=n1307_out -> out=n1168_out
+  inst OR n1169 : a=n1166_out, b=n1168_out -> out=n1169_out
+  inst OR n1170 : a=n1135_out, b=n1171_out -> out=n1170_out
+  inst COMPOSITE_READ_BOOLEAN n1171 (channel=5) : composite=n1306_out -> out=n1171_out
+  inst COMPOSITE_READ_BOOLEAN n1172 (channel=1) : composite="Control Input" -> out=n1172_out
+  inst OR n1177 : a=n1178_out, b=n1176_out -> out=n1177_out
+  inst COMPOSITE_READ_BOOLEAN n1178 (channel=14) : composite=n1306_out -> out=n1178_out
+  inst COMPOSITE_READ_BOOLEAN n1180 (channel=14) : composite=n1307_out -> out=n1180_out
+  inst OR n1181 : a=n1180_out, b=n1176_out -> out=n1181_out
+  inst COMPOSITE_READ_BOOLEAN n1189 (channel=4) : composite="Control Input" -> out=n1189_out
+  inst COMPOSITE_READ_BOOLEAN n1190 (channel=11) : composite=n1306_out -> out=n1190_out
+  inst COMPOSITE_READ_BOOLEAN n1192 (channel=11) : composite=n1307_out -> out=n1192_out
+  inst COMPOSITE_WRITE_BOOLEAN n1193 (count=15, offset=1) : in1=n1123_out, in2=n1124_out, in3=n1125_out, in4=n1126_out, in5=n1170_out, in6=n1156_out, in7=n1157_out, in8=n1158_out, in9=n1159_out, in10=n1169_out, in11=n1310_out, in12=n1315_out, in13=n1319_out, in14=n1251_out, in15=n1320_out -> out=n1193_out
+  inst COMPOSITE_TO_NUMBER n1194 : composite=n1193_out -> out=n1194_out
+  inst COMPOSITE_READ_NUMBER n1219 (channel=1) : composite="NITS from Back" -> out=n1219_out
+  inst COMPOSITE_READ_NUMBER n1220 (channel=2) : composite="NITS from Back" -> out=n1220_out
+  inst COMPOSITE_READ_NUMBER n1221 (channel=3) : composite="NITS from Back" -> out=n1221_out
+  inst COMPOSITE_READ_NUMBER n1222 (channel=4) : composite="NITS from Back" -> out=n1222_out
+  inst COMPOSITE_READ_NUMBER n1223 (channel=5) : composite="NITS from Back" -> out=n1223_out
+  inst COMPOSITE_READ_NUMBER n1224 (channel=6) : composite="NITS from Back" -> out=n1224_out
+  inst COMPOSITE_READ_NUMBER n1225 (channel=7) : composite="NITS from Back" -> out=n1225_out
+  inst COMPOSITE_READ_NUMBER n1226 (channel=8) : composite="NITS from Back" -> out=n1226_out
+  inst COMPOSITE_READ_NUMBER n1227 (channel=9) : composite="NITS from Back" -> out=n1227_out
+  inst COMPOSITE_READ_NUMBER n1228 (channel=10) : composite="NITS from Back" -> out=n1228_out
+  inst COMPOSITE_READ_NUMBER n1229 (channel=11) : composite="NITS from Back" -> out=n1229_out
+  inst COMPOSITE_READ_NUMBER n1230 (channel=12) : composite="NITS from Back" -> out=n1230_out
+  inst COMPOSITE_READ_NUMBER n1231 (channel=13) : composite="NITS from Back" -> out=n1231_out
+  inst COMPOSITE_READ_NUMBER n1232 (channel=14) : composite="NITS from Back" -> out=n1232_out
+  inst COMPOSITE_READ_NUMBER n1233 (channel=15) : composite="NITS from Back" -> out=n1233_out
+  inst COMPOSITE_WRITE_NUMBER n1235 (count=16, offset=-1) : in1=n1104_out, in2=n1113_out, in3=n1113_out, in4=n1113_out, in5=n1113_out, in6=n1113_out, in7=n1113_out, in8=n1113_out, in9=n1113_out, in10=n1113_out, in11=n1113_out, in12=n1113_out, in13=n1113_out, in14=n1113_out, in15=n1113_out, in16=n1113_out, inc="NITS from Front", offset_input=n1242_out -> out="NITS to Back"
+  inst COMPOSITE_WRITE_NUMBER n1236 (count=16, offset=-1) : in1=n1105_out, in2=n1118_out, in3=n1118_out, in4=n1118_out, in5=n1118_out, in6=n1118_out, in7=n1118_out, in8=n1118_out, in9=n1118_out, in10=n1118_out, in11=n1118_out, in12=n1118_out, in13=n1118_out, in14=n1118_out, in15=n1118_out, in16=n1118_out, inc="NITS from Back", offset_input=n1249_out -> out="NITS to Front"
+  inst NUM_SWITCHBOX n1237 : a=n1243_value, switch=n1123_out -> out=n1237_out
+  inst NUM_SWITCHBOX n1238 : a=n1243_value, switch=n1124_out -> out=n1238_out
+  inst NUM_SWITCHBOX n1239 : a=n1243_value, switch=n1125_out -> out=n1239_out
+  inst NUM_SWITCHBOX n1240 : a=n1243_value, switch=n1126_out -> out=n1240_out
+  inst NUM_SWITCHBOX n1241 : a=n1243_value, switch=n1171_out -> out=n1241_out
+  inst FUNC_NUM_8 n1242 (expression="min(x+y*2+z*4+w*8+a*16+1,15)") : x=n1237_out, y=n1238_out, z=n1239_out, w=n1240_out, a=n1241_out -> out=n1242_out
+  inst CONST n1243 (value=1) : -> value=n1243_value
+  inst NUM_SWITCHBOX n1244 : a=n1250_value, switch=n1156_out -> out=n1244_out
+  inst NUM_SWITCHBOX n1245 : a=n1250_value, switch=n1157_out -> out=n1245_out
+  inst NUM_SWITCHBOX n1246 : a=n1250_value, switch=n1158_out -> out=n1246_out
+  inst NUM_SWITCHBOX n1247 : a=n1250_value, switch=n1159_out -> out=n1247_out
+  inst NUM_SWITCHBOX n1248 : a=n1250_value, switch=n1168_out -> out=n1248_out
+  inst FUNC_NUM_8 n1249 (expression="min(x+y*2+z*4+w*8+a*16+1,15)") : x=n1244_out, y=n1245_out, z=n1246_out, w=n1247_out, a=n1248_out -> out=n1249_out
+  inst CONST n1250 (value=1) : -> value=n1250_value
+  inst COMPOSITE_READ_NUMBER n1203 (channel=1) : composite="NITS from Front" -> out=n1203_out
+  inst COMPOSITE_READ_NUMBER n1204 (channel=2) : composite="NITS from Front" -> out=n1204_out
+  inst COMPOSITE_READ_NUMBER n1205 (channel=3) : composite="NITS from Front" -> out=n1205_out
+  inst COMPOSITE_READ_NUMBER n1206 (channel=4) : composite="NITS from Front" -> out=n1206_out
+  inst COMPOSITE_READ_NUMBER n1207 (channel=5) : composite="NITS from Front" -> out=n1207_out
+  inst COMPOSITE_READ_NUMBER n1208 (channel=6) : composite="NITS from Front" -> out=n1208_out
+  inst COMPOSITE_READ_NUMBER n1209 (channel=7) : composite="NITS from Front" -> out=n1209_out
+  inst COMPOSITE_READ_NUMBER n1210 (channel=8) : composite="NITS from Front" -> out=n1210_out
+  inst COMPOSITE_READ_NUMBER n1211 (channel=9) : composite="NITS from Front" -> out=n1211_out
+  inst COMPOSITE_READ_NUMBER n1212 (channel=10) : composite="NITS from Front" -> out=n1212_out
+  inst COMPOSITE_READ_NUMBER n1213 (channel=11) : composite="NITS from Front" -> out=n1213_out
+  inst COMPOSITE_READ_NUMBER n1214 (channel=12) : composite="NITS from Front" -> out=n1214_out
+  inst COMPOSITE_READ_NUMBER n1215 (channel=13) : composite="NITS from Front" -> out=n1215_out
+  inst COMPOSITE_READ_NUMBER n1216 (channel=14) : composite="NITS from Front" -> out=n1216_out
+  inst COMPOSITE_READ_NUMBER n1217 (channel=15) : composite="NITS from Front" -> out=n1217_out
+  inst NOT n1176 : a=n1172_out -> out=n1176_out
+  inst NOR n1251 : a=n1177_out, b=n1181_out -> out=n1251_out
+  inst OR n1254 : a=n1190_out, b=n1189_out -> out=n1254_out
+  inst OR n1255 : a=n1192_out, b=n1189_out -> out=n1255_out
+  inst COMPOSITE_READ_BOOLEAN n1257 (channel=12) : composite=n1306_out -> out=n1257_out
+  inst COMPOSITE_READ_BOOLEAN n1258 (channel=13) : composite=n1306_out -> out=n1258_out
+  inst COMPOSITE_READ_BOOLEAN n1259 (channel=2) : composite="Control Input" -> out=n1259_out
+  inst COMPOSITE_READ_BOOLEAN n1260 (channel=3) : composite="Control Input" -> out=n1260_out
+  inst COMPOSITE_READ_BOOLEAN n1265 (channel=12) : composite=n1307_out -> out=n1265_out
+  inst COMPOSITE_READ_BOOLEAN n1266 (channel=13) : composite=n1307_out -> out=n1266_out
+  inst COMPOSITE_READ_BOOLEAN n1271 (channel=6) : composite="Control Input" -> out=n1271_out
+  inst AND n1273 : a=n1274_out, b=n1282_out -> out=n1273_out
+  inst COMPOSITE_READ_BOOLEAN n1274 (channel=5) : composite="Control Input" -> out=n1274_out
+  inst BOOL_FUNC_4 n1279 (expression="!w&((x&(!y))|((!(x|y))&z))") : x=n1259_out, y=n1260_out, z=n1257_out, w=n1274_out -> out=n1279_out
+  inst BOOL_FUNC_4 n1280 (expression="!w&((x&(!y))|((!(x|y))&z))") : x=n1259_out, y=n1260_out, z=n1265_out, w=n1274_out -> out=n1280_out
+  inst NOR n1282 : a=n1122_out, b=n1155_out -> out=n1282_out
+  inst COMPOSITE_SWITCHBOX n1306 : a=n1111_out, switch=n1122_out -> out=n1306_out
+  inst COMPOSITE_SWITCHBOX n1307 : a=n1148_out, switch=n1155_out -> out=n1307_out
+  inst BOOL_FUNC_8 n1308 (expression="((!(x|y))&a)|(x&(!y)&z)|((!x)&y&b)") : x=n1259_out, y=n1260_out, z=n1271_out, a=n1266_out, b=n1257_out -> out=n1308_out
+  inst BOOL_FUNC_8 n1309 (expression="((!(x|y))&a)|(x&(!y)&z)|((!x)&y&b)") : x=n1259_out, y=n1260_out, z=n1271_out, a=n1258_out, b=n1265_out -> out=n1309_out
+  inst BOOL_FUNC_4 n1310 (expression="x|y|z|(!w)") : x=n1190_out, y=n1189_out, z=n1192_out, w=n1325_out -> out=n1310_out
+  inst BOOL_FUNC_4 n1315 (expression="x|y|z") : x=n1279_out, y=n1280_out, z=n1318_out -> out=n1315_out
+  inst XOR n1316 : a=n1259_out, b=n1260_out -> out=n1316_out
+  inst NOT n1317 : a=n1316_out -> out=n1317_out
+  inst AND n1318 : a=n1317_out, b=n1273_out -> out=n1318_out
+  inst BOOL_FUNC_4 n1319 (expression="x|y|z") : x=n1309_out, y=n1308_out, z=n1318_out -> out=n1319_out
+  inst BOOL_FUNC_4 n1320 (expression="(!(x|y))&(z|w)") : x=n1257_out, y=n1265_out, z=n1259_out, w=n1318_out -> out=n1320_out
+  inst BOOL_FUNC_4 n1325 (expression="x|(y&(z|w))") : x=n1319_out, y=n1320_out, z=n1258_out, w=n1266_out -> out=n1325_out
+end
