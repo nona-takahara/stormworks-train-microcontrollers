@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { buildLua } from "./lua-build.mjs";
@@ -12,13 +13,29 @@ function timestamp(date = new Date()) {
     return date.toISOString().replace(/[:.]/gu, "-");
 }
 
+// 非対話の呼び出し(エージェントなど)への承認は、利用者があらかじめリポジトリ直下の
+// このファイルに、確認の文面を一行そのまま書くことで渡す。承認は一度使うと行ごと消える。
+// 消えるのは、古い承認が残って、後の別の上書きを黙って通すことを避けるため。
+export const APPROVAL_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..", "MICROCONTROLLER_APPROVAL.txt");
+
+function consumeApproval(message, file) {
+    if (!fs.existsSync(file)) return false;
+    const lines = fs.readFileSync(file, "utf8").split(/\r?\n/u);
+    const index = lines.findIndex((line) => line.trim() === message);
+    if (index < 0) return false;
+    lines.splice(index, 1);
+    fs.writeFileSync(file, lines.join("\n"));
+    return true;
+}
+
 export async function confirmOverwrite(message, io = {}) {
     const input = io.input ?? stdin;
     const output = io.output ?? stdout;
     // CIやリダイレクト下で既定値が承認扱いになる事故を避ける。
     // 自動上書き用のforceフラグは、この小規模ツールでは意図的に用意しない。
     if (!input.isTTY || !output.isTTY) {
-        throw new Error("Refusing to overwrite in a non-interactive terminal");
+        if (consumeApproval(message, io.approvalFile ?? APPROVAL_FILE)) return true;
+        throw new Error(`Refusing to overwrite in a non-interactive terminal. To approve, write this line to ${APPROVAL_FILE}:\n${message}`);
     }
     const prompt = readline.createInterface({ input, output });
     try {
