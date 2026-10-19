@@ -4,3 +4,4 @@ node_modules/
 .backup/
 
 **/deploy/
+MICROCONTROLLER_APPROVAL.txt
