@@ -13,7 +13,13 @@ MICROCONTROLLER_APPROVAL.txt
 __pycache__/
 *.pyc
 
-# 車両モデル生成時の測定データ（Git に置かない。生成手順は VehicleCalcModel 側の文書を参照）
+# 車両モデルの同定作業のデータ。コミットするのは、モデルのパラメータ・測定の範囲・
+# 設定のサンプルだけである（VehicleCalcModel/README.md の「データの扱い」）。
+# Probe/data/ は既定で除外し、コミットするものだけを許可する。
+VehicleCalcModel/Probe/data/*
+!VehicleCalcModel/Probe/data/params_*.json
+!VehicleCalcModel/Probe/data/pair_config.example.json
+!VehicleCalcModel/Probe/data/vehicles/
+VehicleCalcModel/Probe/analysis/pair_experiments.json
 VehicleCalcModel/**/*.csv
-VehicleCalcModel/Probe/data/**/commands.json
 VehicleCalcModel/**/*.out

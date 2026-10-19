@@ -73,7 +73,7 @@ Momelink の安定性評価はこのモデルの利用先の一つとして
 同定の作業中に生まれるデータ（測定ログ `log*.csv`、走行コマンド列、実験の記録 `archive_*`・`scenarios`・`twocar*`・`vvvf`・`discarded`、実験表、`pair_fit_result.json`、`pair_config.json` の実物）は、コミットしない。
 同定が済んだ結果は、パラメータとして取り出して残す。
 
-測定ログの一部（`*.csv`、`commands.json`、`*.out`）は `.gitignore` で除外している。残りは `.gitignore` に入れていないので、`git status` に未追跡として出る。今後、除外する可能性がある。
+`.gitignore` は `Probe/data/` の下を、上のコミットするものを除いてすべて除外する。実験表 `Probe/analysis/pair_experiments.json` と、`VehicleCalcModel/` の下の `*.csv`、`*.out` も除外する。
 
 組のパラメータは、`pair_fit_result.json`（`pair_loop.mjs` の出力）の `theta` と `chosenForm` を取り出して作る。
 単両には、この書き戻しを行う `promote_single.mjs` があるが、組には道具がなく、手作業で作っている。これは正本から作れていない欠陥である。
