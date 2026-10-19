@@ -1,0 +1,35 @@
+module main
+  port in "Probe Input" : composite
+  port in "Wheel" : number
+  port in "Sync" : composite
+  port out "Motor" : number
+  port out "Brake" : number
+  port in "Ready" : boolean
+  port in "Battery" : number
+  port in "Slip 1" : boolean
+  port in "Slip 2" : boolean
+  port in "Slip 3" : boolean
+  port in "Slip 4" : boolean
+
+  # Ready と Slip 1-4(boolean)を number 1/0 にし、Battery と Wheel(車軸の回転数 RPS)とともに入力 composite の
+  # ch16-22 へ書き足す。probe.lua は ch16 を実験Ready(0=OFF)、ch17 をバッテリー、
+  # ch18-21 を Slip 1-4、ch22 を RPS(補助チャンネルで記録)として扱う。
+  # 二両編成の時刻合わせ: マイコン間の composite "Sync" の ch1 に、のこぎり波(周期 300 tick)が来る。
+  # これを ch23 へ書き足し、補助チャンネル(6,22,23)で記録する。両車のプローブが同じ構成なので、経路の遅れは両車で等しい。
+  # HTTP のポートはマイコンのプロパティ(probe_port)で車両ごとに決め、ch24 へ書く。二両編成では車両ごとに別のポート(8765、8766)の別のサーバーへ送る。
+  # 出力 composite の ch1 をモーター、ch2 をブレーキとして、マイコン内で number に取り出す
+  # (取り出しのノードは 1 tick の遅れを足す。以前は車両側のノードで取り出していた)。
+  inst CONST flag_on (value=1) : -> value=flag_on_value
+  inst CONST flag_off (value=0) : -> value=flag_off_value
+  inst NUM_SWITCHBOX ready_number : a=flag_on_value, b=flag_off_value, switch="Ready" -> out=ready_number_out
+  inst NUM_SWITCHBOX slip_1_number : a=flag_on_value, b=flag_off_value, switch="Slip 1" -> out=slip_1_number_out
+  inst NUM_SWITCHBOX slip_2_number : a=flag_on_value, b=flag_off_value, switch="Slip 2" -> out=slip_2_number_out
+  inst NUM_SWITCHBOX slip_3_number : a=flag_on_value, b=flag_off_value, switch="Slip 3" -> out=slip_3_number_out
+  inst NUM_SWITCHBOX slip_4_number : a=flag_on_value, b=flag_off_value, switch="Slip 4" -> out=slip_4_number_out
+  inst PROPERTY_NUMBER probe_port (value=8765) : -> out=probe_port_out
+  inst COMPOSITE_READ_NUMBER sync_wave (channel=1) : composite="Sync" -> out=sync_wave_out
+  inst COMPOSITE_WRITE_NUMBER probe_input_extra (count=9, offset=16) : in1=ready_number_out, in2="Battery", in3=slip_1_number_out, in4=slip_2_number_out, in5=slip_3_number_out, in6=slip_4_number_out, in7="Wheel", in8=sync_wave_out, in9=probe_port_out, inc="Probe Input" -> out=probe_input_extra_out
+  inst LUA probe_logic (script_ref="deploy/probe_deploy.lua") : composite=probe_input_extra_out -> composite=probe_output
+  inst COMPOSITE_READ_NUMBER motor_output (channel=1) : composite=probe_output -> out="Motor"
+  inst COMPOSITE_READ_NUMBER brake_output (channel=2) : composite=probe_output -> out="Brake"
+end

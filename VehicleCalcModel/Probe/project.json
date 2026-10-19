@@ -1,0 +1,145 @@
+{
+  "formatVersion": "stormworks-project-json-v11",
+  "sourceName": "CHUSO_Mo2000_VehicleProbe.xml",
+  "name": "CHUSO Mo2000 Vehicle Probe",
+  "description": "Vehicle response probe. See VehicleCalcModel/VehicleProbe.md.",
+  "width": 2,
+  "length": 6,
+  "icon": [
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................"
+  ],
+  "nodes": [
+    {
+      "id": "Probe Input",
+      "type": "composite_in",
+      "label": "Probe Input",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 2
+      }
+    },
+    {
+      "id": "Ready",
+      "type": "boolean_in",
+      "label": "Ready",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 1
+      }
+    },
+    {
+      "id": "Battery",
+      "type": "number_in",
+      "label": "Battery",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 2
+      }
+    },
+    {
+      "id": "Slip 1",
+      "type": "boolean_in",
+      "label": "Slip 1",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 3
+      }
+    },
+    {
+      "id": "Slip 2",
+      "type": "boolean_in",
+      "label": "Slip 2",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 3
+      }
+    },
+    {
+      "id": "Slip 3",
+      "type": "boolean_in",
+      "label": "Slip 3",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 4
+      }
+    },
+    {
+      "id": "Slip 4",
+      "type": "boolean_in",
+      "label": "Slip 4",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 4
+      }
+    },
+    {
+      "id": "Wheel",
+      "type": "number_in",
+      "label": "Wheel",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "id": "Motor",
+      "type": "number_out",
+      "label": "Motor",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "Brake",
+      "type": "number_out",
+      "label": "Brake",
+      "description": "The input signal to be processed.",
+      "nodePosition": {
+        "x": 1,
+        "y": 0
+      }
+    },
+    {
+      "id": "Sync",
+      "type": "composite_in",
+      "label": "Sync",
+      "description": "Inter-microcontroller composite. ch1 carries the sawtooth (period 300 ticks) for the time sync of a two-car train.",
+      "nodePosition": {
+        "x": 0,
+        "y": 5
+      }
+    }
+  ],
+  "submodule": {
+    "name": "main",
+    "relativePath": "main.sw-net"
+  },
+  "warnings": [
+    "Imported 31 nodes, 38 links, and 1 submodules from XML."
+  ]
+}
