@@ -25,6 +25,8 @@ const THRESHOLD_MAX_1_TO_0 = new Set([
 // 入力を、そのポート名へ明示的に補完する。
 const MISSING_COMPOSITE_INPUT_FALLBACK = {
   speed: "Phyics Sensor [+Z is front]",
+  // the renamed source (CHUSO1800_Traction_Controller_main_renamed.sw-net) names the node and the port differently
+  vehicle_speed: "Physics Sensor [+Z is front]",
 };
 
 function unwrapLiteral(expr) {
@@ -54,6 +56,8 @@ function unwrapAttrLiteral(expr) {
       return expr.value;
     case "null":
       return null;
+    case "list":
+      return null; // dropdown item lists are not needed by the simulator
     default:
       throw new Error(`unexpected attribute expression kind: ${expr.kind}`);
   }
@@ -114,7 +118,12 @@ function buildGraph(swNetPath) {
     }
 
     const outputs = {};
-    for (const o of stmt.outputs) outputs[o.key] = unwrapLiteral(o.value);
+    for (const o of stmt.outputs) {
+      const lit = unwrapLiteral(o.value);
+      // one pin can be bound twice (to a signal and to a module output port): keep both
+      if (outputs[o.key]) outputs[o.key] = { kind: "both", value: [outputs[o.key], lit] };
+      else outputs[o.key] = lit;
+    }
 
     nodes.push({
       id: stmt.instanceId,
@@ -157,7 +166,8 @@ function serializeGraph(graph) {
     lines.push(`      },`);
     lines.push(`      outputs = {`);
     for (const [k, v] of Object.entries(n.outputs)) {
-      lines.push(`        ${k} = { ${v.kind} = ${luaValue(v.value)} },`);
+      if (v.kind === "both") lines.push(`        ${k} = { ${v.value.map((x) => `${x.kind} = ${luaValue(x.value)}`).join(", ")} },`);
+      else lines.push(`        ${k} = { ${v.kind} = ${luaValue(v.value)} },`);
     }
     lines.push(`      },`);
     lines.push(`    },`);

@@ -41,9 +41,13 @@ local PORT_KINDS = {
     EQUAL = { inputs = { a = "number", b = "number" }, outputs = { out = "boolean" } },
     SUBTRACT = { inputs = { a = "number", b = "number" }, outputs = { out = "number" } },
     ABS = { inputs = { a = "number" }, outputs = { out = "number" } },
+    ADD = { inputs = { a = "number", b = "number" }, outputs = { out = "number" } },
+    COUNTER = { inputs = { up = "boolean", down = "boolean", reset = "boolean" }, outputs = { out = "number" } },
+    PID_ADVANCED = { inputs = { setpoint = "number", pv = "number", kp = "number", ki = "number", kd = "number", active = "boolean" }, outputs = { out = "number" } },
     DELTA = { inputs = { a = "number" }, outputs = { out = "number" } },
     FUNC_NUM_1 = { inputs = { x = "number" }, outputs = { out = "number" } },
     FUNC_NUM_3 = { inputs = { x = "number", y = "number", z = "number" }, outputs = { out = "number" } },
+    FUNC_NUM_8 = { inputs = { x = "number", y = "number", z = "number", w = "number", a = "number", b = "number", c = "number", d = "number" }, outputs = { out = "number" } },
     BOOL_FUNC_4 = { inputs = { x = "boolean", y = "boolean", z = "boolean", w = "boolean" }, outputs = { out = "boolean" } },
     BOOL_FUNC_8 = {
         inputs = { x = "boolean", y = "boolean", z = "boolean", w = "boolean", a = "boolean", b = "boolean", c = "boolean", d = "boolean" },
@@ -118,6 +122,8 @@ local function init_state(node)
     if t == "BLINKER" then return { phase = "idle", counter = 0 } end
     if t == "PULSE" then return { lastA = false } end
     if t == "DELTA" then return { lastA = 0 } end
+    if t == "COUNTER" then return { v = node.attrs.reset_value or 0 } end
+    if t == "PID_ADVANCED" then return { integral = 0, last = 0 } end
     return {}
 end
 
@@ -253,6 +259,20 @@ EVAL.EQUAL = function(node, ins)
 end
 EVAL.SUBTRACT = function(node, ins) return { out = ins.a - ins.b } end
 EVAL.ABS = function(node, ins) return { out = math.abs(ins.a) } end
+EVAL.ADD = function(node, ins) return { out = ins.a + ins.b } end
+-- COUNTER (storm-mcl spec, verified/inferred notes): out changes by `increment` on each tick that up (or down) is held; reset sets reset_value; clamp="on" bounds to [min, max]
+EVAL.COUNTER = function(node, ins, state)
+    local a = node.attrs; local inc = a.increment or 1
+    if ins.reset then state.v = a.reset_value or 0
+    else
+        if ins.up then state.v = state.v + inc end
+        if ins.down then state.v = state.v - inc end
+    end
+    if a.clamp == "on" then state.v = math.max(a.min or 0, math.min(a.max or 100, state.v)) end
+    return { out = state.v }
+end
+-- PID_ADVANCED: not modelled (unconfirmed gain semantics, spec): out = 0. The plant of the notch study uses its own tracker.
+EVAL.PID_ADVANCED = function(node, ins, state) return { out = 0 } end
 
 EVAL.DELTA = function(node, ins, state)
     local out = ins.a - state.lastA
@@ -262,7 +282,7 @@ end
 
 local function func_num_vars(node, ins)
     return {
-        x = ins.x, y = ins.y, z = ins.z,
+        x = ins.x, y = ins.y, z = ins.z, w = ins.w, a = ins.a, b = ins.b, c = ins.c, d = ins.d,
         p1 = node.attrs.p1 or 0, p2 = node.attrs.p2 or 0, p3 = node.attrs.p3 or 0,
     }
 end
@@ -271,6 +291,7 @@ EVAL.FUNC_NUM_1 = function(node, ins)
     return { out = expr.eval_numeric(node._ast, func_num_vars(node, ins)) }
 end
 EVAL.FUNC_NUM_3 = EVAL.FUNC_NUM_1
+EVAL.FUNC_NUM_8 = EVAL.FUNC_NUM_1
 
 local function bool_func_vars(ins)
     return { x = ins.x, y = ins.y, z = ins.z, w = ins.w, a = ins.a, b = ins.b, c = ins.c, d = ins.d }
@@ -410,9 +431,11 @@ function Sim:step(module_inputs)
         end
         for portKey, descr in pairs(node.outputs) do
             local v = outs[portKey]
+            -- a pin can be bound to an internal signal and to a module output port at once (both keys present)
             if descr.sig ~= nil then
                 new_frozen[descr.sig] = v
-            elseif descr.port ~= nil then
+            end
+            if descr.port ~= nil then
                 module_outputs[descr.port] = v
                 new_frozen[descr.port] = v
             end

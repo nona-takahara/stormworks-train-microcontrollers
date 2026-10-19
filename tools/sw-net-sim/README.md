@@ -52,6 +52,7 @@
 `PROPERTY_TOGGLE`/`PROPERTY_DROPDOWN`/`COMPOSITE_READ_NUMBER`/
 `COMPOSITE_READ_BOOLEAN`/`COMPOSITE_WRITE_NUMBER`/`COMPOSITE_WRITE_BOOLEAN`/
 `LUA`（`CHUSO/CHUSO1800_Traction_Controller/main.sw-net`で使われている25種）。
+Momelink-A（`Momelink_A_Advanced.xml`）の速度演算のために、`ADD`、`COUNTER`、`FUNC_NUM_8`、`PID_ADVANCED`を足してある。`PID_ADVANCED`は出力を常に0にするだけで、ゲインの意味（積分の定義など）が未確認のため模擬していない（`[unconfirmed]`）。`PROPERTY_DROPDOWN`の項目リスト属性は読み飛ばす。`build.mjs`の物理センサー入力の補完は、改名版（`CHUSO1800_Traction_Controller_main_renamed.sw-net`）のノード名`vehicle_speed`にも効く。
 他のゲート型が出てきたら`sim.lua`の`PORT_KINDS`/`EVAL`に追加が必要
 （未対応の型は`Sim.new`で即エラーになる）。
 
