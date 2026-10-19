@@ -5,3 +5,15 @@ node_modules/
 
 **/deploy/
 MICROCONTROLLER_APPROVAL.txt
+
+# Claude Code の個人設定
+.claude/settings.local.json
+
+# Python キャッシュ
+__pycache__/
+*.pyc
+
+# 車両モデル生成時の測定データ（Git に置かない。生成手順は VehicleCalcModel 側の文書を参照）
+VehicleCalcModel/**/*.csv
+VehicleCalcModel/Probe/data/**/commands.json
+VehicleCalcModel/**/*.out
