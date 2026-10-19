@@ -115,7 +115,7 @@ local function init_state(node)
     local t = node.type
     if t == "SR_LATCH" then return { q = false } end
     if t == "CAPACITOR" then return { level = 0, active = false } end
-    if t == "BLINKER" then return { phase = "off", counter = 0 } end
+    if t == "BLINKER" then return { phase = "idle", counter = 0 } end
     if t == "PULSE" then return { lastA = false } end
     if t == "DELTA" then return { lastA = 0 } end
     return {}
@@ -176,9 +176,17 @@ local function eval_blinker(node, enable, state)
         }
     end
     if not enable then
-        state.phase = "off"
+        state.phase = "idle"
         state.counter = 0
         return false
+    end
+    -- enabled: On is output at the moment enable goes false->true (the first phase is On) [verified by the author's observation].
+    -- Which tick the output belongs to (the rising tick itself or the next) is [unconfirmed]; here it is the rising tick.
+    -- storm-mcl spec only says "alternates On/Off/On" and does not fix the first phase. A real log of the 1800 traction controller
+    -- ends the neutral-side tail ~25 ticks after release, which is consistent with an immediate first pulse of field_current_transition_blinker.
+    if state.phase == "idle" then
+        state.phase = "on"
+        state.counter = 0
     end
     state.counter = state.counter + 1
     if state.phase == "off" then
