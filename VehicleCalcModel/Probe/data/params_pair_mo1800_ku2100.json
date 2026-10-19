@@ -1,0 +1,19 @@
+{
+ "note": "モ1800形 + ク2100形の2両編成モデルのパラメータ。data/pair_fit_result.json（pair_loop.mjs の出力。pass = true）の theta と chosenForm を取り出した。取り出しの道具は未整備で、手作業で作った",
+ "A": "params_mo1800.json",
+ "B": "params_ku2100.json",
+ "chosenForm": "dvk",
+ "theta": {
+  "w": 0.5,
+  "beta": 1,
+  "eff": 0.9955273437500001,
+  "lam": 1,
+  "phi": 1.261328124999999,
+  "kappa": 0.9886328125000002,
+  "k2": 8e-05,
+  "dscale": 1,
+  "dvk": 1.6015625,
+  "wA": 0.5718359375000001,
+  "dz": 0.009750000000000002
+ }
+}

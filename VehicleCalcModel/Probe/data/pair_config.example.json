@@ -1,0 +1,17 @@
+{
+ "note": "サンプル。data/pair_config.json にコピーして使う（ツールはこのファイル名を読まない）。2 両編成の設定。ツール（fwd.mjs、pair_plan.mjs、twocar.py、pair_run.py）はここだけを読む。sign: 車の +モーターが x の + 向きに進むなら 1、− 向きなら -1。log: プローブのサーバーの記録（data/ 以下）。k2: 単両の惰行の当てはめの二次の抵抗",
+ "vtop": 30.5,
+ "k2": 8e-05,
+ "A": {
+  "params": "params_mo1800.json",
+  "port": 8765,
+  "log": "log.csv",
+  "sign": 1
+ },
+ "B": {
+  "params": "params_ku2100.json",
+  "port": 8766,
+  "log": "log_8766.csv",
+  "sign": -1
+ }
+}
