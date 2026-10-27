@@ -351,7 +351,7 @@ local function notch_and_cam_feedback(notch_pos, position_counter, eb_condition)
         notch_fb ~= 14
 end
 
--- SPEC §10.1（regen-BCターゲット、毎tick再計算）。sap_pressure_swはゲート側で
+-- SPEC §9（regen-BCターゲット、毎tick再計算）。sap_pressure_swはゲート側で
 -- 解決済み（decode_inputs参照）。戻り値: regen_bc_target,
 -- low_bc_with_regen_flag, regen_current。
 local function brake_demand(sap_pressure_sw, regen_flag)

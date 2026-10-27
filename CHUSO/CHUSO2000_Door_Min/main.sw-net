@@ -30,15 +30,15 @@ module main
 
   # --- Chime timer (triggered on door state edge) ---
 
-  # --- Haptic output (direction x strength, decays after state change) ---
+  # --- Door motor speed (direction x strength; the strength changes about 1 s after a state change) ---
   inst CONST const_open_dir (value=1) : -> value=const_open_dir_value
   inst CONST const_close_dir (value=-1) : -> value=const_close_dir_value
   inst NUM_SWITCHBOX door_dir_sw : a=const_open_dir_value, b=const_close_dir_value, switch=door_open_latch_q -> out=door_dir_sw_out
-  inst CONST haptic_fast_strength (value=0.4) : -> value=haptic_fast_strength_value
-  inst CONST haptic_slow_strength (value=0.2) : -> value=haptic_slow_strength_value
-  inst CAPACITOR haptic_decay_cap (charge_time=0, discharge_time=1) : enable=door_state_edge_out -> out=haptic_decay_cap_out
-  inst NUM_SWITCHBOX haptic_strength_sw : a=haptic_fast_strength_value, b=haptic_slow_strength_value, switch=haptic_decay_cap_out -> out=haptic_strength_sw_out
-  inst MULTIPLY haptic_output_mul : a=door_dir_sw_out, b=haptic_strength_sw_out -> out="Input"
+  inst CONST motor_strength_fast (value=0.4) : -> value=motor_strength_fast_value
+  inst CONST motor_strength_slow (value=0.2) : -> value=motor_strength_slow_value
+  inst CAPACITOR motor_fast_phase_cap (charge_time=0, discharge_time=1) : enable=door_state_edge_out -> out=motor_fast_phase_cap_out
+  inst NUM_SWITCHBOX motor_strength_sw : a=motor_strength_fast_value, b=motor_strength_slow_value, switch=motor_fast_phase_cap_out -> out=motor_strength_sw_out
+  inst MULTIPLY motor_speed_mul : a=door_dir_sw_out, b=motor_strength_sw_out -> out="Input"
   use door_position_detector.door_position_detector door_position_detector : phys_a="Phys. Input", phys_b="Phys. Input_2" -> phys_door_open_out=phys_door_open_out
   use door_chime.door_chime door_chime : door_open_latch_q=door_open_latch_q -> door_state_edge_out=door_state_edge_out, "Chime High"="Chime High", "Chime Low"="Chime Low"
 end

@@ -8,7 +8,7 @@
     "microcontroller": "node tools/microcontroller/cli.mjs",
     "sync:route-data": "node tools/route-data-sync/fetch.mjs",
     "gen:route-data": "node tools/route-data-sync/generate.mjs",
-    "build:driver-assistance": "node tools/microcontroller/cli.mjs build driver-assistance"
+    "build:driver-assistance": "node tools/microcontroller/cli.mjs build CHUSO/CHUSO2000_Driver_Assistance_IV"
   },
   "devDependencies": {
     "storm-lua-minify": "^0.9.1",

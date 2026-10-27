@@ -79,7 +79,7 @@ module main
   # --- Brake sound and BC pressure kPa ---
   inst DELTA bc_delta : a=emergency_bc_min_sw_out -> out=bc_delta_out
   inst FUNC_NUM_1 brake_sound_calc (expression="clamp(-x/0.03,0,1)") : x=bc_delta_out -> out="Brake sound"
-  inst FUNC_NUM_1 bc_pressure_kpa (expression="max((x-1)*101.325,0)") : x=emergency_bc_min_sw_out -> out=bc_pressure_kpa_out
+  inst FUNC_NUM_1 bc_pressure_kpa (expression="max((x-1)*101.315,0)") : x=emergency_bc_min_sw_out -> out=bc_pressure_kpa_out
 
   # --- Inertia Composite Input reads ---
   inst COMPOSITE_READ_NUMBER inertia_coeff_a_read (channel=1) : composite="Inertia Composite Input" -> out=inertia_coeff_a_read_out

@@ -141,7 +141,7 @@
   ],
   "instances": [
     {
-      "id": "n440",
+      "id": "nits_tx_encoder_lua",
       "type": "LUA",
       "position": {
         "x": 6.5,
@@ -149,7 +149,7 @@
       }
     },
     {
-      "id": "n441",
+      "id": "nits_tx_bus_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
         "x": 10.25,
@@ -157,7 +157,7 @@
       }
     },
     {
-      "id": "n442",
+      "id": "nits_tx_watchdog_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 6.5,
@@ -165,7 +165,7 @@
       }
     },
     {
-      "id": "n443",
+      "id": "nits_tx_watchdog_not",
       "type": "NOT",
       "position": {
         "x": 6.5,
@@ -173,7 +173,7 @@
       }
     },
     {
-      "id": "n444",
+      "id": "nits_tx_watchdog_xor",
       "type": "XOR",
       "position": {
         "x": 7.75,
@@ -181,7 +181,7 @@
       }
     },
     {
-      "id": "n445",
+      "id": "nits_tx_watchdog_xor_not",
       "type": "NOT",
       "position": {
         "x": 7.75,
@@ -189,7 +189,7 @@
       }
     },
     {
-      "id": "n446",
+      "id": "nits_tx_strobe_cap",
       "type": "CAPACITOR",
       "position": {
         "x": 9,
@@ -197,7 +197,7 @@
       }
     },
     {
-      "id": "n457",
+      "id": "rx_addr_conflict_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -3.5,
@@ -205,7 +205,7 @@
       }
     },
     {
-      "id": "n458",
+      "id": "simpleif_tx_encoder_lua",
       "type": "LUA",
       "position": {
         "x": 0.25,
@@ -213,7 +213,7 @@
       }
     },
     {
-      "id": "n459",
+      "id": "simpleif_tx_encoder_input_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
         "x": -1,
@@ -221,7 +221,7 @@
       }
     },
     {
-      "id": "n461",
+      "id": "simpleif_cmd_ready_mode14_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 2.75,
@@ -229,7 +229,7 @@
       }
     },
     {
-      "id": "n462",
+      "id": "ext_mode_latch",
       "type": "SR_LATCH",
       "position": {
         "x": -4.75,
@@ -237,7 +237,7 @@
       }
     },
     {
-      "id": "n463",
+      "id": "local_mode_timer",
       "type": "CAPACITOR",
       "position": {
         "x": -3.5,
@@ -245,7 +245,7 @@
       }
     },
     {
-      "id": "n464",
+      "id": "rx_addr_not_mine_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -6,
@@ -253,7 +253,7 @@
       }
     },
     {
-      "id": "n465",
+      "id": "rx_addr_matched_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -6,
@@ -261,7 +261,7 @@
       }
     },
     {
-      "id": "n466",
+      "id": "nits_rx_decoder_lua",
       "type": "LUA",
       "position": {
         "x": -7.25,
@@ -269,7 +269,7 @@
       }
     },
     {
-      "id": "n486",
+      "id": "simpleif_push_trigger_or",
       "type": "OR",
       "position": {
         "x": 4,
@@ -277,7 +277,7 @@
       }
     },
     {
-      "id": "n487",
+      "id": "simpleif_cmd_value_back_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 2.75,
@@ -285,7 +285,7 @@
       }
     },
     {
-      "id": "n488",
+      "id": "simpleif_cmd_value_front_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 2.75,
@@ -293,7 +293,7 @@
       }
     },
     {
-      "id": "n489",
+      "id": "cc3_front_direction_select_front_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9,
@@ -301,7 +301,7 @@
       }
     },
     {
-      "id": "n490",
+      "id": "cc3_front_emergency_brake_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9,
@@ -309,7 +309,7 @@
       }
     },
     {
-      "id": "n491",
+      "id": "cc3_front_direction_select_back_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9,
@@ -317,7 +317,7 @@
       }
     },
     {
-      "id": "n492",
+      "id": "cc3_front_direction_select_conflict_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9,
@@ -325,7 +325,7 @@
       }
     },
     {
-      "id": "n493",
+      "id": "nits_tx_command_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
         "x": 5.25,
@@ -333,7 +333,7 @@
       }
     },
     {
-      "id": "n502",
+      "id": "extended_commands_bool_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
         "x": 14.75,
@@ -341,7 +341,7 @@
       }
     },
     {
-      "id": "n503",
+      "id": "simpleif_rx_bus_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
         "x": -3.5,
@@ -349,7 +349,7 @@
       }
     },
     {
-      "id": "n504",
+      "id": "nits_rx_raw_passthrough_bit",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -6,
@@ -357,7 +357,7 @@
       }
     },
     {
-      "id": "n506",
+      "id": "simpleif_rx_status_bit",
       "type": "OR",
       "position": {
         "x": -4.75,
@@ -365,7 +365,7 @@
       }
     },
     {
-      "id": "n507",
+      "id": "rx_decoded_op1_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -6,
@@ -373,7 +373,7 @@
       }
     },
     {
-      "id": "n508",
+      "id": "to_nits_reserved_bit_fixed_value",
       "type": "NOT",
       "position": {
         "x": 9,
@@ -381,7 +381,7 @@
       }
     },
     {
-      "id": "n509",
+      "id": "to_nits_reserved_bit_base_const",
       "type": "CONST_BOOL",
       "position": {
         "x": 9,
@@ -389,7 +389,7 @@
       }
     },
     {
-      "id": "n523",
+      "id": "car_info_packer_lua",
       "type": "LUA",
       "position": {
         "x": -4.75,
@@ -397,7 +397,7 @@
       }
     },
     {
-      "id": "n525",
+      "id": "car_info_packer_input_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
         "x": -6,
@@ -405,7 +405,7 @@
       }
     },
     {
-      "id": "n553",
+      "id": "cc3_front_id_tx_flag_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -2.25,
@@ -413,7 +413,7 @@
       }
     },
     {
-      "id": "n639",
+      "id": "car_fault_report_or",
       "type": "BOOL_FUNC_4",
       "position": {
         "x": -1,
@@ -421,7 +421,7 @@
       }
     },
     {
-      "id": "n642",
+      "id": "motor_lua_fault_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -2.25,
@@ -429,7 +429,7 @@
       }
     },
     {
-      "id": "n645",
+      "id": "car_count_switchbox",
       "type": "NUM_SWITCHBOX",
       "position": {
         "x": 0.25,
@@ -437,7 +437,7 @@
       }
     },
     {
-      "id": "n646",
+      "id": "car_position_number",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 1.5,
@@ -445,7 +445,7 @@
       }
     },
     {
-      "id": "n647",
+      "id": "car_count_direction_toggle_property",
       "type": "PROPERTY_TOGGLE",
       "position": {
         "x": -1,
@@ -453,7 +453,7 @@
       }
     },
     {
-      "id": "n648",
+      "id": "front_car_count_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -1,
@@ -461,7 +461,7 @@
       }
     },
     {
-      "id": "n649",
+      "id": "last_car_count_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -1,
@@ -469,7 +469,7 @@
       }
     },
     {
-      "id": "n652",
+      "id": "brake_cylinder_pressure_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -3.5,
@@ -477,7 +477,7 @@
       }
     },
     {
-      "id": "n663",
+      "id": "nits_ext_id_property",
       "type": "PROPERTY_TEXT",
       "position": {
         "x": -7.25,
@@ -485,7 +485,7 @@
       }
     },
     {
-      "id": "n664",
+      "id": "nits_ext_enabled_flag_number",
       "type": "NUM_SWITCHBOX",
       "position": {
         "x": 1.5,
@@ -493,7 +493,7 @@
       }
     },
     {
-      "id": "n665",
+      "id": "nits_ext_enabled_const_one",
       "type": "CONST",
       "position": {
         "x": 1.5,
@@ -501,7 +501,7 @@
       }
     },
     {
-      "id": "n667",
+      "id": "total_car_count_for_nits_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 2.75,
@@ -509,7 +509,7 @@
       }
     },
     {
-      "id": "n672",
+      "id": "local_mode_blinker_5s",
       "type": "BLINKER",
       "position": {
         "x": -4.75,
@@ -517,7 +517,7 @@
       }
     },
     {
-      "id": "n673",
+      "id": "local_mode_blinker_rise_pulse",
       "type": "PULSE",
       "position": {
         "x": -3.5,
@@ -525,7 +525,7 @@
       }
     },
     {
-      "id": "n674",
+      "id": "simpleif_cmd_ready_mode13_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 2.75,
@@ -533,7 +533,7 @@
       }
     },
     {
-      "id": "n675",
+      "id": "simpleif_cmd_ready_mode15_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 2.75,
@@ -541,7 +541,7 @@
       }
     },
     {
-      "id": "n676",
+      "id": "simpleif_interrupt_trigger_or",
       "type": "OR",
       "position": {
         "x": 4,
@@ -549,7 +549,7 @@
       }
     },
     {
-      "id": "n677",
+      "id": "simpleif_override_trigger_or",
       "type": "OR",
       "position": {
         "x": 4,
@@ -557,7 +557,7 @@
       }
     },
     {
-      "id": "n686",
+      "id": "simpleif_tx_number_write",
       "type": "COMPOSITE_WRITE_NUMBER",
       "position": {
         "x": -2.25,
@@ -565,7 +565,7 @@
       }
     },
     {
-      "id": "n687",
+      "id": "cp_command_or",
       "type": "OR",
       "position": {
         "x": -2.25,
@@ -573,7 +573,7 @@
       }
     },
     {
-      "id": "n688",
+      "id": "door_status_decoder_lua",
       "type": "LUA",
       "position": {
         "x": -2.25,
@@ -581,7 +581,7 @@
       }
     },
     {
-      "id": "n689",
+      "id": "door_decoder_input_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
         "x": -3.5,
@@ -589,7 +589,7 @@
       }
     },
     {
-      "id": "n690",
+      "id": "memory_register_bus_input_write",
       "type": "COMPOSITE_WRITE_NUMBER",
       "position": {
         "x": -1,
@@ -597,7 +597,7 @@
       }
     },
     {
-      "id": "n691",
+      "id": "memory_register_bus_lua",
       "type": "LUA",
       "position": {
         "x": 0.25,
@@ -605,7 +605,7 @@
       }
     },
     {
-      "id": "n692",
+      "id": "memory_register_1_set_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 1.5,
@@ -613,7 +613,7 @@
       }
     },
     {
-      "id": "n693",
+      "id": "memory_register_1_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 1.5,
@@ -621,7 +621,7 @@
       }
     },
     {
-      "id": "n694",
+      "id": "memory_register_1",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 2.75,
@@ -629,7 +629,7 @@
       }
     },
     {
-      "id": "n695",
+      "id": "memory_register_2_set_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 1.5,
@@ -637,7 +637,7 @@
       }
     },
     {
-      "id": "n696",
+      "id": "memory_register_2_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 1.5,
@@ -645,7 +645,7 @@
       }
     },
     {
-      "id": "n697",
+      "id": "memory_register_2",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 2.75,
@@ -653,7 +653,7 @@
       }
     },
     {
-      "id": "n698",
+      "id": "memory_register_3_set_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 1.5,
@@ -661,7 +661,7 @@
       }
     },
     {
-      "id": "n699",
+      "id": "memory_register_3_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 1.5,
@@ -669,7 +669,7 @@
       }
     },
     {
-      "id": "n700",
+      "id": "memory_register_3",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 2.75,
@@ -677,7 +677,7 @@
       }
     },
     {
-      "id": "n701",
+      "id": "memory_register_4_set_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 1.5,
@@ -685,7 +685,7 @@
       }
     },
     {
-      "id": "n702",
+      "id": "memory_register_4_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 1.5,
@@ -693,7 +693,7 @@
       }
     },
     {
-      "id": "n703",
+      "id": "memory_register_4",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 2.75,
@@ -701,7 +701,7 @@
       }
     },
     {
-      "id": "n704",
+      "id": "memory_register_5_set_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 4,
@@ -709,7 +709,7 @@
       }
     },
     {
-      "id": "n705",
+      "id": "memory_register_5_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 4,
@@ -717,7 +717,7 @@
       }
     },
     {
-      "id": "n706",
+      "id": "memory_register_5",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 5.25,
@@ -725,7 +725,7 @@
       }
     },
     {
-      "id": "n707",
+      "id": "memory_register_6_set_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 4,
@@ -733,7 +733,7 @@
       }
     },
     {
-      "id": "n708",
+      "id": "memory_register_6_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 4,
@@ -741,7 +741,7 @@
       }
     },
     {
-      "id": "n709",
+      "id": "memory_register_6",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 5.25,
@@ -749,7 +749,7 @@
       }
     },
     {
-      "id": "n710",
+      "id": "memory_register_7_set_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 4,
@@ -757,7 +757,7 @@
       }
     },
     {
-      "id": "n711",
+      "id": "memory_register_7_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 4,
@@ -765,7 +765,7 @@
       }
     },
     {
-      "id": "n712",
+      "id": "memory_register_7",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 5.25,
@@ -773,7 +773,7 @@
       }
     },
     {
-      "id": "n713",
+      "id": "memory_register_8_set_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 4,
@@ -781,7 +781,7 @@
       }
     },
     {
-      "id": "n714",
+      "id": "memory_register_8_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 4,
@@ -789,7 +789,7 @@
       }
     },
     {
-      "id": "n715",
+      "id": "memory_register_8",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 5.25,
@@ -797,7 +797,7 @@
       }
     },
     {
-      "id": "n717",
+      "id": "extended_commands_number_write",
       "type": "COMPOSITE_WRITE_NUMBER",
       "position": {
         "x": 13.5,
@@ -805,7 +805,7 @@
       }
     },
     {
-      "id": "n718",
+      "id": "door_mode_ready_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -1,
@@ -813,7 +813,7 @@
       }
     },
     {
-      "id": "n719",
+      "id": "door_mode_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -1,
@@ -821,7 +821,7 @@
       }
     },
     {
-      "id": "n720",
+      "id": "door_mode_register",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 0.25,
@@ -829,7 +829,7 @@
       }
     },
     {
-      "id": "n721",
+      "id": "doorcut_front_ready_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -1,
@@ -837,7 +837,7 @@
       }
     },
     {
-      "id": "n722",
+      "id": "doorcut_front_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -1,
@@ -845,7 +845,7 @@
       }
     },
     {
-      "id": "n723",
+      "id": "doorcut_front_register",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 0.25,
@@ -853,7 +853,7 @@
       }
     },
     {
-      "id": "n724",
+      "id": "doorcut_front_local_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -1,
@@ -861,7 +861,7 @@
       }
     },
     {
-      "id": "n725",
+      "id": "doorcut_front_local_register",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 0.25,
@@ -869,7 +869,7 @@
       }
     },
     {
-      "id": "n726",
+      "id": "doorcut_back_ready_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -1,
@@ -877,7 +877,7 @@
       }
     },
     {
-      "id": "n727",
+      "id": "doorcut_back_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -1,
@@ -885,7 +885,7 @@
       }
     },
     {
-      "id": "n728",
+      "id": "doorcut_back_register",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 0.25,
@@ -893,7 +893,7 @@
       }
     },
     {
-      "id": "n729",
+      "id": "doorcut_back_local_value_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -1,
@@ -901,7 +901,7 @@
       }
     },
     {
-      "id": "n730",
+      "id": "doorcut_back_local_register",
       "type": "MEMORY_REGISTER",
       "position": {
         "x": 0.25,
@@ -909,7 +909,7 @@
       }
     },
     {
-      "id": "n731",
+      "id": "door_mode_passthrough",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 1.5,
@@ -917,7 +917,7 @@
       }
     },
     {
-      "id": "n732",
+      "id": "doorcut_front_passthrough",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 1.5,
@@ -925,7 +925,7 @@
       }
     },
     {
-      "id": "n733",
+      "id": "doorcut_back_passthrough",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 1.5,
@@ -933,7 +933,7 @@
       }
     },
     {
-      "id": "n734",
+      "id": "doorcut_front_local_passthrough",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 1.5,
@@ -941,7 +941,7 @@
       }
     },
     {
-      "id": "n735",
+      "id": "doorcut_back_local_passthrough",
       "type": "FUNC_NUM_1",
       "position": {
         "x": 1.5,
@@ -949,7 +949,7 @@
       }
     },
     {
-      "id": "n737",
+      "id": "cc3_ext_packed_bool_to_composite",
       "type": "NUMBER_TO_COMPOSITE",
       "position": {
         "x": -3.5,
@@ -957,7 +957,7 @@
       }
     },
     {
-      "id": "n738",
+      "id": "cc3_ext_packed_bool_number_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -4.75,
@@ -965,7 +965,7 @@
       }
     },
     {
-      "id": "n739",
+      "id": "cc3_ext_0x4c_info_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -4.75,
@@ -973,7 +973,7 @@
       }
     },
     {
-      "id": "n740",
+      "id": "fault_info_4_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -2.25,
@@ -981,7 +981,7 @@
       }
     },
     {
-      "id": "n741",
+      "id": "nits_tx_number_write",
       "type": "COMPOSITE_WRITE_NUMBER",
       "position": {
         "x": 4,
@@ -989,7 +989,7 @@
       }
     },
     {
-      "id": "n742",
+      "id": "motor_current_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -3.5,
@@ -997,7 +997,7 @@
       }
     },
     {
-      "id": "n744",
+      "id": "room_light_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 12.25,
@@ -1005,7 +1005,7 @@
       }
     },
     {
-      "id": "n745",
+      "id": "room_light_off_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1013,7 +1013,7 @@
       }
     },
     {
-      "id": "n746",
+      "id": "room_light_off_or",
       "type": "OR",
       "position": {
         "x": 11,
@@ -1021,7 +1021,7 @@
       }
     },
     {
-      "id": "n747",
+      "id": "room_light_on_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1029,7 +1029,7 @@
       }
     },
     {
-      "id": "n748",
+      "id": "room_light_on_or",
       "type": "OR",
       "position": {
         "x": 11,
@@ -1037,7 +1037,7 @@
       }
     },
     {
-      "id": "n749",
+      "id": "room_light_on_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1045,7 +1045,7 @@
       }
     },
     {
-      "id": "n750",
+      "id": "room_light_off_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1053,7 +1053,7 @@
       }
     },
     {
-      "id": "n751",
+      "id": "passenger_info_display_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 12.25,
@@ -1061,7 +1061,7 @@
       }
     },
     {
-      "id": "n752",
+      "id": "passenger_info_off_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1069,7 +1069,7 @@
       }
     },
     {
-      "id": "n753",
+      "id": "passenger_info_off_or",
       "type": "OR",
       "position": {
         "x": 11,
@@ -1077,7 +1077,7 @@
       }
     },
     {
-      "id": "n754",
+      "id": "passenger_info_on_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1085,7 +1085,7 @@
       }
     },
     {
-      "id": "n755",
+      "id": "passenger_info_on_or",
       "type": "OR",
       "position": {
         "x": 11,
@@ -1093,7 +1093,7 @@
       }
     },
     {
-      "id": "n756",
+      "id": "passenger_info_on_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1101,7 +1101,7 @@
       }
     },
     {
-      "id": "n757",
+      "id": "passenger_info_off_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1109,7 +1109,7 @@
       }
     },
     {
-      "id": "n758",
+      "id": "front_pantograph_lock_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1117,7 +1117,7 @@
       }
     },
     {
-      "id": "n759",
+      "id": "front_pantograph_raise_lower_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1125,7 +1125,7 @@
       }
     },
     {
-      "id": "n762",
+      "id": "pantograph_raise_signal_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1133,7 +1133,7 @@
       }
     },
     {
-      "id": "n763",
+      "id": "pantograph_lower_signal_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1141,7 +1141,7 @@
       }
     },
     {
-      "id": "n764",
+      "id": "rear_pantograph_lock_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1149,7 +1149,7 @@
       }
     },
     {
-      "id": "n765",
+      "id": "rear_pantograph_raise_lower_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1157,7 +1157,7 @@
       }
     },
     {
-      "id": "n766",
+      "id": "isolate_via_neighbor_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 11,
@@ -1165,7 +1165,7 @@
       }
     },
     {
-      "id": "n768",
+      "id": "own_car_isolate_direct_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -2.25,
@@ -1173,7 +1173,7 @@
       }
     },
     {
-      "id": "n769",
+      "id": "isolate_via_neighbor_end_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1181,7 +1181,7 @@
       }
     },
     {
-      "id": "n770",
+      "id": "isolate_via_neighbor_start_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1189,7 +1189,7 @@
       }
     },
     {
-      "id": "n771",
+      "id": "heater_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 12.25,
@@ -1197,7 +1197,7 @@
       }
     },
     {
-      "id": "n772",
+      "id": "heater_off_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1205,7 +1205,7 @@
       }
     },
     {
-      "id": "n773",
+      "id": "heater_off_or",
       "type": "OR",
       "position": {
         "x": 11,
@@ -1213,7 +1213,7 @@
       }
     },
     {
-      "id": "n774",
+      "id": "heater_on_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1221,7 +1221,7 @@
       }
     },
     {
-      "id": "n775",
+      "id": "heater_on_or",
       "type": "OR",
       "position": {
         "x": 11,
@@ -1229,7 +1229,7 @@
       }
     },
     {
-      "id": "n776",
+      "id": "heater_on_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1237,7 +1237,7 @@
       }
     },
     {
-      "id": "n777",
+      "id": "heater_off_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1245,7 +1245,7 @@
       }
     },
     {
-      "id": "n778",
+      "id": "brake_boost_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 12.25,
@@ -1253,7 +1253,7 @@
       }
     },
     {
-      "id": "n779",
+      "id": "cp_running_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 12.25,
@@ -1261,7 +1261,7 @@
       }
     },
     {
-      "id": "n780",
+      "id": "high_accel_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 12.25,
@@ -1269,7 +1269,7 @@
       }
     },
     {
-      "id": "n781",
+      "id": "cp_start_prohibit_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 12.25,
@@ -1277,7 +1277,7 @@
       }
     },
     {
-      "id": "n782",
+      "id": "siv_permission_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 12.25,
@@ -1285,7 +1285,7 @@
       }
     },
     {
-      "id": "n783",
+      "id": "chime_type_select_latch",
       "type": "SR_LATCH",
       "position": {
         "x": 9.75,
@@ -1293,7 +1293,7 @@
       }
     },
     {
-      "id": "n784",
+      "id": "chime_start_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 11,
@@ -1301,7 +1301,7 @@
       }
     },
     {
-      "id": "n785",
+      "id": "chime_stop_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 11,
@@ -1309,7 +1309,7 @@
       }
     },
     {
-      "id": "n786",
+      "id": "door_open_b_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 12.25,
@@ -1317,7 +1317,7 @@
       }
     },
     {
-      "id": "n787",
+      "id": "door_close_b_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 12.25,
@@ -1325,7 +1325,7 @@
       }
     },
     {
-      "id": "n788",
+      "id": "door_open_a_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 12.25,
@@ -1333,7 +1333,7 @@
       }
     },
     {
-      "id": "n789",
+      "id": "door_close_a_local_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 12.25,
@@ -1341,7 +1341,7 @@
       }
     },
     {
-      "id": "n790",
+      "id": "traffic_bureau_chime_gate_and",
       "type": "AND",
       "position": {
         "x": 12.25,
@@ -1349,7 +1349,7 @@
       }
     },
     {
-      "id": "n791",
+      "id": "chuso_chime_gate_and",
       "type": "AND",
       "position": {
         "x": 12.25,
@@ -1357,7 +1357,7 @@
       }
     },
     {
-      "id": "n792",
+      "id": "own_car_isolation_or",
       "type": "BOOL_FUNC_4",
       "position": {
         "x": 12.25,
@@ -1365,7 +1365,7 @@
       }
     },
     {
-      "id": "n793",
+      "id": "doorcut_front_local_isolate_check",
       "type": "GREATER_THAN",
       "position": {
         "x": 8.5,
@@ -1373,7 +1373,7 @@
       }
     },
     {
-      "id": "n794",
+      "id": "doorcut_back_local_isolate_check",
       "type": "GREATER_THAN",
       "position": {
         "x": 8.5,
@@ -1381,7 +1381,7 @@
       }
     },
     {
-      "id": "n799",
+      "id": "packed_car_fault_status_number_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 7.25,
@@ -1389,7 +1389,7 @@
       }
     },
     {
-      "id": "n800",
+      "id": "packed_car_door_status_number_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 7.25,
@@ -1397,7 +1397,7 @@
       }
     },
     {
-      "id": "n801",
+      "id": "brake_boost_end_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 11,
@@ -1405,7 +1405,7 @@
       }
     },
     {
-      "id": "n802",
+      "id": "brake_boost_start_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 11,
@@ -1413,7 +1413,7 @@
       }
     },
     {
-      "id": "n803",
+      "id": "cp_running_set_and",
       "type": "AND",
       "position": {
         "x": 9.75,
@@ -1421,7 +1421,7 @@
       }
     },
     {
-      "id": "n804",
+      "id": "cp_running_reset_or",
       "type": "OR",
       "position": {
         "x": 9.75,
@@ -1429,7 +1429,7 @@
       }
     },
     {
-      "id": "n805",
+      "id": "cp_start_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1437,7 +1437,7 @@
       }
     },
     {
-      "id": "n806",
+      "id": "cp_stop_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1445,7 +1445,7 @@
       }
     },
     {
-      "id": "n807",
+      "id": "high_accel_start_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 11,
@@ -1453,7 +1453,7 @@
       }
     },
     {
-      "id": "n808",
+      "id": "high_accel_end_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 11,
@@ -1461,7 +1461,7 @@
       }
     },
     {
-      "id": "n809",
+      "id": "cp_start_permit_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1469,7 +1469,7 @@
       }
     },
     {
-      "id": "n810",
+      "id": "cp_start_prohibit_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 9.75,
@@ -1477,7 +1477,7 @@
       }
     },
     {
-      "id": "n811",
+      "id": "siv_running_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 11,
@@ -1485,7 +1485,7 @@
       }
     },
     {
-      "id": "n812",
+      "id": "siv_stopped_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 11,
@@ -1493,7 +1493,7 @@
       }
     },
     {
-      "id": "n813",
+      "id": "chime_select_upper_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1501,7 +1501,7 @@
       }
     },
     {
-      "id": "n814",
+      "id": "chime_select_lower_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1509,7 +1509,7 @@
       }
     },
     {
-      "id": "n815",
+      "id": "packed_car_power_brake_number_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": 7.25,
@@ -1517,7 +1517,7 @@
       }
     },
     {
-      "id": "n816",
+      "id": "cab_property",
       "type": "PROPERTY_DROPDOWN",
       "position": {
         "x": -14.5,
@@ -1525,7 +1525,7 @@
       }
     },
     {
-      "id": "n817",
+      "id": "powered_axle_property",
       "type": "PROPERTY_DROPDOWN",
       "position": {
         "x": -14.5,
@@ -1533,7 +1533,7 @@
       }
     },
     {
-      "id": "n818",
+      "id": "side_doors_property",
       "type": "PROPERTY_DROPDOWN",
       "position": {
         "x": -14.5,
@@ -1541,7 +1541,7 @@
       }
     },
     {
-      "id": "n820",
+      "id": "front_pantograph_type_property",
       "type": "PROPERTY_DROPDOWN",
       "position": {
         "x": -14.5,
@@ -1549,7 +1549,7 @@
       }
     },
     {
-      "id": "n821",
+      "id": "rear_pantograph_type_property",
       "type": "PROPERTY_DROPDOWN",
       "position": {
         "x": -14.5,
@@ -1557,7 +1557,7 @@
       }
     },
     {
-      "id": "n825",
+      "id": "double_decker_property",
       "type": "PROPERTY_DROPDOWN",
       "position": {
         "x": -14.5,
@@ -1565,7 +1565,7 @@
       }
     },
     {
-      "id": "n828",
+      "id": "front_neighbor_car_isolated_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 13.5,
@@ -1573,7 +1573,7 @@
       }
     },
     {
-      "id": "n829",
+      "id": "rear_neighbor_car_isolated_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 13.5,
@@ -1581,7 +1581,7 @@
       }
     },
     {
-      "id": "n830",
+      "id": "own_car_isolate_direct_rise_pulse",
       "type": "PULSE",
       "position": {
         "x": 8.5,
@@ -1589,7 +1589,7 @@
       }
     },
     {
-      "id": "n831",
+      "id": "isolate_via_neighbor_reset_or",
       "type": "OR",
       "position": {
         "x": 9.75,
@@ -1597,7 +1597,7 @@
       }
     },
     {
-      "id": "n832",
+      "id": "total_car_count_for_door_calc_read",
       "type": "COMPOSITE_READ_NUMBER",
       "position": {
         "x": -4.75,
@@ -1605,7 +1605,7 @@
       }
     },
     {
-      "id": "n835",
+      "id": "cross_seat_shio_hou_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1613,7 +1613,7 @@
       }
     },
     {
-      "id": "n836",
+      "id": "cross_seat_su_hou_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1621,7 +1621,7 @@
       }
     },
     {
-      "id": "n837",
+      "id": "long_seat_remote_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": 8.5,
@@ -1629,7 +1629,7 @@
       }
     },
     {
-      "id": "n841",
+      "id": "car_status_bool_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
         "x": -6,
@@ -1637,7 +1637,7 @@
       }
     },
     {
-      "id": "n842",
+      "id": "heater_latch_readback",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -7.25,
@@ -1645,7 +1645,7 @@
       }
     },
     {
-      "id": "n843",
+      "id": "room_light_latch_readback",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -7.25,
@@ -1653,7 +1653,7 @@
       }
     },
     {
-      "id": "n844",
+      "id": "passenger_info_display_latch_readback",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -7.25,
@@ -1661,7 +1661,7 @@
       }
     },
     {
-      "id": "n845",
+      "id": "own_car_isolation_readback",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -7.25,
@@ -1669,7 +1669,7 @@
       }
     },
     {
-      "id": "n846",
+      "id": "powering_check",
       "type": "GREATER_THAN",
       "position": {
         "x": -7.25,
@@ -1677,7 +1677,7 @@
       }
     },
     {
-      "id": "n847",
+      "id": "regen_check",
       "type": "LESS_THAN",
       "position": {
         "x": -7.25,
@@ -1685,7 +1685,7 @@
       }
     },
     {
-      "id": "n848",
+      "id": "pantograph_status_placeholder_const",
       "type": "CONST_BOOL",
       "position": {
         "x": -8.5,
@@ -1693,7 +1693,7 @@
       }
     },
     {
-      "id": "n849",
+      "id": "pantograph_status_placeholder_true",
       "type": "NOT",
       "position": {
         "x": -7.25,
@@ -1701,7 +1701,7 @@
       }
     },
     {
-      "id": "n850",
+      "id": "pantograph_status_placeholder_false",
       "type": "OR",
       "position": {
         "x": -7.25,
@@ -1709,7 +1709,7 @@
       }
     },
     {
-      "id": "n851",
+      "id": "car_status_number_encode",
       "type": "COMPOSITE_TO_NUMBER",
       "position": {
         "x": -4.75,
@@ -1717,7 +1717,7 @@
       }
     },
     {
-      "id": "n855",
+      "id": "low_battery_check",
       "type": "LESS_THAN",
       "position": {
         "x": -2.25,
@@ -1725,7 +1725,7 @@
       }
     },
     {
-      "id": "n856",
+      "id": "low_battery_threshold_const",
       "type": "CONST",
       "position": {
         "x": -3.5,
@@ -1733,7 +1733,7 @@
       }
     },
     {
-      "id": "n859",
+      "id": "motor_current_gated_by_axle",
       "type": "NUM_SWITCHBOX",
       "position": {
         "x": -2.25,
@@ -1741,7 +1741,7 @@
       }
     },
     {
-      "id": "n860",
+      "id": "powered_axle_present_readback",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -3.5,
@@ -1749,7 +1749,7 @@
       }
     },
     {
-      "id": "n861",
+      "id": "pantograph1_lock_status_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -7.25,
@@ -1757,7 +1757,7 @@
       }
     },
     {
-      "id": "n862",
+      "id": "pantograph1_raised_status_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -7.25,
@@ -1765,7 +1765,7 @@
       }
     },
     {
-      "id": "n863",
+      "id": "pantograph2_lock_status_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -7.25,
@@ -1773,7 +1773,7 @@
       }
     },
     {
-      "id": "n864",
+      "id": "pantograph2_raised_status_read",
       "type": "COMPOSITE_READ_BOOLEAN",
       "position": {
         "x": -7.25,
@@ -1781,7 +1781,7 @@
       }
     },
     {
-      "id": "n867",
+      "id": "sos_button_or",
       "type": "OR",
       "position": {
         "x": -2.25,
@@ -1789,7 +1789,7 @@
       }
     },
     {
-      "id": "n868",
+      "id": "rolling_stock_settings_write",
       "type": "COMPOSITE_WRITE_BOOLEAN",
       "position": {
         "x": -6,
@@ -1797,7 +1797,7 @@
       }
     },
     {
-      "id": "n869",
+      "id": "powered_axle_present_check",
       "type": "GREATER_THAN",
       "position": {
         "x": -13.25,
@@ -1805,7 +1805,7 @@
       }
     },
     {
-      "id": "n872",
+      "id": "cp_request_and_local_mode_and",
       "type": "AND",
       "position": {
         "x": -2.25,

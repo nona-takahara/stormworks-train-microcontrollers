@@ -16,7 +16,7 @@ module main
   port out "Momelink-A" : composite
   port out "Rolling Stock Status" : composite
 
-  # --- SAP/ECB brake pipe resolution (gate側に残す。README.md「今後の実配線について」2項。
+  # --- SAP/ECB brake pipe resolution (gate側に残す。SPEC.md §4と§12。
   # 命名はCHUSO1800_Traction_Controller_main_renamed.sw-net / SPEC.mdの再検証版に合わせた) ---
   inst PROPERTY_TOGGLE brake_system_is_sap (label="", on_label="SAP", off_label="ECB", n="SAP or ECB") : -> out=brake_system_is_sap_out
   inst COMPOSITE_READ_BOOLEAN emergency_brake_command (channel=1) : composite="Simple IF" -> out=emergency_brake_command_out

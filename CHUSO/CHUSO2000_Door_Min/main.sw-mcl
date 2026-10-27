@@ -182,7 +182,7 @@
       }
     },
     {
-      "id": "haptic_decay_cap",
+      "id": "motor_fast_phase_cap",
       "type": "CAPACITOR",
       "position": {
         "x": 20,
@@ -190,7 +190,7 @@
       }
     },
     {
-      "id": "haptic_fast_strength",
+      "id": "motor_strength_fast",
       "type": "CONST",
       "position": {
         "x": 20,
@@ -198,7 +198,7 @@
       }
     },
     {
-      "id": "haptic_output_mul",
+      "id": "motor_speed_mul",
       "type": "MULTIPLY",
       "position": {
         "x": 22.5,
@@ -206,7 +206,7 @@
       }
     },
     {
-      "id": "haptic_slow_strength",
+      "id": "motor_strength_slow",
       "type": "CONST",
       "position": {
         "x": 20,
@@ -214,7 +214,7 @@
       }
     },
     {
-      "id": "haptic_strength_sw",
+      "id": "motor_strength_sw",
       "type": "NUM_SWITCHBOX",
       "position": {
         "x": 21.25,

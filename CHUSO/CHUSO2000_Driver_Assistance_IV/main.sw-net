@@ -20,50 +20,50 @@ module main
   inst COMPOSITE_READ_NUMBER monitor_decoded_ch16_read (channel=16) : composite=monitor_status_decoder_lua_composite -> out=monitor_decoded_ch16_read_out
 
   # --- Monitor Status raw reads ---
-  inst COMPOSITE_READ_NUMBER atc_signal_code_read (channel=12) : composite="Monitor Status" -> out=atc_signal_code_read_out
-  inst COMPOSITE_READ_NUMBER monitor_speed_ref_read (channel=6) : composite="Monitor Status" -> out=monitor_speed_ref_read_out
-  inst COMPOSITE_READ_NUMBER monitor_ch3_num_read (channel=3) : composite="Monitor Status" -> out=monitor_ch3_num_read_out
-  inst COMPOSITE_READ_BOOLEAN monitor_abnormal_1_read (channel=12) : composite="Monitor Status" -> out=monitor_abnormal_1_read_out
-  inst COMPOSITE_READ_BOOLEAN monitor_abnormal_2_read (channel=13) : composite="Monitor Status" -> out=monitor_abnormal_2_read_out
+  inst COMPOSITE_READ_NUMBER formation_lever_read (channel=12) : composite="Monitor Status" -> out=formation_lever_read_out
+  inst COMPOSITE_READ_NUMBER position_status_read (channel=6) : composite="Monitor Status" -> out=position_status_read_out
+  inst COMPOSITE_READ_NUMBER route_code_a_read (channel=3) : composite="Monitor Status" -> out=route_code_a_read_out
+  inst COMPOSITE_READ_BOOLEAN door_open_a_read (channel=12) : composite="Monitor Status" -> out=door_open_a_read_out
+  inst COMPOSITE_READ_BOOLEAN door_open_b_read (channel=13) : composite="Monitor Status" -> out=door_open_b_read_out
   inst COMPOSITE_READ_BOOLEAN direction_flag_read (channel=16) : composite="Monitor Status" -> out=direction_flag_read_out
-  inst OR monitor_abnormal_flag : a=monitor_abnormal_1_read_out, b=monitor_abnormal_2_read_out -> out=monitor_abnormal_flag_out
-  inst NOT monitor_normal_flag : a=monitor_abnormal_flag_out -> out=monitor_normal_flag_out
+  inst OR any_door_open : a=door_open_a_read_out, b=door_open_b_read_out -> out=any_door_open_out
+  inst NOT all_doors_closed : a=any_door_open_out -> out=all_doors_closed_out
 
   # --- Physics Input reads ---
-  inst COMPOSITE_READ_NUMBER physics_accel_read (channel=1) : composite="Physics Input" -> out=physics_accel_read_out
-  inst COMPOSITE_READ_NUMBER physics_speed_read (channel=3) : composite="Physics Input" -> out=physics_speed_read_out
-  inst COMPOSITE_READ_NUMBER physics_delta_read (channel=9) : composite="Physics Input" -> out=physics_delta_read_out
+  inst COMPOSITE_READ_NUMBER gps_x_read (channel=1) : composite="Physics Input" -> out=gps_x_read_out
+  inst COMPOSITE_READ_NUMBER gps_y_read (channel=3) : composite="Physics Input" -> out=gps_y_read_out
+  inst COMPOSITE_READ_NUMBER forward_speed_read (channel=9) : composite="Physics Input" -> out=forward_speed_read_out
 
   # --- ATC signal processing ---
-  inst THRESHOLD atc_signal_active (min=1, max=1) : value=atc_signal_code_read_out -> out=atc_signal_active_out
-  inst PULSE atc_signal_rise_pulse (mode="rise") : a=atc_signal_active_out -> out=atc_signal_rise_pulse_out
-  inst OR alert_set_trigger : a=monitor_abnormal_flag_out, b=atc_signal_rise_pulse_out -> out=alert_set_trigger_out
-  inst THRESHOLD speed_near_zero (min=-1.5, max=1.5) : value=physics_delta_read_out -> out=speed_near_zero_out
+  inst THRESHOLD formation_front_selected (min=1, max=1) : value=formation_lever_read_out -> out=formation_front_selected_out
+  inst PULSE formation_front_rise_pulse (mode="rise") : a=formation_front_selected_out -> out=formation_front_rise_pulse_out
+  inst OR door_latch_set_trigger : a=any_door_open_out, b=formation_front_rise_pulse_out -> out=door_latch_set_trigger_out
+  inst THRESHOLD speed_near_zero (min=-1.5, max=1.5) : value=forward_speed_read_out -> out=speed_near_zero_out
   inst NOT speed_nonzero : a=speed_near_zero_out -> out=speed_nonzero_out
-  inst AND alert_reset_cond : a=monitor_normal_flag_out, b=speed_nonzero_out -> out=alert_reset_cond_out
-  inst SR_LATCH atc_alert_latch : r=alert_reset_cond_out, s=alert_set_trigger_out -> q=atc_alert_latch_q
-  inst CAPACITOR alert_blinker_cap (charge_time=0.5, discharge_time=0.5) : enable=atc_alert_latch_q -> out=alert_blinker_cap_out
-  inst PULSE alert_fall_pulse (mode="fall") : a=atc_alert_latch_q -> out=alert_fall_pulse_out
+  inst AND door_latch_reset_cond : a=all_doors_closed_out, b=speed_nonzero_out -> out=door_latch_reset_cond_out
+  inst SR_LATCH door_open_latch : r=door_latch_reset_cond_out, s=door_latch_set_trigger_out -> q=door_open_latch_q
+  inst CAPACITOR door_open_delay_cap (charge_time=0.5, discharge_time=0.5) : enable=door_open_latch_q -> out=door_open_delay_cap_out
+  inst PULSE door_open_fall_pulse (mode="fall") : a=door_open_latch_q -> out=door_open_fall_pulse_out
 
   # --- EB active latch ---
-  inst OR eb_set_or_alert_fall : a=atc_eb_set_flag_out, b=alert_fall_pulse_out -> out=eb_set_or_alert_fall_out
-  inst SR_LATCH eb_active_latch : r=eb_set_or_alert_fall_out, s=atc_eb_reset_flag_out -> q=eb_active_latch_q
+  inst OR approach_reset_or : a=approach_reset_read_out, b=door_open_fall_pulse_out -> out=approach_reset_or_out
+  inst SR_LATCH approach_latch : r=approach_reset_or_out, s=approach_set_read_out -> q=approach_latch_q
 
   # --- ATC status Lua ---
-  inst COMPOSITE_WRITE_NUMBER physics_input_composite (count=5, offset=1) : in1=physics_accel_read_out, in2=physics_speed_read_out, in3=position_integral_out, in4=monitor_ch3_num_read_out, in5=monitor_speed_ref_read_out -> out=physics_input_composite_out
-  inst COMPOSITE_WRITE_BOOLEAN atc_input_composite (count=4, offset=1) : in1=atc_signal_active_out, in2=atc_signal_rise_pulse_out, in3=eb_active_latch_q, in4=alert_blinker_cap_out, inc=physics_input_composite_out -> out=atc_input_composite_out
-  inst LUA atc_status_lua (script_ref="scripts/n61.lua") : composite=atc_input_composite_out -> composite=atc_status_lua_composite
-  inst COMPOSITE_READ_BOOLEAN atc_eb_reset_flag (channel=4) : composite=atc_status_lua_composite -> out=atc_eb_reset_flag_out
-  inst COMPOSITE_READ_BOOLEAN atc_eb_set_flag (channel=5) : composite=atc_status_lua_composite -> out=atc_eb_set_flag_out
-  inst COMPOSITE_READ_BOOLEAN atc_ch3_flag_read (channel=3) : composite=atc_status_lua_composite -> out=atc_ch3_flag_read_out
-  inst COMPOSITE_READ_BOOLEAN atc_status_flag_read (channel=1) : composite=atc_status_lua_composite -> out=atc_status_flag_read_out
-  inst COMPOSITE_READ_NUMBER atc_reading_1_read (channel=1) : composite=atc_status_lua_composite -> out=atc_reading_1_read_out
-  inst COMPOSITE_READ_NUMBER atc_reading_2_read (channel=2) : composite=atc_status_lua_composite -> out=atc_reading_2_read_out
-  inst COMPOSITE_READ_NUMBER atc_reading_3_read (channel=3) : composite=atc_status_lua_composite -> out=atc_reading_3_read_out
-  inst COMPOSITE_READ_NUMBER atc_reading_4_read (channel=4) : composite=atc_status_lua_composite -> out=atc_reading_4_read_out
-  inst COMPOSITE_READ_NUMBER ext_speed_factor_read (channel=31) : composite=atc_status_lua_composite -> out=ext_speed_factor_read_out
-  inst COMPOSITE_READ_NUMBER ext_base_speed_read (channel=32) : composite=atc_status_lua_composite -> out=ext_base_speed_read_out
-  inst COMPOSITE_READ_NUMBER position_display_read (channel=4) : composite=atc_status_lua_composite -> out=position_display_read_out
+  inst COMPOSITE_WRITE_NUMBER route_input_num_composite (count=5, offset=1) : in1=gps_x_read_out, in2=gps_y_read_out, in3=position_integral_out, in4=route_code_a_read_out, in5=position_status_read_out -> out=route_input_num_composite_out
+  inst COMPOSITE_WRITE_BOOLEAN route_input_composite (count=4, offset=1) : in1=formation_front_selected_out, in2=formation_front_rise_pulse_out, in3=approach_latch_q, in4=door_open_delay_cap_out, inc=route_input_num_composite_out -> out=route_input_composite_out
+  inst LUA route_logic_lua (script_ref="scripts/n61.lua") : composite=route_input_composite_out -> composite=route_logic_lua_composite
+  inst COMPOSITE_READ_BOOLEAN approach_set_read (channel=4) : composite=route_logic_lua_composite -> out=approach_set_read_out
+  inst COMPOSITE_READ_BOOLEAN approach_reset_read (channel=5) : composite=route_logic_lua_composite -> out=approach_reset_read_out
+  inst COMPOSITE_READ_BOOLEAN doorcut_flag_read (channel=3) : composite=route_logic_lua_composite -> out=doorcut_flag_read_out
+  inst COMPOSITE_READ_BOOLEAN enable_flag_read (channel=1) : composite=route_logic_lua_composite -> out=enable_flag_read_out
+  inst COMPOSITE_READ_NUMBER route_station_1_read (channel=1) : composite=route_logic_lua_composite -> out=route_station_1_read_out
+  inst COMPOSITE_READ_NUMBER route_station_2_read (channel=2) : composite=route_logic_lua_composite -> out=route_station_2_read_out
+  inst COMPOSITE_READ_NUMBER route_mode_read (channel=3) : composite=route_logic_lua_composite -> out=route_mode_read_out
+  inst COMPOSITE_READ_NUMBER route_dir_read (channel=4) : composite=route_logic_lua_composite -> out=route_dir_read_out
+  inst COMPOSITE_READ_NUMBER kp_keep_factor_read (channel=31) : composite=route_logic_lua_composite -> out=kp_keep_factor_read_out
+  inst COMPOSITE_READ_NUMBER kp_update_value_read (channel=32) : composite=route_logic_lua_composite -> out=kp_update_value_read_out
+  inst COMPOSITE_READ_NUMBER position_display_read (channel=4) : composite=route_logic_lua_composite -> out=position_display_read_out
   inst TOOLTIP_NUMBER position_tooltip (label="value") : value=position_display_read_out ->
 
   # --- Position calculation ---
@@ -71,16 +71,16 @@ module main
   inst CONST const_forward_dir (value=1) : -> value=const_forward_dir_value
   inst CONST const_zero (value=0) : -> value=const_zero_value
   inst NUM_SWITCHBOX direction_sign_sw : a=const_reverse_dir_value, b=const_forward_dir_value, switch=direction_flag_read_out -> out=direction_sign_sw_out
-  inst NUM_SWITCHBOX pos_speed_factor_sw : a=const_zero_value, b=ext_speed_factor_read_out, switch=use_ext_pos_calc_read_out -> out=pos_speed_factor_sw_out
-  inst NUM_SWITCHBOX pos_base_speed_sw : a=ext_base_speed_read_out, b=ds_base_speed_read_out, switch=use_ext_pos_calc_read_out -> out=pos_base_speed_sw_out
-  inst FUNC_NUM_8 position_integral (expression="x*z+(y/60)*a+w") : x=position_integral_out, y=physics_delta_read_out, z=pos_speed_factor_sw_out, w=pos_base_speed_sw_out, a=direction_sign_sw_out -> out=position_integral_out
+  inst NUM_SWITCHBOX pos_speed_factor_sw : a=const_zero_value, b=kp_keep_factor_read_out, switch=kp_update_request_read_out -> out=pos_speed_factor_sw_out
+  inst NUM_SWITCHBOX pos_base_speed_sw : a=kp_update_value_read_out, b=kp_manual_value_read_out, switch=kp_update_request_read_out -> out=pos_base_speed_sw_out
+  inst FUNC_NUM_8 position_integral (expression="x*z+(y/60)*a+w") : x=position_integral_out, y=forward_speed_read_out, z=pos_speed_factor_sw_out, w=pos_base_speed_sw_out, a=direction_sign_sw_out -> out=position_integral_out
   inst FUNC_NUM_1 position_thousands (expression="floor(abs(x)/1000)") : x=position_integral_out -> out=position_thousands_out
   inst FUNC_NUM_1 position_tens_hundreds (expression="floor(abs(x)/10)%100") : x=position_integral_out -> out=position_tens_hundreds_out
 
   # --- Drive Support Monitor Lua ---
   inst LUA drive_support_monitor_lua (script_ref="scripts/n105.lua") : composite=display_support_composite_out -> composite=drive_support_monitor_lua_composite
-  inst COMPOSITE_READ_BOOLEAN use_ext_pos_calc_read (channel=7) : composite=drive_support_monitor_lua_composite -> out=use_ext_pos_calc_read_out
-  inst COMPOSITE_READ_NUMBER ds_base_speed_read (channel=7) : composite=drive_support_monitor_lua_composite -> out=ds_base_speed_read_out
+  inst COMPOSITE_READ_BOOLEAN kp_update_request_read (channel=7) : composite=drive_support_monitor_lua_composite -> out=kp_update_request_read_out
+  inst COMPOSITE_READ_NUMBER kp_manual_value_read (channel=7) : composite=drive_support_monitor_lua_composite -> out=kp_manual_value_read_out
   inst COMPOSITE_READ_BOOLEAN key_state_bool_read (channel=32) : composite=drive_support_monitor_lua_composite -> out=key_state_bool_read_out
   inst COMPOSITE_READ_NUMBER key_position_num_read (channel=32) : composite=drive_support_monitor_lua_composite -> out=key_position_num_read_out
   inst PULSE key_position_store_pulse (mode="fall") : a=key_state_bool_read_out -> out=key_position_store_pulse_out
@@ -125,8 +125,8 @@ module main
 
   # --- Drive Support output composites ---
   inst COMPOSITE_WRITE_BOOLEAN key_bool_composite (count=1, offset=32) : in1=monitor_beep_not_out, inc=drive_support_monitor_lua_composite -> out=key_bool_composite_out
-  inst COMPOSITE_WRITE_BOOLEAN drive_support_bool_composite (count=4, offset=11) : in1=atc_status_flag_read_out, in3=atc_ch3_flag_read_out, in4=direction_flag_read_out, inc=key_bool_composite_out -> out=drive_support_bool_composite_out
-  inst COMPOSITE_WRITE_NUMBER drive_support_num_composite (count=14, offset=1) : in1=drive_data_1_memory_out, in2=drive_data_2_memory_out, in3=drive_data_3_memory_out, in4=drive_data_4_memory_out, in5=drive_data_5_memory_out, in6=drive_data_6_memory_out, in8=destination_code_memory_out, in11=atc_reading_1_read_out, in12=atc_reading_2_read_out, in13=atc_reading_3_read_out, in14=atc_reading_4_read_out, inc=drive_support_bool_composite_out -> out=drive_support_num_composite_out
+  inst COMPOSITE_WRITE_BOOLEAN drive_support_bool_composite (count=4, offset=11) : in1=enable_flag_read_out, in3=doorcut_flag_read_out, in4=direction_flag_read_out, inc=key_bool_composite_out -> out=drive_support_bool_composite_out
+  inst COMPOSITE_WRITE_NUMBER drive_support_num_composite (count=14, offset=1) : in1=drive_data_1_memory_out, in2=drive_data_2_memory_out, in3=drive_data_3_memory_out, in4=drive_data_4_memory_out, in5=drive_data_5_memory_out, in6=drive_data_6_memory_out, in8=destination_code_memory_out, in11=route_station_1_read_out, in12=route_station_2_read_out, in13=route_mode_read_out, in14=route_dir_read_out, inc=drive_support_bool_composite_out -> out=drive_support_num_composite_out
   inst LUA drive_support_output_lua (script_ref="scripts/n141.lua") : composite=drive_support_num_composite_out -> composite="Drive Support"
 
   # --- Video pipeline ---

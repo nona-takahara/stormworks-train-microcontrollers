@@ -39,15 +39,15 @@ module main
   inst COMPOSITE_READ_NUMBER atsc_setting_1_read (channel=11) : composite="Monitor Status" -> out=atsc_setting_1_read_out
   inst COMPOSITE_READ_NUMBER atsc_setting_2_read (channel=12) : composite="Monitor Status" -> out=atsc_setting_2_read_out
   inst COMPOSITE_READ_NUMBER atsc_setting_3_read (channel=13) : composite="Monitor Status" -> out=atsc_setting_3_read_out
-  inst COMPOSITE_READ_NUMBER motor_current_raw_read (channel=27) : composite="Monitor Status" -> out=motor_current_raw_read_out
-  inst COMPOSITE_READ_NUMBER regen_current_raw_read (channel=29) : composite="Monitor Status" -> out=regen_current_raw_read_out
+  inst COMPOSITE_READ_NUMBER car_info0_read (channel=27) : composite="Monitor Status" -> out=car_info0_read_out
+  inst COMPOSITE_READ_NUMBER car_info2_read (channel=29) : composite="Monitor Status" -> out=car_info2_read_out
   inst COMPOSITE_READ_NUMBER atc_car_count_low_read (channel=31) : composite="Monitor Status" -> out=atc_car_count_low_read_out
   inst COMPOSITE_READ_NUMBER atc_car_count_high_read (channel=32) : composite="Monitor Status" -> out=atc_car_count_high_read_out
 
   # --- Rolling Stock Status reads ---
   inst COMPOSITE_READ_NUMBER bc_pressure_read (channel=2) : composite="Rolling Stock Status" -> out=bc_pressure_read_out
-  inst COMPOSITE_READ_NUMBER regen_current_rolling_read (channel=3) : composite="Rolling Stock Status" -> out=regen_current_rolling_read_out
-  inst COMPOSITE_READ_NUMBER motor_current_rolling_read (channel=5) : composite="Rolling Stock Status" -> out=motor_current_rolling_read_out
+  inst COMPOSITE_READ_NUMBER motor_current_rolling_read (channel=3) : composite="Rolling Stock Status" -> out=motor_current_rolling_read_out
+  inst COMPOSITE_READ_NUMBER line_voltage_rolling_read (channel=5) : composite="Rolling Stock Status" -> out=line_voltage_rolling_read_out
   inst COMPOSITE_READ_NUMBER rolling_composite_ch8_read (channel=8) : composite="Rolling Stock Status" -> out=rolling_composite_ch8_read_out
 
   # --- Headlight beam position select and ATS/C settings write ---
@@ -78,12 +78,12 @@ module main
   # --- Electricity display: IIR smooth filter for current values ---
   inst CONST const_euler (value=2.71828182846) : -> value=const_euler_value
   inst CONST smooth_alpha (value=0.4) : -> value=smooth_alpha_value
+  inst DELTA line_voltage_delta : a=line_voltage_smooth_out -> out=line_voltage_delta_out
+  inst FUNC_NUM_8 line_voltage_smooth (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=line_voltage_rolling_read_out, y=line_voltage_smooth_out, z=const_euler_value, w=line_voltage_delta_out, a=smooth_alpha_value -> out=line_voltage_smooth_out
   inst DELTA motor_current_delta : a=motor_current_smooth_out -> out=motor_current_delta_out
   inst FUNC_NUM_8 motor_current_smooth (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=motor_current_rolling_read_out, y=motor_current_smooth_out, z=const_euler_value, w=motor_current_delta_out, a=smooth_alpha_value -> out=motor_current_smooth_out
-  inst DELTA regen_current_delta : a=regen_current_smooth_out -> out=regen_current_delta_out
-  inst FUNC_NUM_8 regen_current_smooth (expression="(z^(-a))*(w+(y-x)*(a+1))+x") : x=regen_current_rolling_read_out, y=regen_current_smooth_out, z=const_euler_value, w=regen_current_delta_out, a=smooth_alpha_value -> out=regen_current_smooth_out
   inst COMPOSITE_WRITE_BOOLEAN electricity_bool_header (count=1, offset=1) : in1=display_mode_flag_read_out -> out=electricity_bool_header_out
-  inst COMPOSITE_WRITE_NUMBER electricity_display_composite (count=4, offset=1) : in1=motor_current_raw_read_out, in2=regen_current_raw_read_out, in3=motor_current_smooth_out, in4=regen_current_smooth_out, inc=electricity_bool_header_out -> out=electricity_display_composite_out
+  inst COMPOSITE_WRITE_NUMBER electricity_display_composite (count=4, offset=1) : in1=car_info0_read_out, in2=car_info2_read_out, in3=line_voltage_smooth_out, in4=motor_current_smooth_out, inc=electricity_bool_header_out -> out=electricity_display_composite_out
   inst LUA electricity_panel_lua (script_ref="scripts/n576.lua") : composite=electricity_display_composite_out -> video="Electricity Display"
 
   # --- ATC Train Length calculation ---
