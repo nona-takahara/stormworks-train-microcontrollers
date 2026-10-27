@@ -1,7 +1,7 @@
 # sw-net-sim
 
 `.sw-net` ゲート網の疑似実行シミュレータ。CHUSO1800 Lua Coreマイコンの
-バグ調査（アプローチ1）用に作成した、リポジトリ共通で使えるツール。
+バグ調査のために作成した、リポジトリ共通で使えるツール。
 
 ## 構成
 
@@ -57,8 +57,8 @@ Momelink-A（`Momelink_A_Advanced.xml`）の速度演算のために、`ADD`、`
 （未対応の型は`Sim.new`で即エラーになる）。
 
 BLINKERは「有効化後、最初は
-off_ticks待ってから点灯」という経験則（同SIGNAL_MAP.md）に従っている
-─ この初期位相の厳密なtick合わせは実機未確認。
+off_ticks待ってから点灯」という経験則（`CHUSO/CHUSO1800_Traction_Controller_LuaCore/SIGNAL_MAP.md`）に従っている。
+この初期位相の厳密なtick合わせは実機未確認である。
 
 ## 既知の単純化
 
@@ -66,8 +66,8 @@ off_ticks待ってから点灯」という経験則（同SIGNAL_MAP.md）に従�
   `Phyics Sensor [+Z is front]`ポートは呼び出し側が明示的に与える値
   （`smoke_scenario.lua`ではspawn後ずっと0）のまま。よって`smoke_scenario.lua`
   のような速度0固定シナリオでは、電流が制限閾値を超えたまま下がらず
-  カムが進段しなくなる（物理的に正しい振る舞い ─ 実車なら加速して
-  背電力が増え電流が下がる）。
+  カムが進段しなくなる（物理的に正しい振る舞いである。実車なら加速して
+  逆起電力が増え電流が下がる）。
 - パンタグラフ・SAP/ECB切替などのPROPERTY系ノードは、`.sw-net`本文に
   明記されている属性（`v=`等）だけを使う。属性が省略されているノード
   （例：本ファイルの`sap_ecb_toggle`は`v=`省略＝Stormworksのデフォルト

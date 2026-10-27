@@ -1,7 +1,7 @@
 # プローブ コア仕様
 
 `src/probe_core.lua` は Stormworks の API に依存しない純粋なロジックである。
-composite の読み書きと HTTP は、これを呼ぶ入口（未着手）が担う。
+composite の読み書きと HTTP は、これを呼ぶ入口 `src/probe.lua` が担う（「入口とサーバー」の節）。
 全体の設計は [../VehicleProbe.md](../VehicleProbe.md)、結線は
 [../ProbeWiring.md](../ProbeWiring.md) を参照する。
 
