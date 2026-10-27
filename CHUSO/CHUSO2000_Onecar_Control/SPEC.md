@@ -1,98 +1,100 @@
-# CHUSO2000 Onecar Control — 設計仕様
+# CHUSO2000 Onecar Control 仕様書
 
-## 概要
+単車制御マイコン。前方運転台側と後方運転台側から届く `Control Commands Type 3`（CC3）を 1 つにまとめ、下流（牽引制御・ドア制御など）に `Control Commands Type 3` として出力する。あわせて `Simple IF RX` の N4 / N5 と B4 / B5 を入れ替えて出力する。
 
-単車制御マイコン。前方・後方の両運転台から届く `Control Commands Type 3` を合成し、
-単一の `Control Commands Type 3` として下流（牽引制御・ドア制御等）へ出力する。
-また `Simple IF RX` の前後両数チャンネル (N4/N5) を入れ替えて `Simple IF RX inverted` として出力する。
+ここに書く事実は `main.sw-net` と `scripts/n200.lua` から読み取ったものである。信号の意味は `SignalComposite.md` の CC3 の節を参照する。ゲーム内で確かめていない項目には `[unconfirmed]`、コードの配線から推論した項目には `[inferred]` を付ける。
 
-## 命名規則
+## ポート
 
-- `cc3_front_*` / `cc3_back_*` — 前方/後方からの CC3 入力から読み出した値
-- `b{N}_or` — CC3 boolean チャンネル N の前後 OR 結果（出力 B{N} に対応）
-- `b{N}_packed_or` — N7 packed bool の B{N} を前後 OR した結果
-- `packed_front_b{N}` / `packed_back_b{N}` — N7 packed から展開した個別ビット
-- `*_sw` — COMPOSITE_SWITCHBOX 経由（アクティブ運転台側のみ通過）
-- `sifrx_*` — Simple IF RX 処理関連
+| ポート | 方向 | 型 |
+|-------|------|----|
+| `Control Commands Type 3 from Front` | in | composite |
+| `Control Commands Type 3 from Back` | in | composite |
+| `Control Commands Type 3` | out | composite |
+| `Simple IF RX` | in | composite |
+| `Simple IF RX inverted` | out | composite |
 
-## 論理グループ
+以降、前方側の入力を F、後方側の入力を B と書く。たとえば `F.B6` は前方側 CC3 の bool ch6 である。
 
-### 1. 運転台選択
+## 有効側の判定
 
-CC3 の B6 (`channel=6` boolean) が `front_cab` ビット。
+B6 は、Control Commands TX の B6（前後選択 前）と同じ意味と読む `[inferred]`。Cab Controller V の `Control Commands TX` の B6 は、編成前後選択レバーが前（+1）のときの信号である（`CHUSO2000_Cab_Controller_V/SPEC.md`）。
 
-| インスタンス | 役割 |
-|---|---|
-| `cc3_front_is_front_cab` | 前方 CC3 の B6 読み出し |
-| `cc3_back_is_front_cab` | 後方 CC3 の B6 読み出し |
-| `front_cab_active` | 前方がfront_cab かつ 後方がfront_cabでない → 前方運転台起動 |
-| `back_cab_active` | 後方がfront_cab かつ 前方がfront_cabでない → 後方運転台起動 |
-| `any_cab_active` | 前後いずれかがfront_cab |
-| `either_cab_active` | front_cab_active OR back_cab_active |
-| `cc3_front_sw` / `cc3_back_sw` | アクティブ運転台側のみ通す Switchbox |
+| 信号 | 条件 |
+|------|------|
+| 前方マスタ | `F.B6` かつ `B.B6` でない |
+| 後方マスタ | `B.B6` かつ `F.B6` でない |
+| どちらか有効 | `F.B6` または `B.B6` |
 
-### 2. 数値チャンネル
+前方マスタが成り立つときだけ F の CC3 を通し、後方マスタが成り立つときだけ B の CC3 を通す。通した後の信号を「ゲート後」と呼ぶ。`COMPOSITE_SWITCHBOX` の `a` に CC3、`switch` にマスタを入れた配線である。`switch` が true のとき `a` が通る（verified。`CHUSO2000_Door_Min` でゲーム内確認済み）。
 
-| チャンネル | 信号名 | 合成方式 |
-|---|---|---|
-| N1 | ブレーキノッチ | switchbox 経由で前後 ADD |
-| N2 | 力行ノッチ | switchbox 経由で前後 ADD |
-| N3 | ダイナミックブレーキ | switchbox 経由で前後 ADD |
-| N4 | ブレーキ力[kPa] | 前方のみ (`brake_force_front`) |
-| N5 | 力行パラメータ | 前方のみ (`powering_param_front`) |
-| N6 | NITS データ | 前後から FIFO キューへ (`nits_front` / `nits_back`) |
-| N7 | packed bool B1-B15 | 前後展開して OR 合成後に再パック |
+## 出力チャンネル
 
-### 3. N7 packed bool (B1-B15)
+### 数値
 
-B3/B4、B7/B9(ch位置)、B10/B11、B12/B13 は前後で入れ替えが発生する（前後方向反転のため）。
-`cc3_b_packed_builder` → `cc3_b_packed_num` で数値化して N7 に出力。
+| 出力 | 作り方 |
+|------|--------|
+| N1、N2、N3 | F と B のゲート後の値を足す |
+| N4、N5 | F の値をそのまま通す（ゲートなし、B は使わない） |
+| N6 | F の N6 と B の N6 を Lua（`scripts/n200.lua`）に入れ、その出力 ch1 を使う |
+| N7 | 後述。F と B の N7 を bool 15 本に展開し、合成して数値に戻す |
 
-### 4. 前後選択 / 締切ゲート
+N4、N5、N6 の意味は `SignalComposite.md` では、ブレーキ力 [kPa]、力行パラメータ、NITS 情報とされている。
 
-B7 が前後選択コマンド。前方運転台から後方への B7 送信、または後方から前方への B7 送信が
-クロスした場合を `door_isolated`（締切状態）とし、B6/B7 の出力信号をゲートで無効化する。
+### bool
 
-| インスタンス | 役割 |
-|---|---|
-| `fwd_back_cross_front` | 前方が front_cab かつ 後方が B7 ON |
-| `fwd_back_cross_back` | 後方が front_cab かつ 前方が B7 ON |
-| `door_isolated` | クロス発生 = 締切状態 |
-| `not_door_isolated` | 締切でないフラグ |
-| `any_cab_active_gated` | `any_cab_active` AND `not_door_isolated` → CC3 B6 出力 |
-| `any_fwd_back_cmd_gated` | `any_fwd_back_cmd` AND `not_door_isolated` → CC3 B7 出力 |
+出力 B_n の作り方は次のとおり。F と B は、特記しない限りゲートなしの値である。
 
-### 5. Boolean チャンネル (B1-B32)
+| 出力 | 作り方 |
+|------|--------|
+| B1〜B3、B9〜B15、B19〜B26、B31 | `F.Bn` OR `B.Bn` |
+| B4 | `F.B4` OR `B.B5` |
+| B5 | `F.B5` OR `B.B4` |
+| B6 | (`F.B6` OR `B.B6`) かつ スレーブでない |
+| B7 | (`F.B7` OR `B.B7`) かつ スレーブでない |
+| B8 | スレーブ |
+| B16 | F ゲート後の B16 OR B ゲート後の B17 |
+| B17 | F ゲート後の B17 OR B ゲート後の B16 |
+| B18 | `F.B18` かつ `B.B18` |
+| B27 | `F.B27` OR `B.B29` |
+| B28 | `F.B28` OR `B.B30` |
+| B29 | `F.B29` OR `B.B27` |
+| B30 | `F.B30` OR `B.B28` |
+| B32 | (`F.B32` OR `B.B32`) かつ (前方マスタ OR 後方マスタ) |
 
-基本は前後 OR。例外:
-- **B4/B5**: 前後で扉A/B が入れ替わる（後方の B5→前方の B4 扱い、逆も同様）
-- **B16/B17**: switchbox 経由で前後反転（前方 ch16=前進 → 後方 ch17 と対応）
-- **B18**: AND（前後両方がONの場合のみ。DBブレーキ自動）
-- **B27-B30**: 扉開閉操作で前後チャンネル反転（B27↔B29, B28↔B30）
-- **B32**: OR後さらに `either_cab_active` でゲート (`id_tx_gated`)
+「スレーブ」は、(`F.B6` かつ `B.B7`) OR (`B.B6` かつ `F.B7`) である。ノード名 `slave_ch7_and` から取った呼び名で、Control Commands TX の「前後選択 前」と「後」が前後で組み合わさること、つまり「単行 前後選択正常」（Control Commands TX の B8）を表す（verified。利用者の回答）。
 
-### 6. Simple IF RX
+B4 と B5、B16 と B17、B27 と B29、B28 と B30 は、後方側の読み取りで入れ替わっている。前方車と後方車で A 側と B 側、前進と後退が反転するための処置である `[inferred]`。
 
-N4(前側両数) と N5(後側両数) を入れ替えて `Simple IF RX inverted` として出力。
-B4/B5 も同様に入れ替え。
+### N7（packed bool）
 
-### 7. NITS FIFO キュー
+F と B の N7 をそれぞれ数値から composite に戻し、bool の ch1〜15 を取り出す。出力の各ビットは次のとおり。出力 N7 は、この 15 ビットを composite にして数値に戻したものである。
 
-`scripts/n200.lua` が float-int 変換ベースの FIFO キューを実装。
+| 出力ビット | 作り方 |
+|-----------|--------|
+| 1、2、5、6、8、14、15 | F の同じビット OR B の同じビット |
+| 3 | F のビット 3 OR B のビット 4 |
+| 4 | F のビット 4 OR B のビット 3 |
+| 7 | F のビット 7 のみ |
+| 9 | B のビット 7 のみ |
+| 10 | F のビット 10 OR B のビット 11 |
+| 11 | F のビット 11 OR B のビット 10 |
+| 12 | F のビット 12 OR B のビット 13 |
+| 13 | F のビット 13 OR B のビット 12 |
 
-**エンコード形式**: Stormworks の float と 32bit int の相互変換を利用。`('I4'):unpack(('f'):pack(x))` でデコード。
+F のビット 9 と B のビット 9 は、出力に使われていない。
 
-**動作**:
+## Simple IF RX
 
-- 入力コンポジット N1/N2 を毎 tick 読む（2件/tick 受信可能）
-- センチネル値 `1<<24 = 16777216` は「無効」を意味し、キューに積まない
-- キューから先頭 1 件を出力（キュー空時はセンチネルを出力）
+`Simple IF RX` に対して、N4 と N5、B4 と B5 を入れ替えたものを `Simple IF RX inverted` に出す。他のチャンネルは `COMPOSITE_WRITE_*` の `inc` に元の `Simple IF RX` を入れているため、そのまま通る（`storm-mcl spec` で verified）。
 
-| 入力 ch | 内容 |
-|---------|------|
-| N1 | NITS パックデータ 1 |
-| N2 | NITS パックデータ 2 |
+## NITS キュー（`scripts/n200.lua`）
 
-| 出力 ch | 内容 |
-|---------|------|
-| N1 | NITS パックデータ（1件/tick）またはセンチネル |
+入力 N1、N2 は、float のビット列を 32bit 整数として読み直した値（NITS のパックデータ）である。毎 tick、次の順に処理する。
+
+1. N1 を整数にデコードする。センチネル値 `1<<24`（16777216）でなければキューの末尾に積む。
+2. N2 も同様に処理する。
+3. キューが空でなければ先頭 1 件を出力 N1 に出し、キューから取り除く。出力は整数を float のビット列として書き戻した値である。
+4. キューが空なら、センチネル値を同じ形式で出力 N1 に出す。
+
+入力は 1 tick に 2 件まで積める。出力は 1 tick に 1 件である。キューの長さに上限はない。上限がないため、入力が出力より多い状態が続くと増え続ける。

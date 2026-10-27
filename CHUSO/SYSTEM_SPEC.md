@@ -1,32 +1,34 @@
-# 中宗電鉄 2000系列 マイコンシステム 詳細仕様書
+# 中宗電鉄 2000系列 マイコンシステム 仕様書
 
-> - 対象: `CHUSO/CHUSO2000_*` 配下の各 `main.sw-net` および付随 Lua スクリプト
-> - 参照仕様: `SignalComposite.md` (v0.6), `CabComposite.md`, `NITS.md`
-> - 改訂日: 2026-07-18
-> - 本書は各マイコン単体の `SPEC.md` を統合し、システム全体のデータフロー・状態機械・プロトコルをエンジニアが実装・デバッグに使える形でまとめたものである。
+> - 対象: `CHUSO/CHUSO2000_*` 配下の各 `main.sw-net` と付随する Lua スクリプト
+> - 参照: `SignalComposite.md`（NITS のフレーム定義は「NITS フレーム仕様」の節）、公式の [NITS](https://nonasaba.net/sw-train-docs/communicate/NITS.html)
+> - 本書は、マイコン間のデータの流れ、通信プロトコル、システム全体で読み違えやすい点を書く。マイコン単体の入出力と論理は、各マイコンの `SPEC.md` を読む。
 
 ---
 
 ## 0. 凡例
 
-`storm-mcl`の構文、ゲート、チャンネル番号、tick評価に関する一般仕様は
-`storm-mcl spec`を正典とする。本書では「B」をブールチャンネル、「N」を
-数値チャンネルの略記として使う。
+`storm-mcl` の構文、ゲート、チャンネル番号、tick 評価の一般仕様は `storm-mcl spec` を正典とする。本書では「B」をブールチャンネル、「N」を数値チャンネルの略記として使う。
+
+`NUM_SWITCHBOX` と `COMPOSITE_SWITCHBOX` は、`switch` が true のとき `a`、false のとき `b` を選ぶ（verified）。
 
 ---
 
 ## 1. システム概要
 
-CHUSO 2000系の制御は、**1両単位の運転台ユニット**と**編成内通信（Momelink / NITS）**の二層で構成される。マイコンは大きく次の 6 種に分かれる。
+CHUSO 2000系の制御は、1 両単位の運転台ユニットと、編成内通信（Momelink と NITS）の二層で構成される。
 
-| マイコン | 役割 | 主な入力 | 主な出力 |
-|---|---|---|---|
-| **Cab Controller V** | 運転台制御の中核。マスコン・逆転器・ドア・標識灯・各種スイッチを集約し、制御コマンドと表示ステータスを生成 | Seat Input, ATS/ATC, Crew Handle L/R, Drive/Settings Loop, Physics, Drive Support | Control Commands TX, Monitor Status, ハンドル角度/音, 標識灯 |
-| **Cab Display IV** | 運転台モニタ表示。Monitor Status / Rolling Stock Status を映像化 | Monitor Status, Rolling Stock Status, タッチ | Main Monitor 映像, ARC, 列車長, Loop Start |
-| **Driver Assistance IV** | 運転支援。GPS+距離程から次駅・接近・停車・締切を判定 | Monitor Status, Physics, タッチ | Drive Support, 映像, Beep |
-| **Traction Controller** | 牽引制御 (VVVF)。力行・回生・空気ブレーキ協調、パンタグラフ、高加速、Momelinkを管理 | Simple IF, Extended Commands RX, Physics, Voltage, BC, MR, Inertia, Momelink | Output (Watt), BC Target, Rolling Stock Status, Momelink, ブレーキ音 |
-| **Onecar Control** | 単車制御。前後 2 運転台の Control Commands Type 3 (CC3) を合成し下流へ分配。NITS FIFO・Simple IF 前後反転 | CC3 from Front/Back, Simple IF RX | CC3 (統合), Simple IF RX inverted |
-| **Door Min** | ドア最小制御。センサ間距離で開閉エリア判定、NITS 指令で開扉、モータ速度とチャイムを出力 | Phys. Input ×2, Other Inputs, NITS Ext. | Door is Open, Chime High/Low, モータ速度 |
+| マイコン | 役割 | 仕様書 |
+|---|---|---|
+| **Cab Controller V** | 運転台制御の中核。座席、スイッチ、ループ、ATS/ATC などを読み、制御コマンドと表示用の状態を作る | [`CHUSO2000_Cab_Controller_V/SPEC.md`](./CHUSO2000_Cab_Controller_V/SPEC.md) |
+| **Cab Display IV** | 運転台モニタ。`Monitor Status` と `Rolling Stock Status` を映像にする | [`CHUSO2000_Cab_Display_IV/SPEC.md`](./CHUSO2000_Cab_Display_IV/SPEC.md) |
+| **Driver Assistance IV** | 運転支援。GPS と距離程から次の停車駅と接近を求め、行路の入力画面を持つ | [`CHUSO2000_Driver_Assistance_IV/SPEC.md`](./CHUSO2000_Driver_Assistance_IV/SPEC.md) |
+| **Traction Controller** | 牽引制御（VVVF）。力行、回生、空気ブレーキの協調、パンタグラフ、Momelink | [`CHUSO2000_Traction_Controller/SPEC.md`](./CHUSO2000_Traction_Controller/SPEC.md) |
+| **Onecar Control** | 単車制御。前後 2 運転台の CC3 を 1 つに合成し、NITS を FIFO で順送する | [`CHUSO2000_Onecar_Control/SPEC.md`](./CHUSO2000_Onecar_Control/SPEC.md) |
+| **Door Min** | ドア 1 枚の最小制御。ドア状態、チャイム、ドアモーターの速度指令 | [`CHUSO2000_Door_Min/SPEC.md`](./CHUSO2000_Door_Min/SPEC.md) |
+| **Signal Gateway** | NITS バスと、自車内の各マイコンの出入口 | [`CHUSO2000_Signal_Gateway/README.md`](./CHUSO2000_Signal_Gateway/README.md) |
+
+NITS Simple Bridge（NITS バスと Simple IF の変換）は、[`../NITS_Simple_Bridge/SPEC.md`](../NITS_Simple_Bridge/SPEC.md) にある。
 
 ### 1.1 全体データフロー
 
@@ -42,272 +44,128 @@ Driver Assistance IV ──Drive Support──▶ Cab Controller V        Tracti
                                                                 Door Min (NITS Ext.)
 ```
 
-Cab Controller の `Control Commands TX` は車両ブリッジ/ゲートウェイ（`Signal_Gateway.xml` / `Signal_Bridge`）で NITS パケット化され、編成内に分配される。Onecar Control はその NITS から復元された前後 2 系統の CC3 を受けて単車向けに統合する。
+Cab Controller の `Control Commands TX` は、車両ブリッジとゲートウェイ（`Signal_Gateway`、`Signal_Bridge`）で NITS パケットになり、編成内に分配される。Onecar Control は、NITS から復元された前後 2 系統の CC3 を受けて、単車向けに合成する。
 
 ---
 
 ## 2. マイコン間インターフェース（コンポジット信号）
 
-主要なコンポジットの定義元と内容は `SignalComposite.md` / `CabComposite.md` を正典とする。流れの要点:
+主要なコンポジットの定義元と内容は、`SignalComposite.md` が正典である。流れの要点は次のとおり。
 
 | コンポジット | 送信元 → 受信先 | 内容 |
 |---|---|---|
-| **Control Commands TX** | Cab Controller → Bridge/Gateway | N1 ブレーキ[0-31], N2 力行[0-7], N6 NITS Ext, N7 NITS 0x60 ペイロード数値, B1 非常制動, B6/B7 前後選択, B16/B17 前後進, B27-B30 扉開閉, B32 運転台起動 等 |
-| **Control Commands Type 3 (CC3)** | (前後運転台) → Onecar Control → 牽引/ドア | 上記を 1 両向けに正規化したもの。B6=front_cab ビット |
-| **Simple Interface RX / Simple IF** | 編成バス → 各車 | N1 ブレーキ, N2 力行, N4/N5 前後両数, B1 非常制動, B16/B17 方向, B18 DB自動 等。自車=ch16, 前車=1-15, 後車=17-31, コモン=32 |
-| **Extended Commands RX** | Bridge → 牽引/Cab | N9 扉モード, B1 NITS Ext 有効, B4-B9 パンタ ロック/昇降, B10 自車締切ラッチ, B14 高加速, B32 後方車両締切 等 |
-| **Monitor Status** | Cab Controller → Display / Driver Assistance | B1-B16 状態ビット, N9 ブレーキ, N10 力行, N11 レバーサ, N12 編成向き, N13 速度, N27-32 Ext コピー（`SignalComposite.md` Monitor Status(IV) 参照） |
-| **Drive Support** | Driver Assistance → Cab Controller | N1 NITS化メモリレジスタ, B1 出力中, B2/B3 締切(前/後), B4 駅停車ランプ |
-| **Rolling Stock Status** | Traction Controller → Display | N2 BC圧[kPa], N3 モータ電流[A], N4 架線電流[A], N5 架線電圧[V], N8 MR絶対圧[atm abs], パンタ状態ビット |
-| **Rolling Stock Settings** | 設定 → 牽引/Cab | B1 is_m_car, B2 編成向き(上り) |
-| **Inertia Composite** | 設定 → 牽引 | N1-4 無次元慣性係数 a/b/c/d。現在の演算出力は未接続 |
-| **Momelink** | 牽引↔編成内ユニット | ID=1911, N1 摩擦制動減速度[m/s²], N2 電動機加速度[m/s²], N23 架線電圧 |
+| **Control Commands TX** | Cab Controller → Bridge/Gateway | N1 ブレーキ[0-31]、N2 力行、N6 `Drive Support` N1、N7 packed bool（0x60 ペイロード）、B1 非常制動、B6/B7 前後選択、B16/B17 前後進、B27-B30 扉開閉、B32 運転台有効 など |
+| **Control Commands Type 3 (CC3)** | 前後運転台 → Onecar Control → 牽引・ドア | 上記を 1 両向けに合成したもの。B6 は有効側を示すフラグ |
+| **Simple Interface RX / Simple IF** | 編成バス → 各車 | N1 ブレーキ、N2 力行、N4/N5 前後両数、B1 非常制動、B16/B17 方向、B18 DB 自動 など。自車は ch16、前車は 1〜15、後車は 17〜31、コモンは 32 |
+| **Extended Commands RX** | Bridge → 牽引・Cab | N9 扉モード、B1 NITS Ext 有効、B4〜B9 パンタのロックと昇降、B10 自車締切ラッチ、B14 高加速、B32 後方車両締切 など |
+| **Monitor Status** | Cab Controller → Display / Driver Assistance | B1〜B16 状態ビット、N9 ブレーキ、N10 力行、N11 レバーサ、N12 編成向き、N13 速度、N27〜32 Ext のコピー |
+| **Drive Support** | Driver Assistance → Cab Controller | N1 行路・状態のキュー、N2 キュー残件数、B2/B3 ドアカット（A/B）、B4 接近中 |
+| **Rolling Stock Status** | Traction Controller → Display | N2 BC 圧[kPa]、N3 モータ電流[A]、N4 架線電流[A]、N5 架線電圧[V]、N8 MR 絶対圧[atm abs]、パンタ状態ビット |
+| **Rolling Stock Settings** | 設定 → 牽引・Cab | B1 is_m_car、B2 編成向き（上り） |
+| **Inertia Composite** | 設定 → 牽引 | N1〜N4 無次元の慣性係数 a、b、c、d。現在の演算結果は未接続 |
+| **Momelink** | 牽引 ↔ 編成内ユニット | ID=1911、N1 摩擦制動減速度[m/s²]、N2 電動機加速度[m/s²]、N23 架線電圧 |
 
-> 注: `Simple Interface RX`、`Control Commands TX`、CC3はいずれもN1=ブレーキ、N2=力行。前後反転処理と混同しないこと。
-
----
-
-## 3. 各マイコン詳細
-
-### 3.1 Cab Controller V
-
-運転台コントローラ。最大の sw-net で、座席・スイッチ群を集約する。
-
-#### 入出力ポート（主要）
-- **入力**: Seat Input, Mas-con Key, Simple Interface RX, Physics Sensor [+Z=front], Drive Loop, Settings Loop, ATS/ATC, Crew Handle Right/Left, Conductor Switch Interlock Release, Drive Support, Conductor Em brake 1/2, Extended Commands RX, Rolling Stock Settings
-- **出力**: Control Commands TX, Monitor Status, Main Handle Angle/Sound, Reverser Position/Sound, Formation Lever, Front/Tail Sign, Express Light (UMI/YAMA), High beam, Crew Buzzer, ATS/C Reset Signal
-
-#### 主要機能ブロック
-
-**(a) メインハンドル（マスコン）ノッチカウンタ** — `notch_counter` (COUNTER, min=4, max=-7)
-- Seat ch2 軸（[W]/[S]）の ±0.5 閾値でノッチ up/down。`CAPACITOR(0.3s)+BLINKER(0.1/0.1)` でホールド時リピートパルスを生成。
-- Seat ch1 軸（[A]/[D]、センター戻し）はノッチを中立方向へ寄せる。`notch_up_src` は `eb_q`（EB中）と AND され、EB 中のみ加速方向操作を有効化。
-- 正方向 = ブレーキ、負方向 = 力行（カウンタ値）。`min=4, max=-7` の引数順は実装上の慣習で、可動域は -7（常用最大制動）〜+4（力行最大）。
-
-**(b) 非常ブレーキ (EB) ラッチ** — `eb_latch` (SR_LATCH)
-- **set（= EB 解除）**: `handle_neg_rise | eb_set_src | center_ax_pos_rise`
-- **reset（= EB 投入）**: `pos_at_min | eb_reset_btn_pos | moterman2_key | (!mascon_active)`
-- `eb_q` = EB 投入中、`eb_not_q` = 通常。**負論理に注意**: set 側が EB 解除、reset 側が EB 投入である（§9 参照）。
-- 常用最大ブレーキ(-7)で更に [W] を入れると `pos_at_min` 経由で EB へ引き継ぎ。一度離して再投入が必要なインターロック付き。
-- EB 中は `mascon_eb_sw` がノッチを **-8 固定**にする。
-
-**(c) 逆転器** — `reverser_counter` (COUNTER, min=-1, max=1)
-- Seat ch4 軸の ±0.5。Mas-con Key OFF (`not_mascon_key`) でリセット（中立固定）。-1=後退/0=中立/+1=前進。
-
-**(d) 編成前後レバー** — `formation_counter` (COUNTER, reset=-1, min=-1, max=1)
-- Settings Loop B13(up)/B14(dn)。`Formation Lever = x/4`（-0.25/0/+0.25）。`form_is_fwd`(=+1) と `form_is_rear`(=-1) を多用。
-- **マスコン有効条件** `mascon_active = Mas-con Key AND form_is_fwd`。前方選択かつキー挿入で初めて力行/制動が出る。
-
-**(e) ATS ブレーキ上限** — `eff_notch = min(min(mascon_val, ats_lim_eb), min(ats_lim_full, ats_lim_half))`
-- ATS/ATC B8→EB(-8), B7→全制限(-8), B9→半制限(-4)。`ats_lim_en`（故障/B側開扉なし or 戸閉連動）で各制限を有効化。最も強い制限が採用される。
-
-**(f) 力行/制動コマンド計算**
-- `power_cmd = max(eff_notch, 0)` → TX N2
-- `brake_cmd = clamp((-x - min(0, x+6)) * 4, 0, 31)` → TX N1
-  - x≥0→0、x=-1..-6→(-x)*4、x≤-7 で更に増加し EB(-8) で最大。
-
-**(g) ドア制御**（§7 へ）／**(h) NITS 0x60 ペイロード**（§4 へ）／**(i) 標識灯**
-
-- **Front Sign**: SR ラッチ。set = `headlamp_rise | (headlamp AND form_is_fwd)`、reset = `headlamp_fall | form_fwd_fall`。
-- **Tail Sign**: `form_is_rear OR Drive Loop B15(尾灯強制)`。
-- **High beam**: Drive Loop B4 の NOT。
-- **Express (UMI/YAMA)**: Drive Loop B13/B16 のパススルー。
-
-**(j) Control Commands TX 組み立て** — `tx_num_build`(N1-N7) + `tx_bool_build`(B1-B32)
-- B1=`em_brake`（非常制動 failsafe: 通常走行で 1）, B2=ブザー, B6=`form_is_fwd`, B7=`form_is_rear`, B16/B17=逆転器, B27-B30=扉開閉, B32=`mascon_active`。
-- N6=`ds_nits_mem`(Drive Support N1), N7=`nits60_num`(0x60 ペイロード)。
-
-**(k) Monitor Status 組み立て** — `mon_bool_build`(B1-16) + `mon_num_build`(N9-13)
-- B4=`eb_not_q`, B5=`mascon_active`, B6=`si_b1_eb`, B7=`ds_stop_lamp`, B16=`rss_dir`。
-- N9=Simple IF N1 ブレーキ, N10=N2 力行, N11=逆転器, N12=編成, N13=速度。Extended Commands RX を `inc` でパススルー（N27-32 等）。
-
-#### 注意点
-- `em_brake` は failsafe 設計。`eb_form_fwd = eb_not_q AND form_is_fwd`（通常走行＝B1 ON）と車掌 EB / ATS EB の OR。
-- `unused_sign_latch` 系は旧 Express 実装の残骸（出力未接続）。
+`Simple Interface RX`、`Control Commands TX`、CC3 は、いずれも N1 がブレーキ、N2 が力行である。前後反転の処理と混同しない。
 
 ---
 
-### 3.2 Cab Display IV
+## 3. NITS 通信プロトコル
 
-運転台モニタ表示。Monitor Status / Rolling Stock Status を読み、複数の Lua で映像を合成する。
+NITS は編成内の機能制御を担う拡張コマンド群（コマンド ID 0x47〜0x60）である。ビット定義の正典は、`SignalComposite.md` の「NITS フレーム仕様」の節と、公式の NITS 仕様である。Cab Controller が 0x60 ペイロードを作り、Onecar Control が前後の NITS を FIFO で順送する。
 
-- **出力映像**: Main Monitor（ATS/ATC + メイン合成）, ATP Switch, Electricity Display, ARC（走行距離 km 上下位合成）, ATC Train Length（編成両数→列車長 m）。
-- **Loop Start / ATS/C Settings 出力**: ハイビーム X/Y, レバーサ, 編成向き, ドア締切状態をループへ返す。
-- **スムージング**: 架線電圧・モータ電流に指数平滑 `(e^-a)*(delta+(prev-raw)*(a+1))+raw`、a=0.4。
-- 命名は `ms_bXX_*` / `ms_nXX_*`（Monitor Status）, `rs_nX_*`（Rolling Stock Status）。
+### 3.1 0x60 ペイロード（Cab Controller の `Control Commands TX` N7）
 
----
+N7 は、次の bool を数値にまとめたものである（bit 0 が下表の B1）。
 
-### 3.3 Driver Assistance IV
-
-運転支援。物理量と Monitor Status から次駅・接近・停車・締切を判定し、`Drive Support` と映像を生成する。詳細ロジックは §8。
-
-- **ポート**: in = Monitor Status, Physics Input, Drive Support Monitor Touch / out = Drive Support, Output(video), Monitor Beep。
-- **Lua 群**: `n61`(運転支援コア), `n130`(Monitor 解析), `n105`(タッチ UI), `n106`(表示生成), `n107/n115/n127`(描画), `n141`(Drive Support 出力)。
-- **接近/停車ラッチ**: `approach_latch`, `arrival_latch`（§8.2）。
-- **メモリレジスタ 1-7**: タッチ UI から運行情報を保持し Drive Support N1-N6 / N8(page) に出力。`memreg7` は距離程補正に使用（`spd_correction`）。
-
----
-
-### 3.4 Traction Controller
-
-牽引制御 (VVVF)。`scripts/n485.lua` が電動機加速度・電流・回生／空気ブレーキ協調計算の本体。
-
-#### 入出力ポート
-- **入力**: Physics Input(ch9=速度), Voltage, Simple IF, Momelink Line, Extended Commands RX, Inertia Composite, BC, MR, Rolling Stock Settings
-- **出力**: Output (Watt), To Momelink Input & Advanced, Rolling Stock Status, BC Target, Brake sound
-
-#### 主要ブロック
-- **方向**: Simple IF B16/B17 → `direction`(+1/-1/0)。
-- **VVVF Lua入力**: N1速度, N2牽引供給電圧, N3力行ノッチ, N4ブレーキ指令, N5方向, N6 P2定速目標, N7非常減速度1.32, N8=1, N9=3.5。B1非常制動, B2高加速, B3回生無効, B4 is_m_car。
-- **VVVF Lua出力（n485）**: N1空気ブレーキ補完減速度, N2電動機加速度, N15=1911, N23架線電圧, N24 1電動機あたり電流, N25 T車向け空気ブレーキ分担, N29架線電流, B17 watchdog, B20電気ブレーキ状態。
-- **Luaフォールバック**: B17のトグル停止を0.1秒監視する。Lua故障または非常ブレーキ1秒継続時はフォールバックへ切替。N1は非常時1.32 m/s²、それ以外は`Simple IF N1/8/3.6`。
-- **BC圧計算**: `BC Target = air_brake_decel*3.02 + preload + 1`[atm abs]。preloadは空気ブレーキ要求または電気ブレーキ作動時0.45。Simulated/Realで模擬BCと実測BCを切替し、非常制動1秒継続時は状態・表示用BCを最低4 atm absとする。
-- **定速制御 (CV)**: 力行0・ブレーキ0を経た後、P2を1秒継続すると絶対速度を記憶。P2以外またはブレーキ指令で解除。41 km/h超のP2定速制御に使用。
-- **パンタグラフ**: Ext B4/B5で前パンタをロック／解除、B8/B9で後パンタをロック／解除。B6で非ロックパンタを上昇、B7で全下降。DB自動はSimple IF B18からLuaの回生許可へ入る。
-- **高加速**: Ext B14をLua B2へ直接入力し、電流指令を1.25倍する。速度サンプリング回路は高加速検出ではなく、現在未接続の非常制動時牽引カット準備回路。
-- **電力**: `Output(Watt) = catenary_current(N29) * traction_supply_voltage`。回生時は負。
-- **Momelink**: ID=1911。N1は`max(BC[atm abs]-1.45,0)/3.02`で求める摩擦制動減速度[m/s²]、N2は方向付き電動機加速度、N23は架線電圧。
-- **Rolling Stock Status**: N3はLua N24×4、N4はLua N29、N5はLua N23。MRはN8へ絶対圧[atm abs]のまま出力。
-
----
-
-### 3.5 Onecar Control
-
-前後 2 運転台の CC3 を 1 両向けに統合する。詳細は §5/§6/§7 のフローで参照。
-
-- **運転台選択**: CC3 B6 が front_cab。`front_cab_active = 自前 front_cab AND 相手 not`。`cc3_*_sw`(SWITCHBOX) でアクティブ側のみ通過。
-- **数値合成**: N1 ブレーキ/N2 力行/N3 DB は switchbox 経由で前後 ADD。N4/N5 は前方のみ。N6 NITS は FIFO。N7 packed bool は前後展開→OR→再パック。
-- **前後反転**: N7 packed の B3/B4・B7(ch7)/B9(ch9側)・B10/B11・B12/B13、boolean の B4/B5(扉A/B)・B16/B17(前後進)・B27-B30(扉開閉) は前後で読み替えチャンネルを入れ替える。
-- **締切ゲート**: B7(前後選択)が前後でクロスした場合 `door_isolated` を立て、B6(`any_cab_active`)/B7 出力をゲートで無効化。
-- **B18** は AND（前後両方 ON で DB 自動）、**B32** は OR 後 `either_cab_active` でゲート。
-- **Simple IF RX inverted**: N4/N5・B4/B5 を入れ替えて出力。
-- **NITS FIFO**: `scripts/n200.lua`。float-int 変換ベースのキュー。前後 NITS データを `table.insert`、毎 tick 1 件出力。空のとき `1<<24` をセンチネルとして送る（受信側はこれを無視）。
-
----
-
-### 3.6 Door Min
-
-ドア最小制御。
-
-- **開閉エリア判定**: センサ A/B 間の距離二乗 `dist_sq` を `(length±width)^2` と比較。`NAND` で `in_door_zone`（扉開放域内）。
-- **開扉判定**: `Other Inputs` ch10 で `NITS Ext. Input` を切替。`Door Side`(プロパティ, 既定 ch16) を読み、SR ラッチ `door_open_latch` を set。reset = `(!door_side_signal) AND nits_opp_signal`（対向側 ch+1 の信号）。
-- **チャイム**: `door_change`(開閉変化) で COUNTER をリセットし 0-120 tick 計測。High 開扉=1-79 / Low 開扉=21-99 / High 閉扉=81-120 / Low 閉扉=101-120。
-- **モータ速度**: 方向（開+1/閉-1）× 速度（停止後 0.4 / 動作中 0.2、`door_moving` CAPACITOR(discharge=1) で判定）。
-
----
-
-## 4. NITS 通信プロトコル
-
-NITS は編成内の機能制御を担う拡張コマンド群（コマンド ID 0x47-0x60、`NITS.md` 正典）。Cab Controller が 0x60 ペイロードを生成し、Onecar Control が前後 NITS を FIFO で順送する。
-
-### 4.1 0x60 ペイロード生成（Cab Controller）
-`nits60_build`(B1-B13) → `nits60_to_num` → TX N7。内容:
-
-| B | 信号 | 生成条件 |
+| B | 内容 | 作り方 |
 |---|---|---|
-| 1 | CP 起動許可 | Settings B4 |
-| 2 | SIV 起動許可 | Settings B3 |
-| 3/4/5 | クロス転換 潮/須/L長 | `cross_*_en`（停車中 AND Drive Loop B19/B20/B21） |
-| 6 | 高加速 | `high_accel_en`（Settings B12 AND mascon_active） |
-| 7/8 | 他車/自車締切 | Settings B17/B16 |
-| 10/11 | A/B 側開扉操作 | `door_a_op` / `door_b_op` |
-| 12/13 | 前/後 締切コマンド | `doorcut_fwd/rev`（自動締切 OFF AND mascon AND Drive Support B2/B3） |
+| 1 | CP 起動許可 | `Settings B4` |
+| 2 | SIV 起動許可 | `Settings B3` |
+| 3、4、5 | クロス転換 | `Drive Loop` B19、B20、B21 に、ドア操作の許可条件を AND |
+| 6 | 高加速 | `Settings B12` かつ 運転台が有効 |
+| 7、8 | 他車、自車の締切 | `Settings B17`、`Settings B16` |
+| 10、11 | A 側、B 側の開扉操作 | ドアの開操作の条件 |
+| 12、13 | 前、後の締切コマンド | 自動締切装置が働き、運転台が有効で、`Drive Support` B2、B3 が true |
 
-### 4.2 NITS FIFO（Onecar Control / n200.lua）
-- 入力 N1/N2 = 前後 NITS（`unpk` で float→int 復元）。`1<<24` 以外をキューへ。
-- 毎 tick 先頭 1 件を `pk`(int→float) して出力 N1。空なら `pk(1<<24)`（無効センチネル）。
-- 1 tick 1 件のため、複数 NITS コマンドが連続すると順次遅延して伝搬する。
+詳細は `CHUSO2000_Cab_Controller_V/SPEC.md` にある。
 
-### 4.3 0x48/0x49/0x4A-0x4C
-扉モード・ドアカット(0x48)、パンタ/室内灯/ヒータ(0x49)、車両諸元(0x4A)、車両状態(0x4B)、汎用 Ext(0x4C) は Bridge/Gateway が解釈し、Extended Commands RX として各車へ届く（`NITS.md` ビット表参照）。Door Min は 0x48 系の戸開指令を `Door Side` チャンネルで受信する。
+### 3.2 NITS FIFO（Onecar Control の `n200.lua`）
+
+- 入力 N1、N2 は前後の NITS（float のビット列を整数に戻したもの）である。`1<<24` 以外をキューへ積む。
+- 毎 tick、先頭 1 件を float のビット列にして出力 N1 に出す。空のときは `1<<24`（無効のセンチネル）を出す。
+- 1 tick に 1 件しか出せないので、NITS コマンドが続くと、順に遅れて伝わる。
+
+### 3.3 0x48、0x49、0x4A〜0x4C
+
+扉モードとドアカット（0x48）、パンタ・室内灯・ヒータ（0x49）、車両諸元（0x4A）、車両状態（0x4B）、汎用 Ext（0x4C）は、Bridge と Gateway が解釈し、Extended Commands RX として各車へ届く（`SignalComposite.md` の「NITS フレーム仕様」を参照）。Door Min は、`Door Side` のチャンネルで開扉指令を受ける。
 
 ---
 
-## 5. 制動・力行制御フロー
+## 4. 制動・力行制御フロー
 
 ```
-[マスコンハンドル] Seat ch2
-   ▼ notch_counter (-7..+4)
-   ▼ eb_latch (-8固定 if EB)
-   ▼ eff_notch = min(mascon_val, ATS各制限)
-   ├─ power_cmd = max(eff,0)        → TX N2 (力行 0-7)
-   └─ brake_cmd = clamp(...,0,31)   → TX N1 (ブレーキ 0-31)
+[マスコンハンドル] Seat N2
+   ▼ ノッチカウンタ（範囲は Cab_Controller_V/SPEC.md を参照）
+   ▼ 非常位置ラッチ（非常位置のとき -8 に固定）
+   ▼ 有効ノッチ = min(ノッチ, ATS/ATC の各制限)
+   ├─ 力行 = max(有効ノッチ, 0)          → TX N2
+   └─ ブレーキ = clamp(…, 0, 31)         → TX N1
    ▼ (Bridge → NITS → CC3 前後)
-Onecar Control: N1/N2/N3 を switchbox 経由で前後 ADD
-   ▼ CC3 統合
-Traction Controller: Simple IF N1(ブレーキ)/N2(力行) として受信
-   ▼ VVVF Lua (n485): 速度・方向・CVから電動機加速度と電流を算出
-   ▼ traction_result_sw (Lua故障または非常制動継続でフォールバック)
-   ├─ BC Target = air_brake_decel*3.02 + preload + 1
+Onecar Control: N1/N2/N3 を前後で足す
+   ▼ CC3
+Traction Controller: Simple IF の N1（ブレーキ）、N2（力行）として受信
+   ▼ VVVF Lua (n485): 速度、方向、定速目標から、電動機加速度と電流を求める
+   ▼ Lua 故障または非常制動継続のとき、フォールバックの結果に切り替える
+   ├─ BC Target = 空気ブレーキ減速度 × 3.02 + プリロード + 1
    ├─ Momelink N1 = 摩擦制動減速度[m/s²]
-   └─ Output(Watt) = 架線電流 * 牽引供給電圧
+   └─ Output(Watt) = 架線電流 × 牽引供給電圧
 ```
 
-ポイント: M車はローカルで電動機計算を行い、T車はID=1911のMomelinkから電圧・電流・空気ブレーキ分担を受ける。Lua出力選択はマスコン有効状態ではなく、非常制動継続とLuaウォッチドッグ故障で決まる。
+M 車はローカルで電動機を計算する。T 車は、ID=1911 の Momelink から、電圧、電流、空気ブレーキの分担を受ける。Lua の出力の選択は、マスコンの有効状態ではなく、非常制動の継続と Lua ウォッチドッグの故障で決まる。
 
 ---
 
-## 6. ドア制御フロー
+## 5. ドア制御フロー
 
 ```
 [車掌スイッチ / ワンマンスイッチ / Drive Loop]
    ▼ Cab Controller
-   ├─ door_a_op = (Settings B20 | Crew R B1 | DriveLoop B6) AND door_speed_ok
-   ├─ door_b_op = (Settings B25 | Crew L B1 | DriveLoop B8) AND door_speed_ok
-   │   door_speed_ok = 戸閉連動(Settings B9) OR 速度≒0(|v|<1.5)
-   ├─ door_a_cl / door_b_cl (インターロックなし)
-   ▼ TX B27-B30 (扉A/B 開閉操作), 0x60 N7 B10/B11 (開扉)
+   ├─ A 側の開操作 = (Settings B20 | Crew Right B1 | 乗務員用 Drive Loop B6) かつ 許可条件
+   ├─ B 側の開操作 = (Settings B25 | Crew Left B1  | 乗務員用 Drive Loop B8) かつ 許可条件
+   │   許可条件 = Settings B9（戸閉連動）または 速度が -1.5 以上 1.5 以下
+   ├─ 閉操作（インターロックなし）
+   ▼ TX B27〜B30（扉 A/B の開閉操作）、0x60 B10/B11（開扉）
    ▼ (NITS) → Onecar Control
-Onecar Control: B27↔B29, B28↔B30 を前後で入れ替えて OR → CC3 B27-B30
+Onecar Control: B27↔B29、B28↔B30 を前後で入れ替えて OR → CC3 B27〜B30
    ▼
-Door Min: NITS Ext. の Door Side チャンネルで開扉指令受信 → door_open_latch
-   ▼ モータ速度出力 + チャイム
+Door Min: NITS Ext. の `Door Side` のチャンネルで開扉、その 1 つ上で閉扉を受ける
+   ▼ ドアモーターの速度指令 + チャイム
 ```
 
-ワンマン時（Settings B5^ OFF）は `dl_oneman_sw` で Drive Loop 側のドア指令を採用する。
+ワンマン時（`Settings B5` が OFF）は、`Drive Loop` のドア指令を使う。「乗務員用 Drive Loop」は、この `Settings B5` が false のときだけ `Drive Loop` を通す。
 
 ---
 
-## 7. 運転支援システム（Driver Assistance IV / n61）
+## 6. 運転支援の流れ
 
-### 7.1 経路・停車判定（n61.lua）
-- `codeA`（Memreg2 由来）から `frm`(上位6bit) / `dest`(下位6bit) / `ttype`(12-15bit) を抽出。
-- `link_tbl` で駅間グラフを BFS 探索（`find_rte`、内回り inb / 外回り）し、短い方を `get_rte` で選択。
-- `is_stop`: 始終点、または `stop_type_tbl[id]` に列車種別 `ttype` が含まれれば停車駅。
-- `meterage` / `coord_tbl`: 各駅の距離程と GPS 座標。`find_nearest_sta` で開扉/起動時に距離程を補正（`upkp` 時 N31=0, N32=kp で sw-net 側へ補正値を返す）。
+詳細は `CHUSO2000_Driver_Assistance_IV/SPEC.md` にある。
 
-### 7.2 接近・停車ラッチ（sw-net + n61）
-- `stops()` で次停車駅までの距離 `lts` を算出:
-  - 400 ≤ lts < 520 → `set_ap`（接近セット）、mode=3
-  - lts > 520 → `reset_ap`（接近解除）
-  - 開扉中 AND lts<520 → mode=1（停車中）
-- sw-net 側:
-  - `approach_latch` (SR): set=`door_open_any | door_a_rise`、reset=`stop_cond`(戸閉 AND 速度非ゼロ)。
-  - `arrival_latch` (SR): set=`ds_reset_ap`(Lua ch4)、reset=`ds_approach_rst | depart_pulse`。
-  - `arrival_flash` = `approach_latch_q` を CAPACITOR(0.5/0.5) で点滅 → 駅停車ランプ。
-- 出力: ds_doorcut(Lua ch3, `doorcut_tbl` に該当駅) → Drive Support B2/B3 締切、Cab Controller の `doorcut_fwd/rev` へ。
+1. タッチ画面で、種別、出発駅、行先駅などを入力する（n105）。
+2. 行路コード（`MS N3`）と GPS、距離程から、次の停車駅と接近状態を求める（n61）。
+3. 行路、状態、ドアカットを `Drive Support` の N1（キュー）、B2〜B4 として出す（n141）。
+4. Cab Controller は、`Drive Support` の B2、B3 を、前、後の締切コマンドとして使う（0x60 の B12、B13）。
 
 ---
 
-## 8. 既知の設計上の特徴・注意点
+## 7. 読み違えやすい点
 
-1. **eb_latch の負論理**: Cab Controller の `eb_latch` は **set=EB 解除 / reset=EB 投入**。`eb_q`=EB 中、`eb_not_q`=通常。`mascon_active` が落ちる(`!mascon_active`)と reset 経由で EB 投入される failsafe。読解時に set/reset の意味を取り違えないこと。
-
-2. **TX B1 (em_brake) も failsafe 正論理**: 通常走行（前方選択 AND EB 解除）で B1=1。非常時に 0 ではなく、`eb_form_fwd | 車掌EB | ATS EB` の OR で表現されている点に注意（実体は「ブレーキ不要＝走行可」を含む信号設計）。
-
-3. **チャンネル番号の入れ替え（前後反転）**: Onecar Control では扉A/B(B4/B5)、前後進(B16/B17)、扉開閉(B27-B30)、N7 packed の一部を前後で読み替える。前方車と後方車で物理的な「A 側/前/右」が反転するための処置。デバッグ時は front/back どちらの座標系かを常に意識する。
-
-4. **Simple IFとCC3のN1/N2**: どちらもN1=ブレーキ、N2=力行。Traction Controllerもこの割当どおりに読み、Lua N3へ力行、Lua N4へブレーキを渡す。
-
-5. **1 tick 遅延の伝搬**: 各マイコンのコンポジット出力は次 tick に下流へ届く。Cab→Onecar→Traction の 3 段では指令反映に数 tick かかる。Lua（n200 FIFO, n485 VVVF）やラッチ系も 1 tick 遅延を持つため、エッジ検出（PULSE）の前後関係に依存するロジックは tick 順序を確認する。
-
-6. **NITS FIFO のセンチネル `1<<24`**: 空キュー時に送られる無効値。受信側はこれを「データなし」として読み飛ばす。実データに 0x1000000 が現れない前提。
-
-7. **Luaウォッチドッグと非常フォールバック**: Lua B17のトグル停止が0.1秒継続するか、非常ブレーキが1秒継続するとフォールバックコンポジットを選ぶ。これはマスコン有効判定ではない。
-
-8. **is_m_carによる役割分担**: ローカルパンタグラフ状態と牽引供給電圧は`is_m_car`(Rolling Stock Settings B1)でM車だけ有効。T車はMomelink上のM車データを中継・使用する。
-
-9. **準備済み未接続ロジック**: Tractionの慣性係数演算、非常制動時牽引カット、`unused_and`は外部出力へ未接続。削除済み機能ではなく、接続準備だけされた状態として扱う。
-
-10. **ドア操作インターロック**: 開扉(`door_a_op`/`door_b_op`)は `door_speed_ok`（戸閉連動 OR |速度|<1.5 m/s）が必須。閉扉系はインターロックなし。クロスシート転換も同じ停車条件 `cross_en_base` でゲートされる。
+1. **ハンドルの非常位置ラッチ**: Cab Controller の `seat_latch`（`SR_LATCH`）は、`not_q` が true のときハンドルが非常位置にあり、ノッチが -8 に固定される。set は非常位置を出る条件、reset は非常位置に入る条件である。起動直後の `q` は false（verified）なので、非常位置から始まると読む `[inferred]`。キーが OFF、または編成前後選択が前でないときは、reset がかかる。
+2. **`Control Commands TX` の B1**: B1 が true のとき非常制動である。非常位置にあり（`not_q`）、かつ編成前後選択が前のとき、車掌の非常ブレーキのとき、ATS/ATC の B8 のときに true になる。
+3. **チャンネル番号の入れ替え（前後反転）**: Onecar Control は、扉 A/B（B4/B5）、前後進（B16/B17）、扉開閉（B27〜B30）、N7 の一部のビットを、前後で読み替える。前方車と後方車で、物理的な A 側、前、右が反転するための処置である。デバッグでは、前後どちらの座標系かを常に意識する。
+4. **Simple IF と CC3 の N1/N2**: どちらも N1 がブレーキ、N2 が力行である。Traction Controller もこの割付で読み、Lua の N3 へ力行、N4 へブレーキを渡す。
+5. **1 tick の遅延の伝わり方**: 各マイコンのコンポジット出力は、次の tick に下流へ届く。Cab → Onecar → Traction の 3 段では、指令の反映に数 tick かかる。Lua（`n200` FIFO、`n485` VVVF）やラッチも 1 tick の遅延を持つので、`PULSE` のエッジに依存する論理は、tick の順序を確かめる。
+6. **NITS FIFO のセンチネル `1<<24`**: 空のキューが出す無効値で、受信側は「データなし」として読み飛ばす。実データに `0x1000000` が現れない前提である。
+7. **Lua ウォッチドッグと非常フォールバック**: Lua B17 のトグルが 0.1 秒止まるか、非常ブレーキが 1 秒続くと、フォールバックのコンポジットを選ぶ。これはマスコンの有効判定ではない。
+8. **`is_m_car` による役割分担**: ローカルのパンタグラフ状態と牽引供給電圧は、`is_m_car`（`Rolling Stock Settings` B1）が true の車両だけで有効になる。T 車は、Momelink のM車データを中継して使う。
+9. **準備済みで未接続のロジック**: Traction の慣性係数の演算、非常制動時の牽引カット、`unused_and` は、外部出力に未接続である。削除済みの機能ではなく、接続の準備だけをした状態として扱う。
+10. **ドア操作のインターロック**: 開扉は、許可条件（戸閉連動 OR 速度が ±1.5 m/s 以内）が必須である。閉扉はインターロックなしである。クロス転換も、同じ停車条件でゲートされる。

@@ -1,65 +1,104 @@
-# CHUSO2000_Door_Min — 仕様書
+# CHUSO2000_Door_Min 仕様書
 
-## 機能概要
+ドア 1 枚ぶんの最小マイコン。次の 3 つを出力する。
 
-ドア制御の最小マイコン。2つの物理センサ間距離を測定してドアの開閉エリア判定を行い、
-NITSネットワーク経由でドア開扉指令を受け付け、ドアモーターへ速度信号を出力する。
-開閉時のチャイム（High/Low 2系統）も生成する。
+- ドアが開いているか（`Door is Open`）
+- 開閉の切り替わりに合わせたチャイム（`Chime High` / `Chime Low`）
+- ドアモーターへの速度指令（`Input`）
+
+ここに書く事実は、`main.sw-net` / `door_position_detector.sw-net` / `door_chime.sw-net` から読み取ったものである。ゲーム内の挙動で確かめていない項目には `[unconfirmed]` を付ける。コードのコメントや名前から読み取っただけの項目には `[inferred]` を付ける。
 
 ## ポート
 
-| ポート | 方向 | 型 | 説明 |
+| ポート | 方向 | 型 | 内容 |
 |-------|------|----|------|
-| Phys. Input | in | composite | センサA用 物理位置 (ch1=X, ch2=Y, ch3=Z) |
-| Phys. Input | in | composite | センサB用 物理位置 (ch1=X, ch2=Y, ch3=Z) |
-| Door is Open | out | boolean | ドア開状態フラグ |
-| Chime Low | out | boolean | チャイム低音信号 |
-| Chime High | out | boolean | チャイム高音信号 |
-| Other Inputs | in | composite | ch10: NITS外部コンポジット切り替えフラグ |
-| NITS Ext. Input | in | composite | NITS外部入力 (COMPOSITE_SWITCHBOX の b 側) |
-| Input | out | number | ドアモーター速度 (正=開、負=閉、0=停止) |
+| `Phys. Input` | in | composite | センサ A の位置。ch1 = X、ch2 = Y、ch3 = Z |
+| `Phys. Input_2` | in | composite | センサ B の位置。ch1 = X、ch2 = Y、ch3 = Z |
+| `Other Inputs` | in | composite | bool ch10 が NITS 開扉指令の取り込みを制御する（下記） |
+| `NITS Ext. Input` | in | composite | NITS の Extended Commands RX（別名）。ドア指令を bool チャンネルで受ける |
+| `Door is Open` | out | boolean | センサ距離による開判定、または開扉ラッチのどちらか |
+| `Chime High` | out | boolean | 高音チャイム |
+| `Chime Low` | out | boolean | 低音チャイム |
+| `Input` | out | number | ドアモーターに接続される。方向（±1）× 強さ（0.2 / 0.4） |
 
-## 命名規則
+`Phys. Input` と `Phys. Input_2` は、プロジェクト上のラベルがどちらも `Phys. Input` である。区別するときは ID を使う。
 
-snake_case を使用。接頭辞・接尾辞の慣習は以下のとおり。
+## 設定
 
-| パターン | 意味 |
-|---------|------|
-| `sensor_a_*` / `sensor_b_*` | Phys. Input の2センサ読み取り値 |
-| `*_sq` | 二乗値ネット |
-| `*_thresh` | 閾値ネット |
-| `door_open` | SRラッチ Q 出力（ドア開状態ビット） |
-| `door_change` | ドア状態変化パルス |
-| `door_moving` | ドア動作中フラグ（CAPACITORで生成） |
-| `chime_tick` | チャイムカウンタ出力 |
-| `chime_high_*` / `chime_low_*` | チャイム高音/低音の各タイミング |
-| `prop_*` | PROPERTYノード |
-| `const_*` | CONSTノード |
+| プロパティ | 値 | 内容 |
+|-----------|----|------|
+| `Door Side` | `A Right` = 27、`B Left` = 29 | 開扉指令を読む bool チャンネル。閉扉指令は 1 つ上（28 または 30）を読む |
+| `Length` | 1.25 | センサ間距離がドア閉のときの基準長 |
+| `Width` | 0.1 | 閉判定に許す距離の幅 |
 
-## 論理グループ
+`Door Side` ノードの `v=16` が何を保持しているかは `[unconfirmed]`。ゲームの XML（`CHUSO_2000_Door_Min.xml`）にも `v="16"` があり、storm-mcl の取り込みは XML の値を写している。16 は選択肢の値にない。旧 `SYSTEM_SPEC.md` が `Door Side` の既定を ch16 と書いていたので、古い既定値の名残と読む `[inferred]`。
 
-1. **物理センサ読み取り** — `sensor_a_ch1-3`, `sensor_b_ch1-3`
-2. **ドア開閉エリア判定** — 距離二乗計算 → GREATER_THAN / LESS_THAN → NAND で`in_door_zone_out`
-3. **ドア開扉判定** — NITS信号 → SRラッチ `door_open_latch` → `door_open`、`in_door_zone_out` とOR → `Door is Open`
-4. **チャイムタイマー** — ドア変化でリセットするCOUNTER、0〜120tick計測
-5. **チャイム出力** — THRESHOLD × 4 → OR 2系統 (High/Low)
-6. **ドアモーター速度出力** — 方向スイッチ × 速度スイッチ → MULTIPLY → `Input`
+## ドア状態の決まり方
 
-## チャイムタイミング
+`Door is Open` は、物理判定と開扉ラッチの OR である。
 
-カウンタ tick は `door_change_pulse`（ドア変化）でリセットされる。
-モードは `COUNTER m=1` でカウントアップのみ（`const_false` で up 入力を常時 false にしてタイムベース駆動）。
+### 物理判定（`door_position_detector`）
 
-| 信号 | min tick | max tick | タイミング |
-|------|---------|---------|----------|
-| Chime High (開扉) | 1 | 79 | 開扉後すぐ |
-| Chime Low (開扉) | 21 | 99 | 開扉後少し遅れ |
-| Chime High (閉扉) | 81 | 120 | 閉扉後すぐ |
-| Chime Low (閉扉) | 101 | 120 | 閉扉後少し遅れ |
+2 つのセンサ間の距離の二乗を `(xA−xB)² + (yA−yB)² + (zA−zB)²` で求める。これが `(Length−Width)²` より大きく、かつ `(Length+Width)²` より小さい間を「閉」とし、閉でなければ開とする。比較は `GREATER_THAN` / `LESS_THAN` なので、境界値ちょうどは閉に含まれない。
 
-## ドアモーター速度
+### 開扉ラッチ（`door_open_latch`）
 
-- 通常速度: `0.4`（`door_moving` が false = ドア停止後）
-- チャイム中速度: `0.2`（`door_moving` が true = ドア動作中）
-- 方向: 開扉 `+1`、閉扉 `-1`
-- `door_moving` は CAPACITOR (charge=0, discharge=1) で `door_change` パルスから生成
+- 開扉指令 = `NITS Ext. Input` を通した後の信号の、`Door Side` のチャンネル
+- 閉扉指令 = `NITS Ext. Input` の、`Door Side` + 1 のチャンネル
+- ラッチの set は開扉指令。reset は「開扉指令が false かつ閉扉指令が true」
+
+閉扉指令は `Other Inputs` を通さず `NITS Ext. Input` から直接読む。開扉指令が true の間は reset されないので、set と reset が同時に true になることはない。
+
+`SR_LATCH` の初期状態は `q = false`（verified）。
+
+### `Other Inputs` ch10 による開扉指令の制御
+
+`COMPOSITE_SWITCHBOX` の `a` は未接続、`b` は `NITS Ext. Input`、`switch` は `Other Inputs` ch10 である。
+
+`COMPOSITE_SWITCHBOX` は、`switch` が false のとき `b`、true のとき `a` を選ぶ（verified。ゲーム内で、`NITS Ext. Input` が Off のとき選ばれるポートにつながっていることを利用者が確認した）。storm-mcl にはこの対応表の記録がない。
+
+- ch10 が false のとき `NITS Ext. Input` が開扉指令として通る
+- ch10 が true のとき開扉指令は常に false になる（`a` が未接続のため）
+
+`main.sw-net` の「ch10 で有効になる」というコメントは、この挙動と逆である。ch10 自体の意味（誰が何のために立てるか）は、開発者が開発意図を忘れており、不明である。コメントも、そのままにしてある。
+
+## チャイム（`door_chime`）
+
+`door_open_latch_q` の立ち上がりと立ち下がりの両方で、1 tick のパルス（`PULSE mode="both"`）を出す。このパルスを `COUNTER` の reset に入れる。物理判定だけが変わったときはパルスが出ない。
+
+`COUNTER` は `up` が `CONST_BOOL`（Constant On）につながっているため、毎 tick 1 ずつ増える（`CONST_BOOL` が true を出すことは verified。利用者の回答）。範囲は 0〜120 で、`clamp = on` のため 120 で止まる。120 tick は 2 秒に当たる。
+
+| 出力 | カウンタが入る範囲 |
+|------|-------------------|
+| `Chime High` | 1〜79、81〜120 |
+| `Chime Low` | 21〜99、101〜120 |
+
+- 開扉と閉扉で同じ波形を出す。違いはカウンタの起点がどちらの変化かだけである。
+- 変化から 0 tick は両方とも無音である。1 tick で High が鳴り始め、21 tick で Low が加わる。80 tick の High と 100 tick の Low は、それぞれ 1 tick だけ切れる。
+- カウンタは 120 で止まり、120 は両方の範囲に含まれる。そのため、変化から 2 秒以降は High / Low とも true のまま残る。これは意図どおりである（verified。利用者の回答）。音源はループではなくワンショットなので、鳴り続けない。音源には音量フェードがあり、出力が false になる tick を 1 にして、フェードを打ち消す手法を使う。
+- `THRESHOLD` の min / max の境界値は、範囲に含まれる（verified。利用者の回答。`storm-mcl spec` には記載がない）。
+
+## `Input` 出力
+
+`Input` は、方向と強さの積で決まる。
+
+| 要素 | 内容 |
+|------|------|
+| 方向 | `door_open_latch_q` で `+1` と `−1` を切り替える |
+| 強さ | `CAPACITOR`（charge_time = 0、discharge_time = 1）の出力で `0.4` と `0.2` を切り替える |
+| 出力 | 方向 × 強さ |
+
+`CAPACITOR` の `enable` は、チャイムと共通の `door_state_edge_out`（ドア状態の変化パルス）である。`CAPACITOR` は、`enable` が 1 秒間 false のあいだ続くと out が false になる On/Off のバッファである（verified）。つまり変化パルスの直後は out が true で、約 1 秒後に false へ戻る。
+
+`Input` はドアモーターにつながる（利用者の確認による）。
+
+`NUM_SWITCHBOX` も `switch` が true のとき `a`（On 側）を選ぶ（verified。ゲーム内で、方向を決める `NUM_SWITCHBOX` の On 側に `+1`、Off 側に `-1` がつながっていることを利用者が確認した）。強さの `NUM_SWITCHBOX` も、同じノード種別なので同じ対応と読む `[inferred]`。この対応では次のようになる。
+
+- 方向: ラッチが true（開）のとき `+1`、false（閉）のとき `-1`（verified）。
+- 強さ: ドア状態が変わってから約 1 秒間は `0.4`、その後は `0.2`。
+
+扉が動き始めの約 1 秒は速く、その後は遅い速度になる。強さを切り替える意図は、電力の削減と、動きのリアリティの向上である（verified。利用者の回答）。
+
+## 未確認事項
+
+`[unconfirmed]` の項目の確認状況は、リポジトリ直下の `OPEN_QUESTIONS.md` にある。

@@ -219,33 +219,36 @@ CHUSO Series 2000 で使用されるすべてのコンポジット信号の定�
 Onecar_Control マイコンが編成前後の先頭車間で送受信するコンポジット。
 Control Commands TX のチャンネル定義に基づくが、**後方からの受信時に B27↔B29 および B28↔B30 が入れ替わる**（A側/B側の前後反転）。また B4↔B5 も後方受信時に入れ替わる。
 
-Onecar_Control の信号名との対応を下表に示す。
+Onecar_Control が前後の入力から出力を作る方法を、下表に示す。前方側の入力を F、後方側の入力を B と書く。詳細は `CHUSO2000_Onecar_Control/SPEC.md` にある。
 
-| ch | 型 | 信号名（Control Commands TX より） | Onecar_Control での net 名 |
+| ch | 型 | 信号名（Control Commands TX より） | Onecar_Control での合成 |
 |----|-----|--------------------------------------|---------------------------|
-| B1 | bool | 非常ブレーキ | b1_or |
-| B2 | bool | 連絡ブザ | b2_or |
-| B3 | bool | 故障 | b3_or |
-| B4 | bool | 扉A状態（後方受信時は B5 と入れ替わり） | b4_or |
-| B5 | bool | 扉B状態（後方受信時は B4 と入れ替わり） | b5_or |
-| B6 | bool | （要確認：B32相当?） | cc3_front/back_is_front_cab |
-| B7 | bool | （要確認） | packed bool の一部 |
-| B8 | bool | 自車締切 | door_isolated |
-| B9–B15 | bool | 各種コマンド（上表参照） | （要記入） |
-| B16 | bool | 前進 | b16_or |
-| B17 | bool | 後退 | b17_or |
-| B18 | bool | ダイナミックブレーキ自動 | b18_and（AND合成） |
-| B19–B26 | bool | 各種コマンド（上表参照） | （要記入） |
-| B27 | bool | 扉A開扉操作（後方受信時は B29 と入れ替わり） | （要記入） |
-| B28 | bool | 扉A閉扉操作（後方受信時は B30 と入れ替わり） | （要記入） |
-| B29 | bool | 扉B開扉操作（後方受信時は B27 と入れ替わり） | （要記入） |
-| B30 | bool | 扉B閉扉操作（後方受信時は B28 と入れ替わり） | （要記入） |
-| B31 | bool | （要確認） | （要記入） |
-| B32 | bool | ID送信（0x47） | id_tx_gated |
-| N4 | number | ブレーキ力 [kPa] | brake_force_front/back |
-| N5 | number | 力行パラメータ | powering_param_front/back |
-| N6 | number | NITS情報 | nits_front/back |
-| N7 | number | packed bool（N7 内 B1–B15） | cc3_front/back_b_packed_num |
+| B1 | bool | 非常ブレーキ | F OR B |
+| B2 | bool | 連絡ブザ | F OR B |
+| B3 | bool | 故障 | F OR B |
+| B4 | bool | 扉A状態（後方受信時は B5 と入れ替わり） | F の B4 OR B の B5 |
+| B5 | bool | 扉B状態（後方受信時は B4 と入れ替わり） | F の B5 OR B の B4 |
+| B6 | bool | 前後選択 前 | (F の B6 OR B の B6) かつ B8 でない |
+| B7 | bool | 前後選択 後 | (F の B7 OR B の B7) かつ B8 でない |
+| B8 | bool | 前後選択正常 | (F の B6 かつ B の B7) OR (B の B6 かつ F の B7) |
+| B9–B15 | bool | 各種コマンド（上表参照） | F OR B |
+| B16 | bool | 前進 | F の B16 OR B の B17（各側のゲート後の値） |
+| B17 | bool | 後退 | F の B17 OR B の B16（各側のゲート後の値） |
+| B18 | bool | ダイナミックブレーキ自動 | F かつ B |
+| B19–B26 | bool | 各種コマンド（上表参照） | F OR B |
+| B27 | bool | 扉A開扉操作（後方受信時は B29 と入れ替わり） | F の B27 OR B の B29 |
+| B28 | bool | 扉A閉扉操作（後方受信時は B30 と入れ替わり） | F の B28 OR B の B30 |
+| B29 | bool | 扉B開扉操作（後方受信時は B27 と入れ替わり） | F の B29 OR B の B27 |
+| B30 | bool | 扉B閉扉操作（後方受信時は B28 と入れ替わり） | F の B30 OR B の B28 |
+| B31 | bool | ID送信（0x47） | F OR B |
+| B32 | bool | 前後選択 前 かつ 運転台起動 | (F OR B) かつ (前方マスタ OR 後方マスタ) |
+| N1–N3 | number | ブレーキ、力行、DB | 各側のゲート後の値の和 |
+| N4 | number | ブレーキ力 [kPa] | F の値 |
+| N5 | number | 力行パラメータ | F の値 |
+| N6 | number | NITS情報 | F の N6 と B の N6 を FIFO（`n200.lua`）に通した値 |
+| N7 | number | packed bool（N7 内 B1–B15） | F と B のビットを OR（一部は入れ替え） |
+
+B6 と B7 は、Control Commands TX の B6、B7（前後選択の前、後）と同じ意味と読む `[inferred]`。B8 は、Control Commands TX の「単行 前後選択正常」と同じ意味である（verified。利用者の回答）。「前方マスタ」「後方マスタ」と「ゲート後」は、`CHUSO2000_Onecar_Control/SPEC.md` の「有効側の判定」にある。
 
 ---
 
@@ -441,9 +444,9 @@ VVVFマイコンは「N3が0以外」でVVVF音声を再生するとよい。
 | B5 | bool | マスコン有効 | |
 | B6 | bool | 非常ブレーキ作用 | Simple B1 |
 | B7 | bool | 停車ランプ | |
-| B8 | bool | 増圧有効 | Ext. B12 |
-| B9 | bool | TASC無効化（元） | |
-| B10 | bool | TASC有効（仮） | |
+| B8 | bool | 増圧有効 | Cab Controller V は常に false を出す（Ext. B12 は上書きされる）。`CONST_BOOL` の否定で、`CONST_BOOL` は常時 ON である |
+| B9 | bool | TASC無効化（元） | Cab Controller V は常に false を出す |
+| B10 | bool | TASC有効（仮） | Cab Controller V は常に false を出す |
 | B11 | bool | NITS Extended Command が有効 | Ext. B1 |
 | B12 | bool | A側開扉 | |
 | B13 | bool | B側開扉 | |
@@ -464,7 +467,7 @@ VVVFマイコンは「N3が0以外」でVVVF音声を再生するとよい。
 
 | ch | 型 | 信号名 | 備考 |
 |----|-----|--------|------|
-| B1 | bool | NITS化メモリレジスタ情報出力中 | |
+| B1 | bool | NITS化メモリレジスタ情報出力中 | 現在の `n141.lua` は出力しない |
 | B2 | bool | 締切 | |
 | B3 | bool | 締切 | |
 | B4 | bool | 駅停車ランプ | |
@@ -565,7 +568,7 @@ Cab_Display_IV から Driver_Assistance_IV へ送るタッチUI操作入力コ�
 
 | ch | 型 | 信号名 | 備考 |
 |----|-----|--------|------|
-| B10 | bool | （要記入） | door_open_or の入力として使用 |
+| B10 | bool | `NITS Ext. Input` の制御 | false のとき `NITS Ext. Input` を開扉指令として通す。true のとき開扉指令を通さない（verified）。ch10 を立てる側は未確認 |
 | その他 | | （要記入） | |
 
 ---

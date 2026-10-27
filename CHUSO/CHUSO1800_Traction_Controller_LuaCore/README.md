@@ -12,7 +12,7 @@ CHUSO1800牽引制御の状態機械、カム進段、電流モデル、回生�
 | [`SIGNAL_MAP.md`](./SIGNAL_MAP.md) | 4配列×8スロットとビット割付の正典 |
 | [`DESIGN_LOG.md`](./DESIGN_LOG.md) | コードから読み取れない設計判断と障害原因 |
 | [`../CHUSO1800_Traction_Controller/SPEC.md`](../CHUSO1800_Traction_Controller/SPEC.md) | 原型ゲート網の仕様 |
-| [`../LUA_CODING_GUIDE.md`](../LUA_CODING_GUIDE.md) | リポジトリ共通のLua構成規約 |
+| [`../../LUA_CODING_GUIDE.md`](../../LUA_CODING_GUIDE.md) | リポジトリ共通のLua構成規約 |
 
 通常の修正では`SPEC.md`と`SIGNAL_MAP.md`だけを先に読み、理由が必要な場合に
 `DESIGN_LOG.md`の該当番号を参照してください。
@@ -70,14 +70,13 @@ stateless_out, state_out = core_tick(stateless_in, state_in)
 
 ## テスト
 
-Lua Coreのソースを検証します。
+Lua Coreのソースの検証は、次のコマンドで行います。
 
 ```sh
 lua test/run_all.lua
 ```
 
-minify済み成果物を直接実行し、演算子優先順位と変数名衝突を含むビルド回帰を
-検証します。
+minify済み成果物の検証は、次のコマンドで行います。成果物を直接実行し、演算子優先順位と変数名衝突を含むビルド回帰を確かめます。
 
 ```sh
 lua test/verify_deploy_artifact.lua

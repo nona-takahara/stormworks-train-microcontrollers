@@ -1,330 +1,299 @@
-# Cab Controller V — 予想仕様書
+# CHUSO2000_Cab_Controller_V 仕様書
 
-> ソース: `CHUSO2000_Cab_Controller_IV.xml` より変換された `main.sw-net`  
-> バージョン: v0.3.0 (project.json より)  
-> 解析日: 2026-06-14
+運転台制御マイコン（Cab Controller V）。座席の操作入力、運転台まわりのスイッチを集めたループ（`Drive Loop`、`Settings Loop`）、ATS/ATC、車掌の操作などを読み、次の 3 つを作る。
 
----
+- 編成内へ送る制御コマンド（`Control Commands TX`）
+- 表示マイコンへ渡す状態（`Monitor Status`）
+- ハンドル角度、逆転器位置、標識灯などの運転台側の出力
 
-## 概要
+ここに書く事実は `main.sw-net` から読み取ったものである。`main.sw-net` の取り込み元は `CHUSO2000_Cab_Controller_IV.xml` で、ゲーム内の `CHUSO2000_Cab_Controller_V.xml` とは別のファイルである（確認事項を参照）。信号の意味は `SignalComposite.md` の各節に従う。ゲーム内で確かめていない項目には `[unconfirmed]`、コードの配線から推論した項目には `[inferred]` を付ける。
 
-CHUSO Series 2000 向けの運転台コントローラー。座席からの操作入力を受け取り、制御コマンドとして他のマイコンへ送信する。ATS/ATC、乗務員ハンドル、車掌操作、ドア制御、前後表示灯など幅広い機能を統合する。
+`switch` が true のとき `a`、false のとき `b` を選ぶ（`COMPOSITE_SWITCHBOX` と `NUM_SWITCHBOX` の両方、verified）。以下の記述は、この対応を前提にしている。
 
----
-
-## ポート一覧
+## ポート
 
 ### 入力
 
-| ポート名 | 型 | 説明 |
-|---|---|---|
-| `Seat Input` | composite | 座席の軸・ボタン入力 |
-| `Mas-con Key` | boolean | マスコンキースイッチ（ON=キー挿入済み） |
-| `Drive Loop` | composite | 走行系ループバック（他マイコンからの状態） |
-| `Settings Loop` | composite | 設定系ループバック |
-| `Simple Interface RX` | composite | シンプルインターフェース受信 |
-| `Extended Commands RX` | composite | 拡張コマンド受信 |
-| `ATS/ATC` | composite | ATS/ATC システムからの入力 |
-| `Crew Handle Right` | composite | 乗務員ハンドル（右） |
-| `Crew Handle Left` | composite | 乗務員ハンドル（左） |
-| `Drive Support` | composite | 運転支援システム |
-| `Physics Sensor [+Z = front]` | composite | 物理センサー（+Z方向=前方） |
-| `Rolling Stock Settings` | composite | 車両設定 |
-| `Conductor Em brake 1` | boolean | 車掌非常ブレーキ 1 |
-| `Conductor Em brake 2` | boolean | 車掌非常ブレーキ 2 |
-| `Conductor Switch Interlock Release` | boolean | 車掌スイッチインターロック解除 |
+| ポート | 型 |
+|-------|----|
+| `Seat Input` | composite |
+| `Mas-con Key` | boolean |
+| `Drive Loop` | composite |
+| `Settings Loop` | composite |
+| `Simple Interface RX` | composite |
+| `Extended Commands RX` | composite |
+| `ATS/ATC` | composite |
+| `Crew Handle Right` | composite |
+| `Crew Handle Left` | composite |
+| `Drive Support` | composite |
+| `Physics Sensor [+Z = front]` | composite |
+| `Rolling Stock Settings` | composite |
+| `Conductor Em brake 1` | boolean |
+| `Conductor Em brake 2` | boolean |
+| `Conductor Switch Interlock Release` | boolean（`main.sw-net` のどこからも読まれていない） |
 
 ### 出力
 
-| ポート名 | 型 | 説明 |
-|---|---|---|
-| `Control Commands TX` | composite | 制御コマンド送信（主出力） |
-| `Monitor Status` | composite | モニター表示用ステータス |
-| `Main Handle Angle` | number | メインハンドル角度 |
-| `Main Handle Sound` | boolean | メインハンドル操作音トリガー |
-| `Reverser Position` | number | 逆転器位置（-1=後退, 0=中立, +1=前進） |
-| `Reverser Sound` | boolean | 逆転器操作音トリガー |
-| `Formation Lever` | number | 列車増解結レバー位置（-0.25/0/+0.25） |
+| ポート | 型 | 内容 |
+|-------|----|------|
+| `Control Commands TX` | composite | 編成内へ送る制御コマンド |
+| `Monitor Status` | composite | 表示用の状態。`Extended Commands RX` を元に重ねて作る |
+| `Main Handle Angle` | number | ハンドル角度。プロパティで出力の種類を切り替える |
+| `Main Handle Sound` | boolean | ハンドル操作音 |
+| `Reverser Position` | number | 逆転器位置（-1 後退、0 中立、+1 前進） |
+| `Reverser Sound` | boolean | 逆転器操作音 |
+| `Formation Lever` | number | 編成前後選択レバー（-0.25、0、+0.25） |
 | `Front Sign` | boolean | 前部標識灯 |
 | `Tail Sign` | boolean | 後部標識灯 |
-| `Express Light (UMI)` | boolean | 急行灯 UMI |
-| `Express Light (YAMA)` | boolean | 急行灯 YAMA |
-| `High beam` | boolean | ハイビーム（NOT Drive Loop ch3） |
+| `Express Light (UMI)` | boolean | `Drive Loop` B13 をそのまま出す |
+| `Express Light (YAMA)` | boolean | `Drive Loop` B16 をそのまま出す |
+| `High beam` | boolean | `Drive Loop` B4 の否定 |
 | `Crew Buzzer` | boolean | 乗務員ブザー |
-| `ATS/C Reset Signal` | boolean | ATS-C リセット信号（パルス） |
+| `ATS/C Reset Signal` | boolean | ATS/C のリセット（1 tick のパルス） |
 
----
+### プロパティ
 
-## 機能別仕様
+| プロパティ | 値 | 内容 |
+|-----------|----|------|
+| `Handle Output Type` | `Angle`（既定）/ `TETSUDAN MOD` | `Main Handle Angle` の出力の種類 |
 
-### 1. メインハンドル（マスコン）
+## 運転台の状態を決める信号
 
-**入力:** `Seat Input` ch1（軸値 -1.0〜+1.0）  
-**ノード:** n6, n7, n8, n9, n11, n12, n20, n21, n35 等
+以降、`Seat N1` のような表記は `Seat Input` の ch を指す。`Settings Bn`、`Drive Bn` も同様に、`Settings Loop`、`Drive Loop` の bool ch n である。
 
-#### ノッチカウンター (n9)
-- 軸が +0.5 以上 → 上昇パルス（n11）
-- 軸が -0.5 以下 → 下降パルス（n12）
-- COUNTER (min=4, max=-7, increment=1) にてノッチを管理
-  - 正方向 = 力行ノッチ（最大 +4 と推定）
-  - 負方向 = ブレーキノッチ（最大 -7 相当）
-- n29: ノッチ == -7 を検出（最大制動位置）
+### 運転台の有効
 
-#### SRラッチ n20（EB ゾーン管理）
-- **Set 条件（EB状態へ移行）:**
-  - 軸が負方向に動いたとき（n12）
-  - Seat Input ch30 が ON のとき（n168）
-  - Seat Input ch1 の第2読み取り軸（n22）が負方向のとき（n23）
-- **Reset 条件（EB解除）:**
-  - Seat Input ch2 が ON（n10）
-  - 正方向 AND 軸が正側（n31）
-  - 軸が正方向パルス AND 最大ブレーキ位置（n62）
-  - n479 が OFF（後述の Mas-con Key 条件が成立していない場合）
-- `q (n20_q)` = EB ゾーン内、`not_q (n20_not_q)` = EB ゾーン外
+`Mas-con Key` と、編成前後選択レバー（後述）が前（+1）のとき、運転台が有効である。この信号（コード上の名前は `mascon_key_and_fwd`）は、`Control Commands TX` の B32、`Monitor Status` の B5、運転支援の許可に使う。
 
-#### NUM_SWITCHBOX n48
-- EB ゾーン外 (n20_not_q=ON) → n9_out（ノッチ値）を出力
-- EB ゾーン内 → 定数 -8 を出力（非常制動位置）
+### ハンドルの非常位置ラッチ（`seat_latch`）
 
-#### ハンドル角度出力 (Main Handle Angle)
-プロパティトグル `n619` で 2 モードを切り替え：
-- **Angle モード（デフォルト）:** `(-x-2)/25`（x=ノッチ値）→ 角度へ変換
-- **TETSUDAN MOD:** ノッチ値をそのまま出力
+`SR_LATCH` の `not_q` が true のとき、ハンドルは非常位置にある（ノッチは -8 に固定される）。`q` が true のとき、非常位置にない。`SR_LATCH` の初期状態は `q = false`（verified）である。`not_q` の初期値は記録がないが、起動直後は非常位置と読む `[inferred]`。
 
-#### 操作音 (Main Handle Sound)
-- ノッチ値の DELTA がプラス（変化あり）→ TOGGLE でパルス出力
+| 条件 | 内容 |
+|------|------|
+| set（非常位置を出る） | `Seat N2` が -0.5 以下になった瞬間、`Seat B31`、`Seat N1` が -0.5 以下、`Seat N1` が 0.5 以上になった瞬間のいずれか |
+| reset（非常位置に入る） | (`Seat N2` が 0.5 以上 かつ `Seat B1`)、または 運転台が有効でない |
 
----
+`Seat N2` は [W][S] の軸（+ が [W]、ブレーキ側）、`Seat N1` は [A][D] の軸（- が [A]、+ が [D]）、`Seat B1` は 1 キー、`Seat B31` はトリガキーである（`SignalComposite.md`）。
 
-### 2. 逆転器
+`ATS/C Reset Signal` は、`not_q` の立ち下がり（非常位置を出た瞬間）の 1 tick のパルスである。
 
-**入力:** `Seat Input` ch3（軸値）  
-**ノード:** n102〜n119
+### ノッチ（`handle_notch`）
 
-- 軸 +0.5 以上 → 前進パルス（n105）
-- 軸 -0.5 以下 → 後退パルス（n106）
-- COUNTER (reset=-1, min=-1, max=1)
-  - -1 = 後退 (R), 0 = 中立 (N), +1 = 前進 (F)
-- Mas-con Key が OFF (n258=NOT) → カウンターリセット（中立固定）
-- **Reverser Sound:** 逆転器の変化（DELTA > 0）でパルス出力
+`COUNTER` で、次のように数える。
 
----
+| 方向 | 条件 |
+|------|------|
+| down（ブレーキ側） | `Seat N2` が 0.5 以上になった瞬間、または 0.5 以上を押し続けているときの繰り返し。`Seat N1` の [D] で、ノッチが正のとき 1 段戻す。`not_q` が true の間は毎 tick |
+| up（力行側） | `Seat N2` が -0.5 以下になった瞬間、またはその押し続けの繰り返し。`Seat N1` の [D] で、ノッチが負のとき 1 段戻す。`q` が true のときだけ有効 |
+| reset（0 に戻す） | `Seat B31`、または `Seat N1` が -0.5 以下 |
 
-### 3. 列車増解結レバー（Formation Lever）
+押し続けの繰り返しは、0.3 秒押し続けた後、0.1 秒周期で出す（`CAPACITOR` と `BLINKER`）。
 
-**入力:** `Settings Loop` ch12（アップ）, ch13（ダウン）  
-**ノード:** n254〜n264
+`COUNTER` の指定は `min=4, max=-7, clamp=on` で、大小が逆である。範囲は -7〜+4 と読むが、`min` が `max` より大きいときの `clamp` の挙動は storm-mcl に記録がない `[unconfirmed]`。この指定は、取り込み元の `CHUSO2000_Cab_Controller_IV.xml`（6/16 更新）にある値のとおりである。ゲーム内の `CHUSO2000_Cab_Controller_V.xml`（7/11 更新）のハンドルの `COUNTER` は `min=-4, max=7` で、取り込み元と違う。
 
-- COUNTER (reset=-1, min=-1, max=1)
-- 出力: `x/4` → -0.25 / 0 / +0.25 として `Formation Lever` へ
-- n257: 値 == +1 を検出（最前端）
-- n473: 値 == -1 を検出（最後端）→ Control Commands TX へ
+ハンドルの出力値（`handle_notch_sw`）は、`not_q` が true のとき -8、false のとき `handle_notch` である。
 
----
+| 出力 | 内容 |
+|------|------|
+| `Main Handle Angle` | `Handle Output Type` が `Angle` のとき `(-x - 2) / 25`、`TETSUDAN MOD` のとき `x`（`x` は `handle_notch_sw`） |
+| `Main Handle Sound` | `handle_notch_sw` の変化が 0 の間 true、変化した tick だけ false の信号を `TOGGLE` に入れた値。`TOGGLE` は入力の立ち上がりで反転する `[unconfirmed]`ので、ノッチが変わるたびに 1 回反転する `[inferred]` |
 
-### 4. 非常制動（Emergency Brake）
+`control_handle.sw-net` は、ハンドルまわりを取り出したモジュールで、`main.sw-net` からは使っていない。このモジュールは `COUNTER` を `min=-4, max=7` としていて、`main.sw-net` と逆である（コメントに「ミス？」とある）。
 
-**ノード:** n525
+### 逆転器
 
-以下いずれかが成立した場合に EB 信号を発する（Control Commands TX ch1）：
+- `Seat N4` が 0.5 以上になった瞬間に +1、-0.5 以下になった瞬間に -1 を数える（範囲 -1〜+1）。
+- `Mas-con Key` が false のとき、0 に戻す。
+- `Reverser Sound` は、逆転器位置の変化が 0 の間 true、変化した tick だけ false である。音の発生原理が音源ごとに異なるので、この極性は問題にしない（利用者の回答）。
 
-| 条件 | 信号源 |
-|---|---|
-| 車掌非常ブレーキ 1 | `Conductor Em brake 1` |
-| 車掌非常ブレーキ 2 | `Conductor Em brake 2` |
-| ATS/ATC ch7 が ON | `ATS/ATC` channel 7 |
-| Mas-con Key ON かつ Formation +1 かつ handle EB 外 | n479 AND n20_not_q |
+### 編成前後選択レバー
 
----
+- `Settings B13` の立ち上がりで +1、`Settings B14` の立ち上がりで -1 を数える（範囲 -1〜+1）。
+- `Formation Lever` は、この値を 4 で割る（-0.25、0、+0.25）。
+- 値が +1 のとき前、-1 のとき後である。後の信号は、`Control Commands TX` の B7（前は B6）と、`Tail Sign` に使う。
+- 値が 1 tick で減ったとき、`Control Commands TX` の B31 が true になる。
+- `COUNTER` の `reset_value` は -1 だが、`reset` が未接続のため、起動直後の値は `[unconfirmed]`。
 
-### 5. ATS/ATC 連携
+## 非常制動とブレーキ上限
 
-**入力:** `ATS/ATC` composite  
-**関連チャンネル:**
+### EB（`Control Commands TX` B1）
 
-| ch | 用途 |
-|---|---|
-| 7 | EB トリガー（n326） → 非常制動、ブレーキ上限変更 |
-| 6 | ブレーキ上限変更（n327） → ATS 速度制限ブレーキ（-8 に制限） |
-| 8 | ブレーキ上限変更（n328） → 部分制限ブレーキ（-4 に制限） |
+次のいずれかが true のとき、true になる。
 
-NUM_SWITCHBOX n319/n321/n322 と FUNC_NUM_8 n320 で、ATS 状態に応じてブレーキノッチ上限を制限する：
-- 通常時: n9_out（最大 -7 まで）
-- ATS ch7 ON: 定数 -8 に固定
-- ATS ch6 ON: 上限 -8 に変更
-- ATS ch8 ON: 上限 -4 に変更
-- 最終的に `min(min(x,y),min(z,w))` → 最も制限の強いブレーキを選択
+- 非常位置にあり（`seat_latch` の `not_q`）、かつ 編成前後選択が前（+1）
+- `Conductor Em brake 1`
+- `Conductor Em brake 2`
+- `ATS/ATC` B8
 
-#### ATS-C リセット信号
-- n20 の not_q が OFF→ON（EB解除直後）にパルス出力（n633, mode=0）
+### ノッチの上限
 
----
+有効なノッチ（`effective_limit`）は、次の 4 つの最小値である。
 
-### 6. 制御コマンド送信（Control Commands TX）
+| 値 | 条件 |
+|----|------|
+| `handle_notch_sw` | 常に |
+| -8 | `ATS/ATC` B8 が true のとき（それ以外は既定値） |
+| -8 | `ATS/ATC` B7 が true のとき（それ以外は既定値） |
+| -4 | `ATS/ATC` B9 が true のとき（それ以外は既定値） |
 
-**ノード:** n448（数値合成）→ n456（ブール合成）→ `Control Commands TX`
+既定値は、次の条件が true のとき 100、false のとき 0 である（0 は、未接続の入力を 0 と読む `[inferred]`）。
 
-#### 数値チャンネル（n448, offset=0, count=7）
+- `Simple Interface RX` の B4 と B5 がどちらも false、または `Settings B9` が true
 
-| ch | 内容 | 計算式 |
-|---|---|---|
-| 1 | ブレーキ力 | `clamp((-x - min(0, x+6)) * 4, 0, 31)` (x=有効ノッチ値) |
-| 2 | 力行力 | `max(x, 0)` (x=有効ノッチ値) |
-| 6 | 運転支援 数値 | Drive Support ch1 |
-| 7 | モニター状態数値 | 後述 Monitor Status 数値部 |
+この既定値のため、`Simple Interface RX` の B4 または B5 が true で、かつ `Settings B9` が false のとき、ノッチは 0 以下に抑えられ、力行はなくなる。
 
-**ブレーキ計算の意味:**  
-- x ≥ 0 → ブレーキ = 0（力行または中立）  
-- x = -1〜-6 → ブレーキ = `(-x) * 4`（0〜24）  
-- x ≤ -7 → ブレーキ = `(-x - min(0, x+6)) * 4` → 段階的に増加  
-- x = -8 (EB) → ブレーキ = 最大値
+### `Control Commands TX` の N1、N2
 
-#### ブールチャンネル（n456, offset=0）
+| ch | 内容 | 式（`x` は有効なノッチ） |
+|----|------|------------------------|
+| N1 | ブレーキ | `clamp((-x - min(0, x+6)) × 4, 0, 31)` |
+| N2 | 力行 | `max(x, 0)` |
 
-| ch | 内容 |
-|---|---|
-| 1 | 非常制動フラグ |
-| 2 | クルーブザー（または何らかのアラーム） |
-| 6 | Formation Lever = +1 |
-| 7 | Formation Lever = -1 |
-| 9 | Settings Loop ch14 |
-| 10 | Settings Loop ch1 |
-| 11 | Drive Loop ch1 |
-| 16 | 逆転器 前進 (Reverser = +1) |
-| 17 | 逆転器 後退 (Reverser = -1) |
-| 18 | NOT Drive Loop ch13 |
-| 19 | Settings Loop ch6 立ち上がりパルス |
-| 20 | Settings Loop ch6 立ち下がりパルス |
-| 21 | n277 立ち上がりパルス（後述ドア系） |
-| 22 | n277 立ち下がりパルス |
-| 23 | Settings Loop ch7 立ち上がりパルス |
-| 24 | Settings Loop ch7 立ち下がりパルス |
-| 27 | ドア右 開信号 A（インターロック付き） |
-| 28 | ドア右 開信号 B（インターロックなし） |
-| 29 | ドア左 開信号 A（インターロック付き） |
-| 30 | ドア左 開信号 B（インターロックなし） |
-| 31 | NOT（逆転器が正方向に変化） |
-| 32 | Mas-con Key AND Formation +1 |
+ブレーキは次のとおり。
 
----
+| x | N1 |
+|---|----|
+| 0 以上 | 0 |
+| -1〜-6 | 4、8、12、16、20、24 |
+| -7、-8 | 31 |
 
-### 7. ドア制御
+## ドア
 
-**入力:** `Crew Handle Right`, `Crew Handle Left`, `Drive Loop`, `Settings Loop`
+### 許可条件
 
-#### 右側ドア
+ドアの開操作は、次の条件（`conductor_speed_ok_or`）が true のときだけ通る。
 
-- **n288（インターロック付き）:** `(Settings Loop ch19 OR Crew Handle Right ch1 OR Drive Loop ch5) AND n397`
-- **n292（インターロックなし）:** `Settings Loop ch20 OR Crew Handle Right ch1 OR Drive Loop ch6`
+- `Settings B9` が true、または 速度（`Physics Sensor` ch9）が -1.5 以上 1.5 以下
 
-#### 左側ドア
+### 操作
 
-- **n296（インターロック付き）:** `(Settings Loop ch24 OR Crew Handle Left ch1 OR Drive Loop ch7) AND n397`
-- **n300（インターロックなし）:** `Settings Loop ch25 OR Crew Handle Left ch1 OR Drive Loop ch8`
+| `Control Commands TX` | 内容 | 条件 |
+|------|------|------|
+| B27 | A 側（右）の開扉 | (`Settings B20` または `Crew Handle Right` B1 または 乗務員用の `Drive Loop` B6) かつ 許可条件 |
+| B28 | A 側（右）の閉扉 | `Settings B21` または `Crew Handle Right` B2 または 乗務員用の `Drive Loop` B7 |
+| B29 | B 側（左）の開扉 | (`Settings B25` または `Crew Handle Left` B1 または 乗務員用の `Drive Loop` B8) かつ 許可条件 |
+| B30 | B 側（左）の閉扉 | `Settings B26` または `Crew Handle Left` B2 または 乗務員用の `Drive Loop` B9 |
 
-#### n397（ドア操作許可条件）
-`n396 (Settings Loop ch8) OR n398 (速度ほぼ0: Physics ch8 範囲 -1.5〜1.5)`
+「乗務員用の `Drive Loop`」は、`Settings B5` が false のときだけ `Drive Loop` を通す（`COMPOSITE_SWITCHBOX` の `a` が未接続なので、true のとき通さない）。`Settings B5` は `SignalComposite.md` で負論理のワンマン（`^`）である。
 
-#### Crew Buzzer トリガー (n144, n316)
-以下いずれかが ON のときブザー発報（BOOL_FUNC_8 OR 結合）：
-- Simple Interface RX ch1
-- Seat Input ch3
-- Settings Loop ch23, ch28
-- Drive Loop ch11
-- Crew Handle Right ch3
-- Crew Handle Left ch3
+## 乗務員ブザーと発車予告
 
----
+| 出力 | 条件 |
+|------|------|
+| `Crew Buzzer` | 次のいずれか、またはこの出力の立ち上がりの 1 tick。`Simple Interface RX` B2、`Seat B4`、`Settings B24`、`Settings B29`、`Drive B12`、`Crew Handle Right` B4、`Crew Handle Left` B4 |
+| `Control Commands TX` B2 | `Crew Buzzer` の条件のうち、`Simple Interface RX` B2 と自分自身の立ち上がりを除いたもの |
+| `Control Commands TX` B21、B22 | 次のいずれかの立ち上がり、立ち下がり。`Settings B23`、`Settings B28`、`Crew Handle Right` B3、`Crew Handle Left` B3、乗務員用の `Drive Loop` B10 |
 
-### 8. 前部・後部標識灯
+## 標識灯
 
-#### Front Sign (n356, SR ラッチ)
-- **Set 条件（点灯）:**
-  - Drive Loop ch2 が ON（前方走行方向一致）かつ Formation = +1（n360）
-  - Drive Loop ch2 の立ち上がりパルス（n363）
-- **Reset 条件（消灯）:**
-  - Formation +1 の立ち下がりパルス（n361）
-  - Drive Loop ch2 の立ち下がりパルス（n362）
+| 出力 | 条件 |
+|------|------|
+| `Front Sign` | ラッチ。set は (`Drive B3` の立ち上がり、または `Drive B3` かつ 編成前後選択が前)。reset は (`Drive B3` の立ち下がり、または 編成前後選択が前から外れた瞬間) |
+| `Tail Sign` | 編成前後選択が後（-1）、または `Drive B15` |
 
-#### Tail Sign (n373, OR)
-- 逆転器 = -1（後退位置）
-- Drive Loop ch14 が ON
+`Express Light (UMI)` と `Express Light (YAMA)` は、それぞれ `Drive B13`、`Drive B16` をそのまま出す。`High beam` は `Drive B4` の否定である。`SignalComposite.md` は `Drive B4` と `Monitor Status` の B2 を「ON でハイビーム、OFF で減光」と書くので、この書き方だと `High beam` の極性と合わないように見える。利用者の記憶では、出力が 0 のときにハイビームである `[inferred]`。この記憶は、`Drive B4` の ON がハイビームで、その否定を出す配線と合う。
 
----
+## 運転支援
 
-### 9. 急行灯・ハイビーム
+`Drive Support` の B2、B3 は、次の信号と AND して、`Control Commands TX` の N7（後述）のビット 12、13 になる。
 
-| 出力 | ソース |
-|---|---|
-| `Express Light (UMI)` | Drive Loop ch12 |
-| `Express Light (YAMA)` | Drive Loop ch15 |
-| `High beam` | NOT Drive Loop ch3 |
+- `Settings B10` の否定（`SignalComposite.md` で負論理の自動締切装置）
+- 運転台が有効
 
----
+`Drive Support` N1 は、そのまま `Control Commands TX` の N6 になる。`Drive Support` B4 は、`Monitor Status` の B7 になる。
 
-### 10. Monitor Status 出力
+## `Control Commands TX`
 
-**ノード:** n566（ブール）→ n567（数値）→ `Monitor Status`
-
-#### ブールチャンネル（n566, offset=0, count=16）
+### 数値
 
 | ch | 内容 |
-|---|---|
-| 1 | Drive Loop ch1 |
-| 2 | Drive Loop ch3 |
-| 3 | Settings Loop ch5 |
-| 4 | n20_not_q（ハンドルが EB ゾーン外） |
-| 5 | Mas-con Key AND Formation +1 |
-| 6 | Simple Interface RX ch1 |
-| 7 | Drive Support ch3 |
-| 8〜10 | 常時 true（CONST_BOOL false の NOT） |
-| 11 | Extended Commands RX ch1 |
-| 12 | Simple Interface RX ch3 または ch4 |
-| 13 | Simple Interface RX ch4 |
-| 14 | Extended Commands RX ch9 |
-| 15 | Extended Commands RX ch31 |
-| 16 | Rolling Stock Settings ch1 |
+|----|------|
+| N1 | ブレーキ |
+| N2 | 力行 |
+| N6 | `Drive Support` N1 |
+| N7 | 下表の bool を数値にまとめたもの（bit 0 が下表の ch1） |
 
-さらに `Extended Commands RX` の内容を inc として連結している（パススルー）。
-
-#### 数値チャンネル（n567, offset=8, count=5）
+N7 の bool は次のとおり。ch9 は未接続で、false である。
 
 | ch | 内容 |
-|---|---|
-| 9 | Simple Interface RX ch1 (number, n622) |
-| 10 | Simple Interface RX ch1 (number, n623) ※重複の可能性 |
-| 11 | 逆転器位置（-1/0/+1） |
-| 12 | Formation Lever カウンター値（-1/0/+1） |
-| 13 | Physics Sensor ch8（前後速度） |
+|----|------|
+| 1 | `Settings B4` |
+| 2 | `Settings B3` |
+| 3 | `Drive B19` かつ 条件（`Settings B9` が true、または `Simple Interface RX` の B4 と B5 がどちらも false）かつ 許可条件 |
+| 4 | `Drive B20` に、ch3 と同じ条件 |
+| 5 | `Drive B21` に、ch3 と同じ条件 |
+| 6 | `Settings B12` かつ 運転台が有効 |
+| 7 | `Settings B17` |
+| 8 | `Settings B16` |
+| 10 | ドアの開操作（A 側）の条件（B27 と同じ） |
+| 11 | ドアの開操作（B 側）の条件（B29 と同じ） |
+| 12 | 運転支援（前） |
+| 13 | 運転支援（後） |
 
----
+### bool
 
-### 11. 速度判定
+| ch | 内容 |
+|----|------|
+| 1 | EB |
+| 2 | 乗務員ブザー（`Simple Interface RX` 由来を除く） |
+| 6 | 編成前後選択が前 |
+| 7 | 編成前後選択が後 |
+| 9 | `Settings B15` |
+| 10 | `Settings B2` |
+| 11 | `Drive B2` |
+| 16 | 逆転器が前（+1） |
+| 17 | 逆転器が後（-1） |
+| 18 | `Drive B14` の否定 |
+| 19、20 | `Settings B7` の立ち上がり、立ち下がり |
+| 21、22 | 発車予告の立ち上がり、立ち下がり |
+| 23、24 | `Settings B8` の立ち上がり、立ち下がり |
+| 27〜30 | ドア（前節） |
+| 31 | 編成前後選択レバーが 1 つ減った |
+| 32 | 運転台が有効 |
 
-**ノード:** n590, n394, n395, n396, n397, n398, n503, n504, n505
+上記以外の ch は、出力しない（false）。
 
-- `Physics Sensor [+Z = front]` ch8 = 前後方向速度
-- THRESHOLD(-1.5, 1.5) → 停車中（ほぼ速度ゼロ）を検出 → ドア操作許可
-- n503: 逆転器位置の DELTA → 変化検出
-- n504: THRESHOLD(0,1) → 正方向変化
-- n505: NOT → Control Commands TX ch31 へ（逆転器が後退方向に変化したとき ON）
+`SignalComposite.md` が付けた各 ch の名前は、同じ節にある。
 
----
+## `Monitor Status`
 
-## 未解明・要確認事項
+`Extended Commands RX` を元に、次の bool と数値を重ねる。重ねない ch は、`Extended Commands RX` の値がそのまま出る。
 
-1. **n9 カウンターの min/max 解釈:** `min=4, max=-7` の引数順序が通常と逆に見える。実際のノッチ範囲（力行最大/制動最大）の確認が必要。
+### bool
 
-2. **Seat Input のチャンネルマッピング:** ch1=メインハンドル軸、ch2=ブール（EB解除スイッチ?）、ch3=逆転器軸、ch30=ブール の用途詳細。
+| ch | 内容 |
+|----|------|
+| 1 | `Drive B1` |
+| 2 | `Drive B4` |
+| 3 | `Settings B6` |
+| 4 | ハンドルが非常位置（`not_q`） |
+| 5 | 運転台が有効 |
+| 6 | `Simple Interface RX` B1 |
+| 7 | `Drive Support` B4 |
+| 8、9、10 | 常に false（`CONST_BOOL` の否定。`CONST_BOOL` は常時 ON の定数である。verified、利用者の回答） |
+| 11 | `Extended Commands RX` B1 |
+| 12 | `Simple Interface RX` B4 |
+| 13 | `Simple Interface RX` B5 |
+| 14 | `Extended Commands RX` B10 |
+| 15 | `Extended Commands RX` B32 |
+| 16 | `Rolling Stock Settings` B2 |
 
-3. **n622 と n623 の重複:** 両方とも Simple Interface RX ch1 を読んでいる。意図的か？
+### 数値
 
-4. **n277 の詳細（ドア系パルス源）:**  
-   `Settings Loop ch22, ch27 OR Crew Handle Right ch2 OR Crew Handle Left ch2 OR Drive Loop ch9`  
-   → ドア閉信号？ それとも別の用途？
+| ch | 内容 |
+|----|------|
+| N9 | `Simple Interface RX` N1 |
+| N10 | `Simple Interface RX` N2 |
+| N11 | 逆転器位置 |
+| N12 | 編成前後選択レバーの値（-1、0、+1） |
+| N13 | `Physics Sensor` ch9（前後速度） |
 
-5. **Control Commands TX ch9〜ch11, ch18〜ch20 の受け手マイコン側の解釈。**
+## 使われていない入力
 
-6. **Drive Support の ch1〜ch3 の意味**（数値1つ、boolean2つを使用）。
+- `Conductor Switch Interlock Release`（ポート）
+- `tail_sign_latch_unused`（出力が未接続のラッチ）
 
-7. **`Conductor Switch Interlock Release` は n575/n617 経由で Drive Loop ch12/ch15 に接続されているが、本マイコン内での使用箇所が不明確**（Drive Loop を経由して別マイコンで処理される可能性）。
+## 未確認事項
+
+`[unconfirmed]` の項目の確認状況は、リポジトリ直下の `OPEN_QUESTIONS.md` にある。

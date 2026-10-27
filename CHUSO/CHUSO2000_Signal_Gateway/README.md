@@ -38,7 +38,7 @@ RX・Extended Commands RX・Rolling Stock Settings/Status の各コンポジッ�
 2. **NITS RX** — `scripts/n466.lua`によるバスフレーム解読
 3. **Simple IF RX** — 解読結果を自車機器へ返送
 4. **Address-match latch / local-mode gating** — 0x47 IDと自車IDの一致を
-   ラッチし、一致後3秒間「ローカルモード」として拡張コマンド処理を有効化
+   ラッチする。一致から3秒間は「ローカルモード」とし、拡張コマンドの処理を有効にする
 5. **Car position & consist size** — 自車の連結順位・編成両数の算出
 6. **NITS TX watchdog / strobe** — `n440.lua`のクラッシュ検知に使う
    ウォッチドッグ回路（詳細は下記参照）
@@ -64,19 +64,16 @@ RX・Extended Commands RX・Rolling Stock Settings/Status の各コンポジッ�
 `nits_tx_encoder_lua`（`n440.lua`）・`nits_rx_decoder_lua`（`n466.lua`）は
 [`../../NITS_Simple_Bridge/`](../../NITS_Simple_Bridge/)と同名のスクリプトを
 使うが、チャンネル割付は独立している（`NITS_Simple_Bridge/SPEC.md`をそのまま
-本機に適用できない）。ウォッチドッグ回路（8.）の仕組み自体は
+本機に適用できない）。ウォッチドッグ回路（6.）の仕組み自体は
 [`../../NITS_Simple_Bridge/SPEC.md`](../../NITS_Simple_Bridge/SPEC.md)
 「2. NITS TXフレーム生成」に解析済みの説明がある。
 
-## 未確認点
+## 実装状況と方針
 
-- `cross_seat_shiokata_remote_read`/`cross_seat_suhou_remote_read`の
-  ローマ字表記（潮方/須方）はフリガナの出典がなく推定である。
-- `siv_permission_latch`の許可/禁止判定は、0x60フレームに専用の許可/禁止
-  ビットがなく「SIV/MG起動中・停止中」ステータスビットを流用している。
-  この代用が設計意図どおりかは未確認。
-- `to_nits_reserved_bit_fixed_value`（`to NITS`のB5相当）は固定値になって
-  おり、対応するライブ信号源が配線されていない。意図的な未実装か廃止済み
-  かは未確認。
-- `cc3_front_id_tx_flag_read`（CC3 B32）は`simpleif_tx_encoder_lua`
-  （`n458.lua`）内で参照箇所が見当たらず、現状デッド配線の可能性がある。
+- `siv_permission_latch` の許可と禁止の判定は、未実装である。「SIV/MG 起動中・停止中」のステータスビットを流用しているのは暫定である。
+- `cc3_front_id_tx_flag_read`（CC3 B32）は、NITS Simple Bridge で使われているので、維持する。
+- `cross_seat_shio_hou_remote_read` と `cross_seat_su_hou_remote_read` の読みは、`shio_hou`、`su_hou` と切る。完全な地名ではないためである。名前は付け替えた。
+
+## 未確認事項
+
+確認状況は、リポジトリ直下の`OPEN_QUESTIONS.md`にある。
