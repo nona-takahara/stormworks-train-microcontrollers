@@ -11,6 +11,7 @@
     "build:driver-assistance": "node tools/microcontroller/cli.mjs build CHUSO/CHUSO2000_Driver_Assistance_IV"
   },
   "devDependencies": {
+    "@sw-file-lib/xml": "0.2.2",
     "storm-lua-minify": "^0.9.1",
     "storm-microcontroller-language": "^0.10.2"
   }

@@ -1,2 +1,7 @@
 minimumReleaseAgeExclude:
   - storm-microcontroller-language@0.10.1
+
+# @sw-file-lib/xml は fast-xml-parser ^5.10.1 を要求するが、5.11.0 と 5.11.1 ではビークルXMLを
+# 読めない(ルート要素で missing_required_field になる)。動作を確認した 5.11.2 以上に固定する。
+overrides:
+  fast-xml-parser: ">=5.11.2"

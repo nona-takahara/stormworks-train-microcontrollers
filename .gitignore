@@ -23,3 +23,10 @@ VehicleCalcModel/Probe/data/*
 VehicleCalcModel/Probe/analysis/pair_experiments.json
 VehicleCalcModel/**/*.csv
 VehicleCalcModel/**/*.out
+
+# ビークル差し替えの手元の出力(生成物)。
+# 対応表(vehicles/ 内の <名前>.map.json)は vehicles/ と一緒に管理外。
+vehicle-out/
+
+# ビークルXML(Git管理に入れるかは未決。決まるまで管理外にしておく)
+vehicles/
