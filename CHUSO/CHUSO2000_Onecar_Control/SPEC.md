@@ -1,5 +1,7 @@
 # CHUSO2000 Onecar Control 仕様書
 
+> 実車 `CHUSO2000_2001` と `CHUSO2000_2101` には、このマイコンは搭載されていない。運転台が前位の 1 つだけなので、Cab Controller の `Control Commands TX` が Signal Gateway の `Control Commands Type 3 front` へ直接入る（`../SYSTEM_SPEC.md` §8）。以降は、前後に運転台を持つ車両での動作である。
+
 単車制御マイコン。前方運転台側と後方運転台側から届く `Control Commands Type 3`（CC3）を 1 つにまとめ、下流（牽引制御・ドア制御など）に `Control Commands Type 3` として出力する。あわせて `Simple IF RX` の N4 / N5 と B4 / B5 を入れ替えて出力する。
 
 ここに書く事実は `main.sw-net` と `scripts/n200.lua` から読み取ったものである。信号の意味は `SignalComposite.md` の CC3 の節を参照する。ゲーム内で確かめていない項目には `[unconfirmed]`、コードの配線から推論した項目には `[inferred]` を付ける。

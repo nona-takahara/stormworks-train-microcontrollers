@@ -16,7 +16,7 @@ RX・Extended Commands RX・Rolling Stock Settings/Status の各コンポジッ�
 | ポート | 方向 | 型 | 役割 |
 |---|---|---|---|
 | `from NITS` / `to NITS` | in / out | composite | NITS bus の生フレーム（受信・送信） |
-| `Control Commands Type 3 front` | in | composite | 前位運転台側からの CC3（Onecar Control が合成） |
+| `Control Commands Type 3 front` | in | composite | 前位運転台側からの CC3。前後運転台の車両では Onecar Control が合成したもの、2001・2101 では Cab Controller の `Control Commands TX` が直接入る |
 | `Simple IF RX` | out | composite | NITS から解読した編成全体の状態を自車機器へ中継 |
 | `Extended Commands RX` | out | composite | 0x48–0x60 拡張コマンドのデコード結果・メモリレジスタ・各種内部ラッチ |
 | `Rolling Stock Status w/ Inertia Composite` | in | composite | 自車のモータ・パンタグラフ・ブレーキ圧の状態 |
