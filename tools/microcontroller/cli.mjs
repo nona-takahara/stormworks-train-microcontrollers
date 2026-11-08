@@ -7,6 +7,8 @@ import { loadConfiguration } from "./config.mjs";
 import { discoverProjects, selectProjects } from "./discovery.mjs";
 import { StormMclAdapter } from "./storm-mcl.mjs";
 import { buildProject, checkProject, exportProject, importProject } from "./operations.mjs";
+import fs from "node:fs";
+import { formatWiring, microcontrollerEdges, readWiring, vehicleSourcePath } from "./wiring.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../..");
@@ -17,13 +19,21 @@ function usage() {
   pnpm microcontroller check <project-path...> | --all
   pnpm microcontroller export <project-path...> | --all
   pnpm microcontroller import <project-path...> | --all
+  pnpm microcontroller vehicle-wiring <vehicle> [--edges]  vehicles/ のビークルの結線を、マイコンのポートごとに表示する(読むだけ)。--edges はマイコン間の結線だけを「送り側 ==> 受け側」で出す
 
 <project-path> はプロジェクトディレクトリのリポジトリルートからの相対パス
-(例: CHUSO/CHUSO1800_Traction_Controller_LuaCore)。--allは発見された全build.jsonを対象にする。`;
+(例: CHUSO/CHUSO1800_Traction_Controller_LuaCore)。--allは発見された全build.jsonを対象にする。
+<vehicle> は vehicles/ からの相対パス(例: CHUSO2000/CHUSO2000_2001)。拡張子は省ける。`;
 }
 
 function parseArguments(argv) {
     const [command, ...rest] = argv;
+    if (command === "vehicle-wiring") {
+        const edges = rest.includes("--edges");
+        const names = rest.filter((a) => a !== "--edges");
+        if (names.length !== 1 || names[0].startsWith("-")) throw new Error("vehicle-wiring takes exactly one vehicle file name (and optionally --edges)");
+        return { command, vehicle: names[0], edges };
+    }
     if (!["build", "check", "export", "import"].includes(command)) {
         throw new Error(`${usage()}${command ? `\n\nUnknown command: ${command}` : ""}`);
     }
@@ -41,6 +51,11 @@ function parseArguments(argv) {
 
 export async function main(argv = process.argv.slice(2), dependencies = {}) {
     const parsed = parseArguments(argv);
+    if (parsed.command === "vehicle-wiring") {
+        // 読むだけ。ゲーム側にも vehicles/ にも書かず、ゲーム側の設定(.env)も要らない。
+        const wiring = readWiring(fs.readFileSync(vehicleSourcePath(repoRoot, parsed.vehicle)));
+        return console.log(parsed.edges ? microcontrollerEdges(wiring).join("\n") : formatWiring(wiring));
+    }
     const config = (dependencies.loadConfiguration ?? loadConfiguration)(repoRoot);
     const discover = dependencies.discoverProjects ?? discoverProjects;
     const projects = selectProjects(discover(repoRoot), parsed.ids, parsed.all);
