@@ -9,7 +9,7 @@ import { resolveLuaBuilds } from "./lua-node-resolution.mjs";
 
 // Windowsでファイル名に使えない":"を避けたISO時刻。バックアップを対象名と
 // 時刻だけで追跡でき、同名を黙って上書きしない構成にする。
-function timestamp(date = new Date()) {
+export function timestamp(date = new Date()) {
     return date.toISOString().replace(/[:.]/gu, "-");
 }
 
@@ -77,7 +77,7 @@ function copyOverlays(config, luaBuilds, stagedRoot) {
     }
 }
 
-function installWithRollback(generatedXml, destination, backup, fsApi = fs) {
+export function installWithRollback(generatedXml, destination, backup, fsApi = fs) {
     // 完成XMLを先にStormworks側と同じディレクトリへコピーしてからrenameする。
     // renameを同一ファイルシステム内に限定し、途中状態をできるだけ短くする。
     fsApi.mkdirSync(path.dirname(backup), { recursive: true });
@@ -106,9 +106,9 @@ function installWithRollback(generatedXml, destination, backup, fsApi = fs) {
     }
 }
 
-export async function exportProject(config, project, adapter, dependencies = {}) {
-    // exportは「Lua生成→一時DSLへ差替え→DSL検査→XML生成→利用者確認→配置」の順。
-    // Stormworks側へ触るのは全生成・検査が成功した後だけにする。
+// プロジェクトから完成XMLを作り、callbackへ渡す。作業用の一時領域はcallbackの後に必ず消す。
+// 流れは「Lua生成→一時DSLへ差替え→DSL検査→XML生成」。exportとビークル差し替えが共有する。
+export async function withGeneratedXml(config, project, adapter, dependencies, callback) {
     const { luaBuilds } = await buildProject(config, project, dependencies);
     const sourceProject = project.projectJsonPath;
     const sourceRoot = path.dirname(sourceProject);
@@ -124,24 +124,28 @@ export async function exportProject(config, project, adapter, dependencies = {})
         adapter.check(stagedProject);
         adapter.exportXml(stagedProject, generatedXml);
         if (!fs.existsSync(generatedXml)) throw new Error(`storm-mcl did not create XML: ${generatedXml}`);
+        return await callback(generatedXml);
+    } finally {
+        // XML生成や確認が失敗・拒否された場合も、一時DSLとLua差替えを残さない。
+        fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
+}
 
+export async function exportProject(config, project, adapter, dependencies = {}) {
+    // Stormworks側へ触るのは全生成・検査が成功した後だけにする。
+    return withGeneratedXml(config, project, adapter, dependencies, async (generatedXml) => {
         const destination = path.join(config.stormworksDir, project.stormworksFile);
         // 内容が同じなら確認もバックアップも不要。mtimeだけを変える書込みを避ける。
         if (fs.existsSync(destination) && fs.readFileSync(destination).equals(fs.readFileSync(generatedXml))) {
             return { changed: false, destination };
         }
-        const confirm = dependencies.confirm ?? confirmOverwrite;
-        if (!(await confirm(`Overwrite Stormworks microcontroller ${destination}?`))) {
-            return { changed: false, declined: true, destination };
-        }
+        // 上書きの確認は取らない。installWithRollbackが置き換えの前に必ずバックアップを取り、
+        // 取れなければ止まるので、戻れる手段はツールが保証する。
         const backup = path.join(config.backupDir, ...project.id.split("/"),
             `${path.basename(project.stormworksFile, ".xml")}-${timestamp(dependencies.now?.())}.xml`);
         installWithRollback(generatedXml, destination, backup, dependencies.fs ?? fs);
         return { changed: true, destination, backup: fs.existsSync(backup) ? backup : undefined };
-    } finally {
-        // XML生成や確認が失敗・拒否された場合も、一時DSLとLua差替えを残さない。
-        fs.rmSync(tempRoot, { recursive: true, force: true });
-    }
+    });
 }
 
 export async function importProject(config, project, adapter, dependencies = {}) {

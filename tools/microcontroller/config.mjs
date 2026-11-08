@@ -53,5 +53,23 @@ export function loadConfiguration(repoRoot, options = {}) {
         throw new Error("STORMWORKS_BACKUP_DIR must be outside the Stormworks microprocessors directory");
     }
 
-    return { repoRoot, stormworksDir, backupDir };
+    // ゲーム側のビークルXMLの置き場は、vehicle-installだけが使う。マイコンのexport/importの利用者に
+    // 設定を強いないため任意とし、指定されたときだけ検証する。
+    const vehiclesDir = envValues.STORMWORKS_VEHICLES_DIR
+        ? requiredAbsoluteDirectory("STORMWORKS_VEHICLES_DIR", envValues, fsApi, pathApi)
+        : undefined;
+    if (vehiclesDir && isWithin(backupDir, vehiclesDir, pathApi)) {
+        throw new Error("STORMWORKS_BACKUP_DIR must be outside the Stormworks vehicles directory");
+    }
+
+    return {
+        repoRoot,
+        stormworksDir,
+        backupDir,
+        // vehiclesDirはゲーム側の置き場で、vehicle-installの設置先にだけ使う。
+        vehiclesDir,
+        // 差し替えの正本のビークルと対応表(<名前>.map.json)は、リポジトリ内の vehicles/ に置く。vehicle-outは生成物。
+        vehicleSourceDir: pathApi.join(repoRoot, "vehicles"),
+        vehicleOutDir: pathApi.join(repoRoot, "vehicle-out"),
+    };
 }

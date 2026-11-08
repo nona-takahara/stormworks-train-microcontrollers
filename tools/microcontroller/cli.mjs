@@ -8,6 +8,7 @@ import { discoverProjects, selectProjects } from "./discovery.mjs";
 import { StormMclAdapter } from "./storm-mcl.mjs";
 import { buildProject, checkProject, exportProject, importProject } from "./operations.mjs";
 import fs from "node:fs";
+import { runVehicleCommand } from "./vehicle.mjs";
 import { formatWiring, microcontrollerEdges, readWiring, vehicleSourcePath } from "./wiring.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -19,12 +20,17 @@ function usage() {
   pnpm microcontroller check <project-path...> | --all
   pnpm microcontroller export <project-path...> | --all
   pnpm microcontroller import <project-path...> | --all
+  pnpm microcontroller vehicle-scan <vehicle>     vehicles/ のビークルから、対応表に足りないマイコンの位置と個体ごとの値を書き足す(既存は上書きしない)
+  pnpm microcontroller vehicle-swap <vehicle>     vehicles/ のビークルを対応表に従って差し替え、vehicle-out/ へ書き出す(vehicles/ もゲーム側も変えない)
+  pnpm microcontroller vehicle-install <vehicle>  vehicle-out/ をバックアップを取ってゲーム側へ置く
   pnpm microcontroller vehicle-wiring <vehicle> [--edges]  vehicles/ のビークルの結線を、マイコンのポートごとに表示する(読むだけ)。--edges はマイコン間の結線だけを「送り側 ==> 受け側」で出す
 
 <project-path> はプロジェクトディレクトリのリポジトリルートからの相対パス
 (例: CHUSO/CHUSO1800_Traction_Controller_LuaCore)。--allは発見された全build.jsonを対象にする。
 <vehicle> は vehicles/ からの相対パス(例: CHUSO2000/CHUSO2000_2001)。拡張子は省ける。`;
 }
+
+const VEHICLE_COMMANDS = ["vehicle-scan", "vehicle-swap", "vehicle-install", "vehicle-wiring"];
 
 function parseArguments(argv) {
     const [command, ...rest] = argv;
@@ -33,6 +39,10 @@ function parseArguments(argv) {
         const names = rest.filter((a) => a !== "--edges");
         if (names.length !== 1 || names[0].startsWith("-")) throw new Error("vehicle-wiring takes exactly one vehicle file name (and optionally --edges)");
         return { command, vehicle: names[0], edges };
+    }
+    if (VEHICLE_COMMANDS.includes(command)) {
+        if (rest.length !== 1 || rest[0].startsWith("-")) throw new Error(`${command} takes exactly one vehicle file name`);
+        return { command, vehicle: rest[0] };
     }
     if (!["build", "check", "export", "import"].includes(command)) {
         throw new Error(`${usage()}${command ? `\n\nUnknown command: ${command}` : ""}`);
@@ -57,6 +67,13 @@ export async function main(argv = process.argv.slice(2), dependencies = {}) {
         return console.log(parsed.edges ? microcontrollerEdges(wiring).join("\n") : formatWiring(wiring));
     }
     const config = (dependencies.loadConfiguration ?? loadConfiguration)(repoRoot);
+    if (parsed.vehicle !== undefined) {
+        // vehicle-swapだけがstorm-mclを使う。scanとinstallは依存CLIが無くても動かす。
+        const adapter = parsed.command === "vehicle-swap"
+            ? dependencies.adapter ?? new StormMclAdapter(repoRoot)
+            : dependencies.adapter;
+        return runVehicleCommand(parsed.command, parsed.vehicle, config, adapter, dependencies);
+    }
     const discover = dependencies.discoverProjects ?? discoverProjects;
     const projects = selectProjects(discover(repoRoot), parsed.ids, parsed.all);
     // Lua単体のbuildはstorm-mclを使わない。依存CLIが未導入でもLua生成だけは

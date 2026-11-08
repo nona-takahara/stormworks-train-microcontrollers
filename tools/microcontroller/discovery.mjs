@@ -75,3 +75,39 @@ export function selectProjects(projects, ids, all) {
         return byId.get(normalized);
     });
 }
+
+// build.jsonの有無に関わらず、project.jsonを持つディレクトリを全部探す。
+// ビークルの差し替えは、Luaの配置先(stormworksFile)を要さないので、build.jsonを前提にしない。
+// stormworksFileは、生成するXMLの一時ファイル名にだけ使う。
+export function discoverProjectJsonProjects(repoRoot, options = {}) {
+    const fsApi = options.fs ?? fs;
+    const pathApi = options.path ?? path;
+    const results = [];
+    const visit = (directory) => {
+        const projectJsonPath = pathApi.join(directory, PROJECT_JSON_NAME);
+        if (fsApi.existsSync(projectJsonPath)) {
+            let name;
+            let sourceName;
+            try {
+                ({ name, sourceName } = JSON.parse(fsApi.readFileSync(projectJsonPath, "utf8")));
+            } catch (error) {
+                throw new Error(`Invalid JSON in ${projectJsonPath}: ${error.message}`);
+            }
+            const fallback = `${pathApi.basename(directory)}.xml`;
+            results.push({
+                id: toProjectId(repoRoot, directory, pathApi),
+                directory,
+                projectJsonPath,
+                buildJsonPath: pathApi.join(directory, BUILD_CONFIG_NAME),
+                name,
+                stormworksFile: typeof sourceName === "string" && pathApi.basename(sourceName) === sourceName && sourceName.endsWith(".xml")
+                    ? sourceName : fallback,
+            });
+        }
+        for (const entry of fsApi.readdirSync(directory, { withFileTypes: true })) {
+            if (entry.isDirectory() && !IGNORED_DIRECTORY_NAMES.has(entry.name)) visit(pathApi.join(directory, entry.name));
+        }
+    };
+    visit(repoRoot);
+    return results;
+}
