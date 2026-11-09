@@ -1,0 +1,12 @@
+# up / down の立ち上がりで 1 ずつ数える、-1〜+1 のカウンタ。
+# reset が true の間は 0 に戻す。
+module edge_updown_counter
+  port in "up" : boolean
+  port in "down" : boolean
+  port in "reset" : boolean
+  port out "value" : number
+
+  inst PULSE up_rise (mode="rise") : a="up" -> out=up_rise_out
+  inst PULSE down_rise (mode="rise") : a="down" -> out=down_rise_out
+  inst COUNTER edge_counter (reset_value=0, increment=1, min=-1, max=1, m=1) : down=down_rise_out, reset="reset", up=up_rise_out -> out="value"
+end

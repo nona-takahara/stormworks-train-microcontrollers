@@ -1,0 +1,14 @@
+# 押し続けの入力から、立ち上がりと繰り返しのパルスを作る。
+# rise: active の立ち上がりの 1 tick。
+# tick: active が 0.3 秒続いたあと、0.1 秒周期で 1 tick ずつ立つ。rise は含まない。
+module hold_repeat
+  port in "active" : boolean
+  port out "rise" : boolean
+  port out "tick" : boolean
+
+  inst PULSE active_rise (mode="rise") : a="active" -> out="rise"
+  inst CAPACITOR hold_cap (charge_time=0.3, discharge_time=0) : enable="active" -> out=hold_cap_out
+  inst BLINKER hold_blinker (on_time=0.1, off_time=0.1) : enable=hold_cap_out -> out=hold_blinker_out
+  inst PULSE hold_blinker_edge (mode="both") : a=hold_blinker_out -> out=hold_blinker_edge_out
+  inst AND hold_tick_and : a=hold_blinker_edge_out, b="active" -> out="tick"
+end

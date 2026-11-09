@@ -1,3 +1,8 @@
+import hold_repeat from "./hold_repeat.sw-net"
+import edge_updown_counter from "./edge_updown_counter.sw-net"
+import edge_latch from "./edge_latch.sw-net"
+import axis_threshold from "./axis_threshold.sw-net"
+
 module main
   port in "Seat Input" : composite
   port out "Main Handle Sound" : boolean
@@ -38,27 +43,13 @@ module main
   inst COMPOSITE_READ_BOOLEAN seat_emergency_read (channel=31) : composite="Seat Input" -> out=seat_emergency_read_out
 
   # --- Main handle thresholds and pulses ---
-  inst THRESHOLD handle_pos_up_thresh (min=0.5, max=1) : value=seat_handle_num_read_out -> out=handle_pos_up_thresh_out
-  inst THRESHOLD handle_pos_dn_thresh (min=-1, max=-0.5) : value=seat_handle_num_read_out -> out=handle_pos_dn_thresh_out
-  inst THRESHOLD seat_forward_up_thresh (min=0.5, max=1) : value=seat_forward_num_read_out -> out=seat_forward_up_thresh_out
-  inst THRESHOLD seat_forward_dn_thresh (min=-1, max=-0.5) : value=seat_forward_num_read_out -> out=seat_forward_dn_thresh_out
-  inst PULSE handle_up_pulse (mode="rise") : a=handle_pos_up_thresh_out -> out=handle_up_pulse_out
-  inst PULSE handle_dn_pulse (mode="rise") : a=handle_pos_dn_thresh_out -> out=handle_dn_pulse_out
-  inst PULSE seat_forward_rise_pulse (mode="rise") : a=seat_forward_up_thresh_out -> out=seat_forward_rise_pulse_out
+  use axis_threshold.axis_threshold handle_axis : axis=seat_handle_num_read_out -> pos=handle_pos_up_thresh_out, neg=handle_pos_dn_thresh_out
+  use axis_threshold.axis_threshold seat_forward_axis : axis=seat_forward_num_read_out -> pos=seat_forward_up_thresh_out, neg=seat_forward_dn_thresh_out
 
   # --- Main handle fast-click detection ---
-  inst CAPACITOR handle_dn_cap (charge_time=0.3, discharge_time=0) : enable=handle_pos_dn_thresh_out -> out=handle_dn_cap_out
-  inst BLINKER handle_dn_blinker (on_time=0.1, off_time=0.1) : enable=handle_dn_cap_out -> out=handle_dn_blinker_out
-  inst PULSE handle_dn_pulse_both (mode="both") : a=handle_dn_blinker_out -> out=handle_dn_pulse_both_out
-  inst AND handle_fast_dn : a=handle_dn_pulse_both_out, b=handle_pos_dn_thresh_out -> out=handle_fast_dn_out
-  inst CAPACITOR handle_up_cap (charge_time=0.3, discharge_time=0) : enable=handle_pos_up_thresh_out -> out=handle_up_cap_out
-  inst BLINKER handle_up_blinker (on_time=0.1, off_time=0.1) : enable=handle_up_cap_out -> out=handle_up_blinker_out
-  inst PULSE handle_up_pulse_both (mode="both") : a=handle_up_blinker_out -> out=handle_up_pulse_both_out
-  inst AND handle_fast_up : a=handle_up_pulse_both_out, b=handle_pos_up_thresh_out -> out=handle_fast_up_out
-  inst CAPACITOR forward_up_cap (charge_time=0.3, discharge_time=0) : enable=seat_forward_up_thresh_out -> out=forward_up_cap_out
-  inst BLINKER forward_up_blinker (on_time=0.1, off_time=0.1) : enable=forward_up_cap_out -> out=forward_up_blinker_out
-  inst PULSE forward_up_pulse_both (mode="both") : a=forward_up_blinker_out -> out=forward_up_pulse_both_out
-  inst AND forward_fast_up : a=forward_up_pulse_both_out, b=seat_forward_up_thresh_out -> out=forward_fast_up_out
+  use hold_repeat.hold_repeat handle_dn_hold : active=handle_pos_dn_thresh_out -> rise=handle_dn_pulse_out, tick=handle_fast_dn_out
+  use hold_repeat.hold_repeat handle_up_hold : active=handle_pos_up_thresh_out -> rise=handle_up_pulse_out, tick=handle_fast_up_out
+  use hold_repeat.hold_repeat forward_up_hold : active=seat_forward_up_thresh_out -> rise=seat_forward_rise_pulse_out, tick=forward_fast_up_out
 
   # --- Main handle engagement latch ---
   inst OR handle_reset_or : a=seat_emergency_read_out, b=seat_forward_dn_thresh_out -> out=handle_reset_or_out
@@ -88,16 +79,13 @@ module main
   inst PULSE atc_reset_pulse (mode="fall") : a=seat_latch_not_q -> out="ATS/C Reset Signal"
 
   # --- Reverser ---
-  inst THRESHOLD reverser_up_thresh (min=0.5, max=1) : value=seat_reverser_num_read_out -> out=reverser_up_thresh_out
-  inst THRESHOLD reverser_dn_thresh (min=-1, max=-0.5) : value=seat_reverser_num_read_out -> out=reverser_dn_thresh_out
-  inst PULSE reverser_up_pulse (mode="rise") : a=reverser_up_thresh_out -> out=reverser_up_pulse_out
-  inst PULSE reverser_dn_pulse (mode="rise") : a=reverser_dn_thresh_out -> out=reverser_dn_pulse_out
+  use axis_threshold.axis_threshold reverser_axis : axis=seat_reverser_num_read_out -> pos=reverser_up_thresh_out, neg=reverser_dn_thresh_out
   inst NOT mascon_key_not : a="Mas-con Key" -> out=mascon_key_not_out
-  inst COUNTER reverser_counter (reset_value=0, increment=1, min=-1, max=1, m=1) : down=reverser_dn_pulse_out, reset=mascon_key_not_out, up=reverser_up_pulse_out -> out=reverser_counter_out, out="Reverser Position"
-  inst DELTA reverser_delta : a=reverser_counter_out -> out=reverser_delta_out
+  use edge_updown_counter.edge_updown_counter reverser_counter : up=reverser_up_thresh_out, down=reverser_dn_thresh_out, reset=mascon_key_not_out -> value="Reverser Position"
+  inst DELTA reverser_delta : a="Reverser Position" -> out=reverser_delta_out
   inst THRESHOLD reverser_sound_thresh (min=0, max=0) : value=reverser_delta_out -> out="Reverser Sound"
-  inst THRESHOLD reverser_fwd_thresh (min=1, max=1) : value=reverser_counter_out -> out=reverser_fwd_thresh_out
-  inst THRESHOLD reverser_bck_thresh (min=-1, max=-1) : value=reverser_counter_out -> out=reverser_bck_thresh_out
+  inst THRESHOLD reverser_fwd_thresh (min=1, max=1) : value="Reverser Position" -> out=reverser_fwd_thresh_out
+  inst THRESHOLD reverser_bck_thresh (min=-1, max=-1) : value="Reverser Position" -> out=reverser_bck_thresh_out
 
   # --- Formation lever ---
   inst COMPOSITE_READ_BOOLEAN settings_ch13_read (channel=13) : composite="Settings Loop" -> out=settings_ch13_read_out
@@ -121,23 +109,15 @@ module main
 
   # --- Front sign latch ---
   inst COMPOSITE_READ_BOOLEAN drive_front_sign_read (channel=3) : composite="Drive Loop" -> out=drive_front_sign_read_out
-  inst PULSE front_drive_rise_pulse (mode="rise") : a=drive_front_sign_read_out -> out=front_drive_rise_pulse_out
-  inst PULSE front_drive_fall_pulse (mode="fall") : a=drive_front_sign_read_out -> out=front_drive_fall_pulse_out
   inst PULSE formation_fwd_fall_for_front (mode="fall") : a=formation_fwd_thresh_out -> out=formation_fwd_fall_for_front_out
   inst AND front_sign_set_and : a=drive_front_sign_read_out, b=formation_fwd_thresh_out -> out=front_sign_set_and_out
-  inst OR front_sign_set_or : a=front_drive_rise_pulse_out, b=front_sign_set_and_out -> out=front_sign_set_or_out
-  inst OR front_sign_reset_or : a=front_drive_fall_pulse_out, b=formation_fwd_fall_for_front_out -> out=front_sign_reset_or_out
-  inst SR_LATCH front_sign_latch : r=front_sign_reset_or_out, s=front_sign_set_or_out -> q="Front Sign"
+  use edge_latch.edge_latch front_sign_latch : level=drive_front_sign_read_out, extra_set=front_sign_set_and_out, extra_reset=formation_fwd_fall_for_front_out -> q="Front Sign"
 
   # --- Express UMI latch (unused q) and Tail sign ---
   inst COMPOSITE_READ_BOOLEAN drive_express_umi_sign_read (channel=13) : composite="Drive Loop" -> out=drive_express_umi_sign_read_out
-  inst PULSE express_umi_rise_pulse (mode="rise") : a=drive_express_umi_sign_read_out -> out=express_umi_rise_pulse_out
-  inst PULSE express_umi_fall_pulse (mode="fall") : a=drive_express_umi_sign_read_out -> out=express_umi_fall_pulse_out
   inst PULSE formation_fwd_fall_for_tail (mode="fall") : a=formation_fwd_thresh_out -> out=formation_fwd_fall_for_tail_out
   inst AND express_umi_set_and : a=drive_express_umi_sign_read_out, b=formation_fwd_thresh_out -> out=express_umi_set_and_out
-  inst OR tail_sign_set_or : a=express_umi_rise_pulse_out, b=express_umi_set_and_out -> out=tail_sign_set_or_out
-  inst OR tail_sign_reset_or : a=express_umi_fall_pulse_out, b=formation_fwd_fall_for_tail_out -> out=tail_sign_reset_or_out
-  inst SR_LATCH tail_sign_latch_unused : r=tail_sign_reset_or_out, s=tail_sign_set_or_out ->
+  use edge_latch.edge_latch tail_sign_latch_unused : level=drive_express_umi_sign_read_out, extra_set=express_umi_set_and_out, extra_reset=formation_fwd_fall_for_tail_out ->
   inst COMPOSITE_READ_BOOLEAN drive_tail_on_read (channel=15) : composite="Drive Loop" -> out=drive_tail_on_read_out
   inst OR tail_sign_or : a=formation_bck_thresh_tail_out, b=drive_tail_on_read_out -> out="Tail Sign"
 
@@ -272,7 +252,7 @@ module main
 
   # --- Monitor Status output ---
   inst COMPOSITE_WRITE_BOOLEAN monitor_bool_write (count=16, offset=1) : in1=drive_ch1_read_out, in2=drive_headlight_read_out, in3=settings_ch6_read_out, in4=seat_latch_not_q, in5=mascon_key_and_fwd_out, in6=simif_rx_ch1_bool_read_out, in7=ds_ch4_bool_read_out, in8=const_true_not_out, in9=const_true_not_out, in10=const_true_not_out, in11=ext_cmd_ch1_read_out, in12=simif_rx_ch4_bool_read_out, in13=simif_rx_ch5_bool_read_out, in14=ext_cmd_ch10_read_out, in15=ext_cmd_ch32_read_out, in16=rolling_stock_ch2_read_out, inc="Extended Commands RX" -> out=monitor_bool_write_out
-  inst COMPOSITE_WRITE_NUMBER monitor_num_write (count=5, offset=9) : in1=simif_rx_ch1_num_read_out, in2=simif_rx_ch2_num_read_out, in3=reverser_counter_out, in4=formation_counter_out, in5=physics_speed_read_out, inc=monitor_bool_write_out -> out="Monitor Status"
+  inst COMPOSITE_WRITE_NUMBER monitor_num_write (count=5, offset=9) : in1=simif_rx_ch1_num_read_out, in2=simif_rx_ch2_num_read_out, in3="Reverser Position", in4=formation_counter_out, in5=physics_speed_read_out, inc=monitor_bool_write_out -> out="Monitor Status"
 
   # --- Control Commands TX ---
   inst COMPOSITE_WRITE_NUMBER tx_num_write (count=7, offset=1) : in1=brake_force_func_out, in2=power_limit_func_out, in6=ds_ch1_num_read_out, in7=status_num_out -> out=tx_num_write_out

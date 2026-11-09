@@ -1,0 +1,14 @@
+# level の立ち上がりで set、立ち下がりで reset するラッチ。
+# extra_set / extra_reset は、それぞれ set / reset へ OR する追加条件。
+module edge_latch
+  port in "level" : boolean
+  port in "extra_set" : boolean
+  port in "extra_reset" : boolean
+  port out "q" : boolean
+
+  inst PULSE level_rise (mode="rise") : a="level" -> out=level_rise_out
+  inst PULSE level_fall (mode="fall") : a="level" -> out=level_fall_out
+  inst OR set_or : a=level_rise_out, b="extra_set" -> out=set_or_out
+  inst OR reset_or : a=level_fall_out, b="extra_reset" -> out=reset_or_out
+  inst SR_LATCH edge_sr_latch : r=reset_or_out, s=set_or_out -> q="q"
+end

@@ -1,0 +1,10 @@
+# 軸の値（-1〜+1）を、正方向・負方向の2つの bool にする。
+# pos は 0.5 以上、neg は -0.5 以下で true。
+module axis_threshold
+  port in "axis" : number
+  port out "pos" : boolean
+  port out "neg" : boolean
+
+  inst THRESHOLD pos_thresh (min=0.5, max=1) : value="axis" -> out="pos"
+  inst THRESHOLD neg_thresh (min=-1, max=-0.5) : value="axis" -> out="neg"
+end
