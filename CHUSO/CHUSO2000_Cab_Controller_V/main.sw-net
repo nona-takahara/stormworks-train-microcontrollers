@@ -34,227 +34,377 @@ module main
   port out "ATS/C Reset Signal" : boolean
   port in "Rolling Stock Settings" : composite
 
-  # --- Main handle seat reads ---
-  inst COMPOSITE_READ_NUMBER seat_handle_num_read (channel=2) : composite="Seat Input" -> out=seat_handle_num_read_out
-  inst COMPOSITE_READ_NUMBER seat_forward_num_read (channel=1) : composite="Seat Input" -> out=seat_forward_num_read_out
-  inst COMPOSITE_READ_BOOLEAN seat_engaged_bool_read (channel=1) : composite="Seat Input" -> out=seat_engaged_bool_read_out
-  inst COMPOSITE_READ_NUMBER seat_reverser_num_read (channel=4) : composite="Seat Input" -> out=seat_reverser_num_read_out
-  inst COMPOSITE_READ_BOOLEAN seat_buzzer_read (channel=4) : composite="Seat Input" -> out=seat_buzzer_read_out
-  inst COMPOSITE_READ_BOOLEAN seat_emergency_read (channel=31) : composite="Seat Input" -> out=seat_emergency_read_out
+  # --- 座席入力の読取 ---
+  inst COMPOSITE_READ_NUMBER seat_handle_num_read (channel=2)
+    : composite="Seat Input" -> out=seat_ws
+  inst COMPOSITE_READ_NUMBER seat_forward_num_read (channel=1)
+    : composite="Seat Input" -> out=seat_ad
+  inst COMPOSITE_READ_BOOLEAN seat_engaged_bool_read (channel=1)
+    : composite="Seat Input" -> out=seat_key1
+  inst COMPOSITE_READ_NUMBER seat_reverser_num_read (channel=4)
+    : composite="Seat Input" -> out=seat_ud
+  inst COMPOSITE_READ_BOOLEAN seat_buzzer_read (channel=4) : composite="Seat Input" -> out=seat_key4
+  inst COMPOSITE_READ_BOOLEAN seat_emergency_read (channel=31)
+    : composite="Seat Input" -> out=seat_trigger
 
-  # --- Main handle thresholds and pulses ---
-  use axis_threshold.axis_threshold handle_axis : axis=seat_handle_num_read_out -> pos=handle_pos_up_thresh_out, neg=handle_pos_dn_thresh_out
-  use axis_threshold.axis_threshold seat_forward_axis : axis=seat_forward_num_read_out -> pos=seat_forward_up_thresh_out, neg=seat_forward_dn_thresh_out
+  # --- ハンドル軸のしきい値と立ち上がり ---
+  use axis_threshold.axis_threshold handle_axis
+    : axis=seat_ws -> pos=seat_ws_brake, neg=seat_ws_power
+  use axis_threshold.axis_threshold seat_forward_axis : axis=seat_ad -> pos=seat_ad_d, neg=seat_ad_a
 
-  # --- Main handle fast-click detection ---
-  use hold_repeat.hold_repeat handle_dn_hold : active=handle_pos_dn_thresh_out -> rise=handle_dn_pulse_out, tick=handle_fast_dn_out
-  use hold_repeat.hold_repeat handle_up_hold : active=handle_pos_up_thresh_out -> rise=handle_up_pulse_out, tick=handle_fast_up_out
-  use hold_repeat.hold_repeat forward_up_hold : active=seat_forward_up_thresh_out -> rise=seat_forward_rise_pulse_out, tick=forward_fast_up_out
+  # --- 立ち上がり・リピート判定 ---
+  use hold_repeat.hold_repeat handle_dn_hold
+    : active=seat_ws_power -> rise=seat_ws_power_rise, tick=seat_ws_power_repeat
+  use hold_repeat.hold_repeat handle_up_hold
+    : active=seat_ws_brake -> rise=seat_ws_brake_rise, tick=seat_ws_brake_repeat
+  use hold_repeat.hold_repeat forward_up_hold
+    : active=seat_ad_d -> rise=seat_ad_d_rise, tick=seat_ad_d_repeat
 
-  # --- Main handle engagement latch ---
-  inst OR handle_reset_or : a=seat_emergency_read_out, b=seat_forward_dn_thresh_out -> out=handle_reset_or_out
-  inst AND handle_engaged_and : a=handle_pos_up_thresh_out, b=seat_engaged_bool_read_out -> out=handle_engaged_and_out
-  inst BOOL_FUNC_4 latch_reset_func (expression="x|(!w)") : x=handle_engaged_and_out, w=mascon_key_and_fwd_out -> out=latch_reset_func_out
-  inst BOOL_FUNC_4 latch_set_func (expression="x|y|z|w") : x=handle_dn_pulse_out, y=handle_reset_or_out, z=seat_forward_rise_pulse_out -> out=latch_set_func_out
-  inst SR_LATCH seat_latch : r=latch_reset_func_out, s=latch_set_func_out -> q=seat_latch_q, not_q=seat_latch_not_q
+  # --- ハンドルの非常位置ラッチ ---
+  inst OR handle_reset_or : a=seat_trigger, b=seat_ad_a -> out=notch_reset
+  inst AND handle_engaged_and : a=seat_ws_brake, b=seat_key1 -> out=seat_ws_brake_and_key1
+  inst BOOL_FUNC_4 latch_reset_func (expression="x|(!w)")
+    : x=seat_ws_brake_and_key1, w=cab_active -> out=emergency_reset
+  inst BOOL_FUNC_4 latch_set_func (expression="x|y|z|w")
+    : x=seat_ws_power_rise, y=notch_reset, z=seat_ad_d_rise -> out=emergency_set
+  inst SR_LATCH seat_latch
+    : r=emergency_reset, s=emergency_set -> q=handle_emergency_n, not_q=handle_emergency
 
-  # --- Main handle notch counter ---
-  inst LESS_THAN notch_negative : a=handle_notch_out -> out=notch_negative_out
-  inst GREATER_THAN notch_positive : a=handle_notch_out -> out=notch_positive_out
-  inst BOOL_FUNC_4 fwd_fast_while_neg (expression="(x|y)&z") : x=forward_fast_up_out, y=seat_forward_rise_pulse_out, z=notch_negative_out -> out=fwd_fast_while_neg_out
-  inst BOOL_FUNC_4 fwd_fast_while_pos (expression="(x|y)&z") : x=forward_fast_up_out, y=seat_forward_rise_pulse_out, z=notch_positive_out -> out=fwd_fast_while_pos_out
-  inst BOOL_FUNC_4 notch_dn_func (expression="x|y|z|w") : x=handle_fast_up_out, y=handle_up_pulse_out, z=seat_latch_not_q, w=fwd_fast_while_pos_out -> out=notch_dn_func_out
-  inst BOOL_FUNC_4 notch_up_func (expression="(x|y|z)&w") : x=handle_fast_dn_out, y=handle_dn_pulse_out, z=fwd_fast_while_neg_out, w=seat_latch_q -> out=notch_up_func_out
-  inst COUNTER handle_notch (reset_value=0, increment=1, min=4, max=-7, m=1) : down=notch_dn_func_out, reset=handle_reset_or_out, up=notch_up_func_out -> out=handle_notch_out
-  inst CONST const_notch_disengaged (value=-8) : -> value=const_notch_disengaged_value
-  inst NUM_SWITCHBOX handle_notch_sw : a=const_notch_disengaged_value, b=handle_notch_out, switch=seat_latch_not_q -> out=handle_notch_sw_out
+  # --- ノッチカウンタ ---
+  inst LESS_THAN notch_negative : a=notch -> out=notch_neg
+  inst GREATER_THAN notch_positive : a=notch -> out=notch_pos
+  inst BOOL_FUNC_4 fwd_fast_while_neg (expression="(x|y)&z")
+    : x=seat_ad_d_repeat, y=seat_ad_d_rise, z=notch_neg -> out=neutral_step_neg
+  inst BOOL_FUNC_4 fwd_fast_while_pos (expression="(x|y)&z")
+    : x=seat_ad_d_repeat, y=seat_ad_d_rise, z=notch_pos -> out=neutral_step_pos
+  inst BOOL_FUNC_4 notch_dn_func (expression="x|y|z|w")
+    : x=seat_ws_brake_repeat, y=seat_ws_brake_rise, z=handle_emergency, w=neutral_step_pos
+    -> out=notch_down
+  inst BOOL_FUNC_4 notch_up_func (expression="(x|y|z)&w")
+    : x=seat_ws_power_repeat, y=seat_ws_power_rise, z=neutral_step_neg, w=handle_emergency_n
+    -> out=notch_up
+  inst COUNTER handle_notch (reset_value=0, increment=1, min=4, max=-7, m=1)
+    : down=notch_down, reset=notch_reset, up=notch_up -> out=notch
+  inst CONST const_notch_disengaged (value=-8) : -> value=emergency_notch
+  inst NUM_SWITCHBOX handle_notch_sw
+    : a=emergency_notch, b=notch, switch=handle_emergency -> out=handle_notch_out
 
-  # --- Main handle output ---
-  inst DELTA handle_notch_delta : a=handle_notch_sw_out -> out=handle_notch_delta_out
-  inst THRESHOLD handle_sound_thresh (min=0, max=0) : value=handle_notch_delta_out -> out=handle_sound_thresh_out
-  inst TOGGLE handle_sound_toggle : a=handle_sound_thresh_out -> out="Main Handle Sound"
-  inst FUNC_NUM_1 handle_angle_func (expression="(-x-2)/25") : x=handle_notch_sw_out -> out=handle_angle_func_out
-  inst PROPERTY_TOGGLE handle_output_type_prop (label="", on_label="Angle", off_label="TETSUDAN MOD", n="Handle Output Type", v=true) : -> out=handle_output_type_prop_out
-  inst NUM_SWITCHBOX handle_output_sw : a=handle_angle_func_out, b=handle_notch_sw_out, switch=handle_output_type_prop_out -> out="Main Handle Angle"
-  inst PULSE atc_reset_pulse (mode="fall") : a=seat_latch_not_q -> out="ATS/C Reset Signal"
+  # --- ハンドル出力 ---
+  inst DELTA handle_notch_delta : a=handle_notch_out -> out=handle_notch_diff
+  inst THRESHOLD handle_sound_thresh (min=0, max=0)
+    : value=handle_notch_diff -> out=handle_notch_steady
+  inst TOGGLE handle_sound_toggle : a=handle_notch_steady -> out="Main Handle Sound"
+  inst FUNC_NUM_1 handle_angle_func (expression="(-x-2)/25")
+    : x=handle_notch_out -> out=handle_angle
+  inst PROPERTY_TOGGLE handle_output_type_prop (label="", on_label="Angle",
+      off_label="TETSUDAN MOD", n="Handle Output Type", v=true)
+    : -> out=handle_output_type
+  inst NUM_SWITCHBOX handle_output_sw
+    : a=handle_angle, b=handle_notch_out, switch=handle_output_type -> out="Main Handle Angle"
+  inst PULSE atc_reset_pulse (mode="fall") : a=handle_emergency -> out="ATS/C Reset Signal"
 
-  # --- Reverser ---
-  use axis_threshold.axis_threshold reverser_axis : axis=seat_reverser_num_read_out -> pos=reverser_up_thresh_out, neg=reverser_dn_thresh_out
-  inst NOT mascon_key_not : a="Mas-con Key" -> out=mascon_key_not_out
-  use edge_updown_counter.edge_updown_counter reverser_counter : up=reverser_up_thresh_out, down=reverser_dn_thresh_out, reset=mascon_key_not_out -> value="Reverser Position"
-  inst DELTA reverser_delta : a="Reverser Position" -> out=reverser_delta_out
-  inst THRESHOLD reverser_sound_thresh (min=0, max=0) : value=reverser_delta_out -> out="Reverser Sound"
-  inst THRESHOLD reverser_fwd_thresh (min=1, max=1) : value="Reverser Position" -> out=reverser_fwd_thresh_out
-  inst THRESHOLD reverser_bck_thresh (min=-1, max=-1) : value="Reverser Position" -> out=reverser_bck_thresh_out
+  # --- 逆転器 ---
+  use axis_threshold.axis_threshold reverser_axis
+    : axis=seat_ud -> pos=seat_ud_fwd, neg=seat_ud_back
+  inst NOT mascon_key_not : a="Mas-con Key" -> out=mascon_key_n
+  use edge_updown_counter.edge_updown_counter reverser_counter
+    : up=seat_ud_fwd, down=seat_ud_back, reset=mascon_key_n -> value="Reverser Position"
+  inst DELTA reverser_delta : a="Reverser Position" -> out=reverser_diff
+  inst THRESHOLD reverser_sound_thresh (min=0, max=0) : value=reverser_diff -> out="Reverser Sound"
+  inst THRESHOLD reverser_fwd_thresh (min=1, max=1) : value="Reverser Position" -> out=reverser_fwd
+  inst THRESHOLD reverser_bck_thresh (min=-1, max=-1)
+    : value="Reverser Position" -> out=reverser_back
 
-  # --- Formation lever ---
-  inst COMPOSITE_READ_BOOLEAN settings_ch13_read (channel=13) : composite="Settings Loop" -> out=settings_ch13_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch14_read (channel=14) : composite="Settings Loop" -> out=settings_ch14_read_out
-  inst PULSE formation_up_pulse (mode="rise") : a=settings_ch13_read_out -> out=formation_up_pulse_out
-  inst PULSE formation_dn_pulse (mode="rise") : a=settings_ch14_read_out -> out=formation_dn_pulse_out
-  inst COUNTER formation_counter (reset_value=-1, increment=1, min=-1, max=1, m=1) : down=formation_dn_pulse_out, up=formation_up_pulse_out -> out=formation_counter_out
-  inst THRESHOLD formation_fwd_thresh (min=1, max=1) : value=formation_counter_out -> out=formation_fwd_thresh_out
-  inst FUNC_NUM_1 formation_lever_func (expression="x/4") : x=formation_counter_out -> out="Formation Lever"
-  inst DELTA formation_delta : a=formation_counter_out -> out=formation_delta_out
-  inst THRESHOLD formation_fwd_delta_thresh (min=0, max=1) : value=formation_delta_out -> out=formation_fwd_delta_thresh_out
-  inst NOT formation_not_fwd_delta : a=formation_fwd_delta_thresh_out -> out=formation_not_fwd_delta_out
-  inst THRESHOLD formation_bck_thresh_tail (min=-1, max=-1) : value=formation_counter_out -> out=formation_bck_thresh_tail_out
-  inst THRESHOLD formation_back_flag (min=-1, max=-1) : value=formation_counter_out -> out=formation_back_flag_out
+  # --- 編成前後選択レバー ---
+  inst COMPOSITE_READ_BOOLEAN settings_ch13_read (channel=13)
+    : composite="Settings Loop" -> out=Settings_Loop_B13
+  inst COMPOSITE_READ_BOOLEAN settings_ch14_read (channel=14)
+    : composite="Settings Loop" -> out=Settings_Loop_B14
+  inst PULSE formation_up_pulse (mode="rise") : a=Settings_Loop_B13 -> out=formation_inc_rise
+  inst PULSE formation_dn_pulse (mode="rise") : a=Settings_Loop_B14 -> out=formation_dec_rise
+  inst COUNTER formation_counter (reset_value=-1, increment=1, min=-1, max=1, m=1)
+    : down=formation_dec_rise, up=formation_inc_rise -> out=formation_count
+  inst THRESHOLD formation_fwd_thresh (min=1, max=1) : value=formation_count -> out=formation_front
+  inst FUNC_NUM_1 formation_lever_func (expression="x/4")
+    : x=formation_count -> out="Formation Lever"
+  inst DELTA formation_delta : a=formation_count -> out=formation_diff
+  inst THRESHOLD formation_fwd_delta_thresh (min=0, max=1)
+    : value=formation_diff -> out=formation_hold_or_inc
+  inst NOT formation_not_fwd_delta : a=formation_hold_or_inc -> out=formation_dec
+  inst THRESHOLD formation_bck_thresh_tail (min=-1, max=-1)
+    : value=formation_count -> out=formation_back_tail
+  inst THRESHOLD formation_back_flag (min=-1, max=-1)
+    : value=formation_count -> out=formation_back_tx
 
-  # --- Key + formation signals ---
-  inst AND mascon_key_and_fwd : a="Mas-con Key", b=formation_fwd_thresh_out -> out=mascon_key_and_fwd_out
-  inst AND eb_and_fwd : a=seat_latch_not_q, b=formation_fwd_thresh_out -> out=eb_and_fwd_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch12_read (channel=12) : composite="Settings Loop" -> out=settings_ch12_read_out
-  inst AND settings_ch12_key_and : a=settings_ch12_read_out, b=mascon_key_and_fwd_out -> out=settings_ch12_key_and_out
+  # --- キーと編成前後の共有信号 ---
+  inst AND mascon_key_and_fwd : a="Mas-con Key", b=formation_front -> out=cab_active
+  inst AND eb_and_fwd : a=handle_emergency, b=formation_front -> out=handle_emergency_front
+  inst COMPOSITE_READ_BOOLEAN settings_ch12_read (channel=12)
+    : composite="Settings Loop" -> out=Settings_Loop_B12
+  inst AND settings_ch12_key_and : a=Settings_Loop_B12, b=cab_active -> out=Settings_Loop_B12_cab
 
-  # --- Front sign latch ---
-  inst COMPOSITE_READ_BOOLEAN drive_front_sign_read (channel=3) : composite="Drive Loop" -> out=drive_front_sign_read_out
-  inst PULSE formation_fwd_fall_for_front (mode="fall") : a=formation_fwd_thresh_out -> out=formation_fwd_fall_for_front_out
-  inst AND front_sign_set_and : a=drive_front_sign_read_out, b=formation_fwd_thresh_out -> out=front_sign_set_and_out
-  use edge_latch.edge_latch front_sign_latch : level=drive_front_sign_read_out, extra_set=front_sign_set_and_out, extra_reset=formation_fwd_fall_for_front_out -> q="Front Sign"
+  # --- 前灯ラッチ ---
+  inst COMPOSITE_READ_BOOLEAN drive_front_sign_read (channel=3)
+    : composite="Drive Loop" -> out=Drive_Loop_B3
+  inst PULSE formation_fwd_fall_for_front (mode="fall")
+    : a=formation_front -> out=formation_front_fall
+  inst AND front_sign_set_and : a=Drive_Loop_B3, b=formation_front -> out=front_sign_set
+  use edge_latch.edge_latch front_sign_latch
+    : level=Drive_Loop_B3, extra_set=front_sign_set, extra_reset=formation_front_fall
+    -> q="Front Sign"
 
-  # --- Express UMI latch (unused q) and Tail sign ---
-  inst COMPOSITE_READ_BOOLEAN drive_express_umi_sign_read (channel=13) : composite="Drive Loop" -> out=drive_express_umi_sign_read_out
-  inst PULSE formation_fwd_fall_for_tail (mode="fall") : a=formation_fwd_thresh_out -> out=formation_fwd_fall_for_tail_out
-  inst AND express_umi_set_and : a=drive_express_umi_sign_read_out, b=formation_fwd_thresh_out -> out=express_umi_set_and_out
-  use edge_latch.edge_latch tail_sign_latch_unused : level=drive_express_umi_sign_read_out, extra_set=express_umi_set_and_out, extra_reset=formation_fwd_fall_for_tail_out ->
-  inst COMPOSITE_READ_BOOLEAN drive_tail_on_read (channel=15) : composite="Drive Loop" -> out=drive_tail_on_read_out
-  inst OR tail_sign_or : a=formation_bck_thresh_tail_out, b=drive_tail_on_read_out -> out="Tail Sign"
+  # --- 尾灯（未使用ラッチを含む） ---
+  inst COMPOSITE_READ_BOOLEAN drive_express_umi_sign_read (channel=13)
+    : composite="Drive Loop" -> out=Drive_Loop_B13
+  # 重複ゲートのため撤去:
+  # inst PULSE formation_fwd_fall_for_tail (mode="fall") : a=formation_front
+  #   -> out=formation_front_fall
+  inst AND express_umi_set_and : a=Drive_Loop_B13, b=formation_front -> out=tail_latch_set
+  use edge_latch.edge_latch tail_sign_latch_unused
+    : level=Drive_Loop_B13, extra_set=tail_latch_set, extra_reset=formation_front_fall ->
+  inst COMPOSITE_READ_BOOLEAN drive_tail_on_read (channel=15)
+    : composite="Drive Loop" -> out=Drive_Loop_B15
+  inst OR tail_sign_or : a=formation_back_tail, b=Drive_Loop_B15 -> out="Tail Sign"
 
-  # --- ATS/ATC and speed limit ---
-  inst COMPOSITE_READ_BOOLEAN atc_eb_read (channel=8) : composite="ATS/ATC" -> out=atc_eb_read_out
-  inst COMPOSITE_READ_BOOLEAN atc_limit1_read (channel=7) : composite="ATS/ATC" -> out=atc_limit1_read_out
-  inst COMPOSITE_READ_BOOLEAN atc_limit2_read (channel=9) : composite="ATS/ATC" -> out=atc_limit2_read_out
-  inst CONST const_atc_eb_notch (value=-8) : -> value=const_atc_eb_notch_value
-  inst CONST const_atc_limit1_notch (value=-8) : -> value=const_atc_limit1_notch_value
-  inst CONST const_atc_limit2_notch (value=-4) : -> value=const_atc_limit2_notch_value
-  inst CONST const_notch_max (value=100) : -> value=const_notch_max_value
-  inst COMPOSITE_READ_BOOLEAN simif_rx_ch4_bool_read (channel=4) : composite="Simple Interface RX" -> out=simif_rx_ch4_bool_read_out
-  inst COMPOSITE_READ_BOOLEAN simif_rx_ch5_bool_read (channel=5) : composite="Simple Interface RX" -> out=simif_rx_ch5_bool_read_out
-  inst OR simif_active_or : a=simif_rx_ch4_bool_read_out, b=simif_rx_ch5_bool_read_out -> out=simif_active_or_out
-  inst NOT simif_not_active : a=simif_active_or_out -> out=simif_not_active_out
-  inst COMPOSITE_READ_BOOLEAN settings_conductor_override (channel=9) : composite="Settings Loop" -> out=settings_conductor_override_out
-  inst OR limit_enable_or : a=simif_not_active_out, b=settings_conductor_override_out -> out=limit_enable_or_out
-  inst NUM_SWITCHBOX speed_limit_default_sw : a=const_notch_max_value, switch=limit_enable_or_out -> out=speed_limit_default_sw_out
-  inst NUM_SWITCHBOX atc_eb_limit_sw : a=const_atc_eb_notch_value, b=speed_limit_default_sw_out, switch=atc_eb_read_out -> out=atc_eb_limit_sw_out
-  inst NUM_SWITCHBOX atc_limit1_sw : a=const_atc_limit1_notch_value, b=speed_limit_default_sw_out, switch=atc_limit1_read_out -> out=atc_limit1_sw_out
-  inst NUM_SWITCHBOX atc_limit2_sw : a=const_atc_limit2_notch_value, b=speed_limit_default_sw_out, switch=atc_limit2_read_out -> out=atc_limit2_sw_out
-  inst FUNC_NUM_8 effective_limit (expression="min(min(x,y),min(z,w))") : x=handle_notch_sw_out, y=atc_eb_limit_sw_out, z=atc_limit1_sw_out, w=atc_limit2_sw_out -> out=effective_limit_out
-  inst FUNC_NUM_1 power_limit_func (expression="max(x,0)") : x=effective_limit_out -> out=power_limit_func_out
-  inst FUNC_NUM_1 brake_force_func (expression="clamp((-x-min(0,x+6))*4,0,31)") : x=effective_limit_out -> out=brake_force_func_out
+  # --- ATS/ATC とノッチ上限 ---
+  inst COMPOSITE_READ_BOOLEAN atc_eb_read (channel=8) : composite="ATS/ATC" -> out=ATS_ATC_B8
+  inst COMPOSITE_READ_BOOLEAN atc_limit1_read (channel=7) : composite="ATS/ATC" -> out=ATS_ATC_B7
+  inst COMPOSITE_READ_BOOLEAN atc_limit2_read (channel=9) : composite="ATS/ATC" -> out=ATS_ATC_B9
+  inst CONST const_atc_eb_notch (value=-8) : -> value=atc_eb_notch
+  inst CONST const_atc_limit1_notch (value=-8) : -> value=atc_full_service_notch
+  inst CONST const_atc_limit2_notch (value=-4) : -> value=atc_half_notch
+  inst CONST const_notch_max (value=100) : -> value=notch_max
+  inst COMPOSITE_READ_BOOLEAN simif_rx_ch4_bool_read (channel=4)
+    : composite="Simple Interface RX" -> out=Simple_Interface_RX_B4
+  inst COMPOSITE_READ_BOOLEAN simif_rx_ch5_bool_read (channel=5)
+    : composite="Simple Interface RX" -> out=Simple_Interface_RX_B5
+  inst OR simif_active_or : a=Simple_Interface_RX_B4, b=Simple_Interface_RX_B5 -> out=any_door_open
+  inst NOT simif_not_active : a=any_door_open -> out=all_doors_closed
+  inst COMPOSITE_READ_BOOLEAN settings_conductor_override (channel=9)
+    : composite="Settings Loop" -> out=Settings_Loop_B9
+  inst OR limit_enable_or : a=all_doors_closed, b=Settings_Loop_B9 -> out=power_ok
+  inst NUM_SWITCHBOX speed_limit_default_sw : a=notch_max, switch=power_ok -> out=door_safety_limit
+  inst NUM_SWITCHBOX atc_eb_limit_sw
+    : a=atc_eb_notch, b=door_safety_limit, switch=ATS_ATC_B8 -> out=atc_eb_limit
+  inst NUM_SWITCHBOX atc_limit1_sw
+    : a=atc_full_service_notch, b=door_safety_limit, switch=ATS_ATC_B7 -> out=atc_full_service_limit
+  inst NUM_SWITCHBOX atc_limit2_sw
+    : a=atc_half_notch, b=door_safety_limit, switch=ATS_ATC_B9 -> out=atc_half_limit
+  inst FUNC_NUM_8 effective_limit (expression="min(min(x,y),min(z,w))")
+    : x=handle_notch_out, y=atc_eb_limit, z=atc_full_service_limit, w=atc_half_limit
+    -> out=effective_notch
+  inst FUNC_NUM_1 power_limit_func (expression="max(x,0)") : x=effective_notch -> out=power_notch
+  inst FUNC_NUM_1 brake_force_func (expression="clamp((-x-min(0,x+6))*4,0,31)")
+    : x=effective_notch -> out=brake_step
 
-  # --- Physics sensor and conductor gate ---
-  inst COMPOSITE_READ_NUMBER physics_speed_read (channel=9) : composite="Physics Sensor [+Z = front]" -> out=physics_speed_read_out
-  inst THRESHOLD speed_near_zero_thresh (min=-1.5, max=1.5) : value=physics_speed_read_out -> out=speed_near_zero_thresh_out
-  inst OR conductor_speed_ok_or : a=settings_conductor_override_out, b=speed_near_zero_thresh_out -> out=conductor_speed_ok_or_out
-  inst AND conductor_and_speed : a=limit_enable_or_out, b=conductor_speed_ok_or_out -> out=conductor_and_speed_out
-  inst COMPOSITE_READ_BOOLEAN drive_ch19_read (channel=19) : composite="Drive Loop" -> out=drive_ch19_read_out
-  inst COMPOSITE_READ_BOOLEAN drive_ch20_read (channel=20) : composite="Drive Loop" -> out=drive_ch20_read_out
-  inst COMPOSITE_READ_BOOLEAN drive_ch21_read (channel=21) : composite="Drive Loop" -> out=drive_ch21_read_out
-  inst AND conductor_ch19_and : a=conductor_and_speed_out, b=drive_ch19_read_out -> out=conductor_ch19_and_out
-  inst AND conductor_ch20_and : a=conductor_and_speed_out, b=drive_ch20_read_out -> out=conductor_ch20_and_out
-  inst AND conductor_ch21_and : a=conductor_and_speed_out, b=drive_ch21_read_out -> out=conductor_ch21_and_out
+  # --- 物理センサと車掌ドアの速度ゲート ---
+  inst COMPOSITE_READ_NUMBER physics_speed_read (channel=9)
+    : composite="Physics Sensor [+Z = front]" -> out=speed
+  inst THRESHOLD speed_near_zero_thresh (min=-1.5, max=1.5) : value=speed -> out=stopped
+  inst OR conductor_speed_ok_or : a=Settings_Loop_B9, b=stopped -> out=door_open_ok
+  inst AND conductor_and_speed : a=power_ok, b=door_open_ok -> out=seat_convert_ok
+  inst COMPOSITE_READ_BOOLEAN drive_ch19_read (channel=19)
+    : composite="Drive Loop" -> out=Drive_Loop_B19
+  inst COMPOSITE_READ_BOOLEAN drive_ch20_read (channel=20)
+    : composite="Drive Loop" -> out=Drive_Loop_B20
+  inst COMPOSITE_READ_BOOLEAN drive_ch21_read (channel=21)
+    : composite="Drive Loop" -> out=Drive_Loop_B21
+  inst AND conductor_ch19_and : a=seat_convert_ok, b=Drive_Loop_B19 -> out=Drive_Loop_B19_gated
+  inst AND conductor_ch20_and : a=seat_convert_ok, b=Drive_Loop_B20 -> out=Drive_Loop_B20_gated
+  inst AND conductor_ch21_and : a=seat_convert_ok, b=Drive_Loop_B21 -> out=Drive_Loop_B21_gated
 
-  # --- EB flag ---
-  inst BOOL_FUNC_4 eb_flag_func (expression="x|y|z|w") : x=eb_and_fwd_out, y="Conductor Em brake 1", z="Conductor Em brake 2", w=atc_eb_read_out -> out=eb_flag_func_out
+  # --- eb_request ---
+  inst BOOL_FUNC_4 eb_flag_func (expression="x|y|z|w")
+    : x=handle_emergency_front, y="Conductor Em brake 1", z="Conductor Em brake 2", w=ATS_ATC_B8
+    -> out=eb_request
 
-  # --- Crew handles and door interlock ---
-  inst COMPOSITE_READ_BOOLEAN settings_ch5_read (channel=5) : composite="Settings Loop" -> out=settings_ch5_read_out
-  inst COMPOSITE_SWITCHBOX crew_interlock_sw : b="Drive Loop", switch=settings_ch5_read_out -> out=crew_interlock_sw_out
-  inst COMPOSITE_READ_BOOLEAN crew_drive_ch6_read (channel=6) : composite=crew_interlock_sw_out -> out=crew_drive_ch6_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_drive_ch7_read (channel=7) : composite=crew_interlock_sw_out -> out=crew_drive_ch7_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_drive_ch8_read (channel=8) : composite=crew_interlock_sw_out -> out=crew_drive_ch8_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_drive_ch9_read (channel=9) : composite=crew_interlock_sw_out -> out=crew_drive_ch9_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_drive_ch10_read (channel=10) : composite=crew_interlock_sw_out -> out=crew_drive_ch10_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_right_ch1_read (channel=1) : composite="Crew Handle Right" -> out=crew_right_ch1_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_right_ch2_read (channel=2) : composite="Crew Handle Right" -> out=crew_right_ch2_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_right_ch3_read (channel=3) : composite="Crew Handle Right" -> out=crew_right_ch3_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_right_ch4_read (channel=4) : composite="Crew Handle Right" -> out=crew_right_ch4_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_left_ch1_read (channel=1) : composite="Crew Handle Left" -> out=crew_left_ch1_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_left_ch2_read (channel=2) : composite="Crew Handle Left" -> out=crew_left_ch2_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_left_ch3_read (channel=3) : composite="Crew Handle Left" -> out=crew_left_ch3_read_out
-  inst COMPOSITE_READ_BOOLEAN crew_left_ch4_read (channel=4) : composite="Crew Handle Left" -> out=crew_left_ch4_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch20_read (channel=20) : composite="Settings Loop" -> out=settings_ch20_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch21_read (channel=21) : composite="Settings Loop" -> out=settings_ch21_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch23_read (channel=23) : composite="Settings Loop" -> out=settings_ch23_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch25_read (channel=25) : composite="Settings Loop" -> out=settings_ch25_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch26_read (channel=26) : composite="Settings Loop" -> out=settings_ch26_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch28_read (channel=28) : composite="Settings Loop" -> out=settings_ch28_read_out
-  inst BOOL_FUNC_4 crew_right_door_ok (expression="(x|y|z)&w") : x=settings_ch20_read_out, y=crew_right_ch1_read_out, z=crew_drive_ch6_read_out, w=conductor_speed_ok_or_out -> out=crew_right_door_ok_out
-  inst BOOL_FUNC_4 crew_right_door_rel (expression="x|y|z|w") : x=settings_ch21_read_out, y=crew_right_ch2_read_out, z=crew_drive_ch7_read_out -> out=crew_right_door_rel_out
-  inst BOOL_FUNC_4 crew_left_door_ok (expression="(x|y|z)&w") : x=settings_ch25_read_out, y=crew_left_ch1_read_out, z=crew_drive_ch8_read_out, w=conductor_speed_ok_or_out -> out=crew_left_door_ok_out
-  inst BOOL_FUNC_4 crew_left_door_rel (expression="x|y|z|w") : x=settings_ch26_read_out, y=crew_left_ch2_read_out, z=crew_drive_ch9_read_out -> out=crew_left_door_rel_out
-  inst BOOL_FUNC_8 crew_warning_func (expression="x|y|z|w|a|b|c|d") : x=settings_ch23_read_out, y=settings_ch28_read_out, z=crew_right_ch3_read_out, w=crew_left_ch3_read_out, a=crew_drive_ch10_read_out -> out=crew_warning_func_out
-  inst PULSE crew_warning_rise_pulse (mode="rise") : a=crew_warning_func_out -> out=crew_warning_rise_pulse_out
-  inst PULSE crew_warning_fall_pulse (mode="fall") : a=crew_warning_func_out -> out=crew_warning_fall_pulse_out
+  # --- 乗務員ハンドルとドア操作 ---
+  inst COMPOSITE_READ_BOOLEAN settings_ch5_read (channel=5)
+    : composite="Settings Loop" -> out=Settings_Loop_B5
+  inst COMPOSITE_SWITCHBOX crew_interlock_sw
+    : b="Drive Loop", switch=Settings_Loop_B5 -> out=Drive_Loop_driver
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch6_read (channel=6)
+    : composite=Drive_Loop_driver -> out=Drive_Loop_driver_B6
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch7_read (channel=7)
+    : composite=Drive_Loop_driver -> out=Drive_Loop_driver_B7
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch8_read (channel=8)
+    : composite=Drive_Loop_driver -> out=Drive_Loop_driver_B8
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch9_read (channel=9)
+    : composite=Drive_Loop_driver -> out=Drive_Loop_driver_B9
+  inst COMPOSITE_READ_BOOLEAN crew_drive_ch10_read (channel=10)
+    : composite=Drive_Loop_driver -> out=Drive_Loop_driver_B10
+  inst COMPOSITE_READ_BOOLEAN crew_right_ch1_read (channel=1)
+    : composite="Crew Handle Right" -> out=Crew_Handle_Right_B1
+  inst COMPOSITE_READ_BOOLEAN crew_right_ch2_read (channel=2)
+    : composite="Crew Handle Right" -> out=Crew_Handle_Right_B2
+  inst COMPOSITE_READ_BOOLEAN crew_right_ch3_read (channel=3)
+    : composite="Crew Handle Right" -> out=Crew_Handle_Right_B3
+  inst COMPOSITE_READ_BOOLEAN crew_right_ch4_read (channel=4)
+    : composite="Crew Handle Right" -> out=Crew_Handle_Right_B4
+  inst COMPOSITE_READ_BOOLEAN crew_left_ch1_read (channel=1)
+    : composite="Crew Handle Left" -> out=Crew_Handle_Left_B1
+  inst COMPOSITE_READ_BOOLEAN crew_left_ch2_read (channel=2)
+    : composite="Crew Handle Left" -> out=Crew_Handle_Left_B2
+  inst COMPOSITE_READ_BOOLEAN crew_left_ch3_read (channel=3)
+    : composite="Crew Handle Left" -> out=Crew_Handle_Left_B3
+  inst COMPOSITE_READ_BOOLEAN crew_left_ch4_read (channel=4)
+    : composite="Crew Handle Left" -> out=Crew_Handle_Left_B4
+  inst COMPOSITE_READ_BOOLEAN settings_ch20_read (channel=20)
+    : composite="Settings Loop" -> out=Settings_Loop_B20
+  inst COMPOSITE_READ_BOOLEAN settings_ch21_read (channel=21)
+    : composite="Settings Loop" -> out=Settings_Loop_B21
+  inst COMPOSITE_READ_BOOLEAN settings_ch23_read (channel=23)
+    : composite="Settings Loop" -> out=Settings_Loop_B23
+  inst COMPOSITE_READ_BOOLEAN settings_ch25_read (channel=25)
+    : composite="Settings Loop" -> out=Settings_Loop_B25
+  inst COMPOSITE_READ_BOOLEAN settings_ch26_read (channel=26)
+    : composite="Settings Loop" -> out=Settings_Loop_B26
+  inst COMPOSITE_READ_BOOLEAN settings_ch28_read (channel=28)
+    : composite="Settings Loop" -> out=Settings_Loop_B28
+  inst BOOL_FUNC_4 crew_right_door_ok (expression="(x|y|z)&w")
+    : x=Settings_Loop_B20, y=Crew_Handle_Right_B1, z=Drive_Loop_driver_B6, w=door_open_ok
+    -> out=door_right_open
+  inst BOOL_FUNC_4 crew_right_door_rel (expression="x|y|z|w")
+    : x=Settings_Loop_B21, y=Crew_Handle_Right_B2, z=Drive_Loop_driver_B7 -> out=door_right_close
+  inst BOOL_FUNC_4 crew_left_door_ok (expression="(x|y|z)&w")
+    : x=Settings_Loop_B25, y=Crew_Handle_Left_B1, z=Drive_Loop_driver_B8, w=door_open_ok
+    -> out=door_left_open
+  inst BOOL_FUNC_4 crew_left_door_rel (expression="x|y|z|w")
+    : x=Settings_Loop_B26, y=Crew_Handle_Left_B2, z=Drive_Loop_driver_B9 -> out=door_left_close
+  inst BOOL_FUNC_8 crew_warning_func (expression="x|y|z|w|a|b|c|d")
+    : x=Settings_Loop_B23, y=Settings_Loop_B28, z=Crew_Handle_Right_B3, w=Crew_Handle_Left_B3,
+      a=Drive_Loop_driver_B10
+    -> out=departure_notice
+  inst PULSE crew_warning_rise_pulse (mode="rise") : a=departure_notice -> out=departure_notice_rise
+  inst PULSE crew_warning_fall_pulse (mode="fall") : a=departure_notice -> out=departure_notice_fall
 
-  # --- Drive Support ---
-  inst COMPOSITE_READ_BOOLEAN settings_ch10_read (channel=10) : composite="Settings Loop" -> out=settings_ch10_read_out
-  inst NOT ds_inhibit_not : a=settings_ch10_read_out -> out=ds_inhibit_not_out
-  inst COMPOSITE_READ_NUMBER ds_ch1_num_read (channel=1) : composite="Drive Support" -> out=ds_ch1_num_read_out
-  inst COMPOSITE_READ_BOOLEAN ds_ch2_bool_read (channel=2) : composite="Drive Support" -> out=ds_ch2_bool_read_out
-  inst COMPOSITE_READ_BOOLEAN ds_ch3_bool_read (channel=3) : composite="Drive Support" -> out=ds_ch3_bool_read_out
-  inst COMPOSITE_READ_BOOLEAN ds_ch4_bool_read (channel=4) : composite="Drive Support" -> out=ds_ch4_bool_read_out
-  inst AND ds_gate_and : a=ds_inhibit_not_out, b=mascon_key_and_fwd_out -> out=ds_gate_and_out
-  inst AND ds_front_enable : a=ds_gate_and_out, b=ds_ch2_bool_read_out -> out=ds_front_enable_out
-  inst AND ds_back_enable : a=ds_gate_and_out, b=ds_ch3_bool_read_out -> out=ds_back_enable_out
+  # --- 運転支援 ---
+  inst COMPOSITE_READ_BOOLEAN settings_ch10_read (channel=10)
+    : composite="Settings Loop" -> out=Settings_Loop_B10
+  inst NOT ds_inhibit_not : a=Settings_Loop_B10 -> out=auto_cutout_on
+  inst COMPOSITE_READ_NUMBER ds_ch1_num_read (channel=1)
+    : composite="Drive Support" -> out=Drive_Support_N1
+  inst COMPOSITE_READ_BOOLEAN ds_ch2_bool_read (channel=2)
+    : composite="Drive Support" -> out=Drive_Support_B2
+  inst COMPOSITE_READ_BOOLEAN ds_ch3_bool_read (channel=3)
+    : composite="Drive Support" -> out=Drive_Support_B3
+  inst COMPOSITE_READ_BOOLEAN ds_ch4_bool_read (channel=4)
+    : composite="Drive Support" -> out=Drive_Support_B4
+  inst AND ds_gate_and : a=auto_cutout_on, b=cab_active -> out=ds_gate
+  inst AND ds_front_enable : a=ds_gate, b=Drive_Support_B2 -> out=ds_front_ok
+  inst AND ds_back_enable : a=ds_gate, b=Drive_Support_B3 -> out=ds_back_ok
 
-  # --- Crew buzzer ---
-  inst COMPOSITE_READ_BOOLEAN simif_rx_ch2_bool_read (channel=2) : composite="Simple Interface RX" -> out=simif_rx_ch2_bool_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch24_read (channel=24) : composite="Settings Loop" -> out=settings_ch24_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch29_read (channel=29) : composite="Settings Loop" -> out=settings_ch29_read_out
-  inst COMPOSITE_READ_BOOLEAN drive_ch12_read (channel=12) : composite="Drive Loop" -> out=drive_ch12_read_out
-  inst BOOL_FUNC_8 crew_buzzer_func (expression="x|y|z|w|a|b|c|d") : x=simif_rx_ch2_bool_read_out, y=seat_buzzer_read_out, z=settings_ch24_read_out, w=settings_ch29_read_out, a=drive_ch12_read_out, b=crew_right_ch4_read_out, c=crew_left_ch4_read_out, d=crew_buzzer_pulse_out -> out=crew_buzzer_func_out, out="Crew Buzzer"
-  inst PULSE crew_buzzer_pulse (mode="rise") : a=crew_buzzer_func_out -> out=crew_buzzer_pulse_out
-  inst BOOL_FUNC_8 buzzer_no_simif_func (expression="x|y|z|w|a|b|c|d") : y=seat_buzzer_read_out, z=settings_ch24_read_out, w=settings_ch29_read_out, a=drive_ch12_read_out, b=crew_right_ch4_read_out, c=crew_left_ch4_read_out -> out=buzzer_no_simif_func_out
+  # --- 乗務員ブザー ---
+  inst COMPOSITE_READ_BOOLEAN simif_rx_ch2_bool_read (channel=2)
+    : composite="Simple Interface RX" -> out=Simple_Interface_RX_B2
+  inst COMPOSITE_READ_BOOLEAN settings_ch24_read (channel=24)
+    : composite="Settings Loop" -> out=Settings_Loop_B24
+  inst COMPOSITE_READ_BOOLEAN settings_ch29_read (channel=29)
+    : composite="Settings Loop" -> out=Settings_Loop_B29
+  inst COMPOSITE_READ_BOOLEAN drive_ch12_read (channel=12)
+    : composite="Drive Loop" -> out=Drive_Loop_B12
+  inst BOOL_FUNC_8 crew_buzzer_func (expression="x|y|z|w|a|b|c|d")
+    : x=Simple_Interface_RX_B2, y=seat_key4, z=Settings_Loop_B24, w=Settings_Loop_B29,
+      a=Drive_Loop_B12, b=Crew_Handle_Right_B4, c=Crew_Handle_Left_B4, d=crew_buzzer_rise
+    -> out=crew_buzzer, out="Crew Buzzer"
+  inst PULSE crew_buzzer_pulse (mode="rise") : a=crew_buzzer -> out=crew_buzzer_rise
+  inst BOOL_FUNC_8 buzzer_no_simif_func (expression="x|y|z|w|a|b|c|d")
+    : y=seat_key4, z=Settings_Loop_B24, w=Settings_Loop_B29, a=Drive_Loop_B12,
+      b=Crew_Handle_Right_B4, c=Crew_Handle_Left_B4
+    -> out=crew_buzzer_local
 
-  # --- Drive loop reads ---
-  inst COMPOSITE_READ_BOOLEAN drive_ch1_read (channel=1) : composite="Drive Loop" -> out=drive_ch1_read_out
-  inst COMPOSITE_READ_BOOLEAN drive_ch2_read (channel=2) : composite="Drive Loop" -> out=drive_ch2_read_out
-  inst COMPOSITE_READ_BOOLEAN drive_headlight_read (channel=4) : composite="Drive Loop" -> out=drive_headlight_read_out
-  inst NOT high_beam_not : a=drive_headlight_read_out -> out="High beam"
-  inst COMPOSITE_READ_BOOLEAN drive_ch14_read (channel=14) : composite="Drive Loop" -> out=drive_ch14_read_out
-  inst NOT drive_ch14_not : a=drive_ch14_read_out -> out=drive_ch14_not_out
-  inst COMPOSITE_READ_BOOLEAN express_umi_direct_read (channel=13) : composite="Drive Loop" -> out="Express Light (UMI)"
-  inst COMPOSITE_READ_BOOLEAN drive_express_yama_read (channel=16) : composite="Drive Loop" -> out="Express Light (YAMA)"
+  # --- Drive_Loop の読取 ---
+  inst COMPOSITE_READ_BOOLEAN drive_ch1_read (channel=1)
+    : composite="Drive Loop" -> out=Drive_Loop_B1
+  inst COMPOSITE_READ_BOOLEAN drive_ch2_read (channel=2)
+    : composite="Drive Loop" -> out=Drive_Loop_B2
+  inst COMPOSITE_READ_BOOLEAN drive_headlight_read (channel=4)
+    : composite="Drive Loop" -> out=Drive_Loop_B4
+  inst NOT high_beam_not : a=Drive_Loop_B4 -> out="High beam"
+  inst COMPOSITE_READ_BOOLEAN drive_ch14_read (channel=14)
+    : composite="Drive Loop" -> out=Drive_Loop_B14
+  inst NOT drive_ch14_not : a=Drive_Loop_B14 -> out=Drive_Loop_B14_n
+  inst COMPOSITE_READ_BOOLEAN express_umi_direct_read (channel=13)
+    : composite="Drive Loop" -> out="Express Light (UMI)"
+  inst COMPOSITE_READ_BOOLEAN drive_express_yama_read (channel=16)
+    : composite="Drive Loop" -> out="Express Light (YAMA)"
 
-  # --- Settings loop reads ---
-  inst COMPOSITE_READ_BOOLEAN settings_ch2_read (channel=2) : composite="Settings Loop" -> out=settings_ch2_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch3_read (channel=3) : composite="Settings Loop" -> out=settings_ch3_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch4_read (channel=4) : composite="Settings Loop" -> out=settings_ch4_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch6_read (channel=6) : composite="Settings Loop" -> out=settings_ch6_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch7_read (channel=7) : composite="Settings Loop" -> out=settings_ch7_read_out
-  inst PULSE settings_ch7_rise_pulse (mode="rise") : a=settings_ch7_read_out -> out=settings_ch7_rise_pulse_out
-  inst PULSE settings_ch7_fall_pulse (mode="fall") : a=settings_ch7_read_out -> out=settings_ch7_fall_pulse_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch8_read (channel=8) : composite="Settings Loop" -> out=settings_ch8_read_out
-  inst PULSE settings_ch8_rise_pulse (mode="rise") : a=settings_ch8_read_out -> out=settings_ch8_rise_pulse_out
-  inst PULSE settings_ch8_fall_pulse (mode="fall") : a=settings_ch8_read_out -> out=settings_ch8_fall_pulse_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch15_read (channel=15) : composite="Settings Loop" -> out=settings_ch15_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch16_read (channel=16) : composite="Settings Loop" -> out=settings_ch16_read_out
-  inst COMPOSITE_READ_BOOLEAN settings_ch17_read (channel=17) : composite="Settings Loop" -> out=settings_ch17_read_out
+  # --- Settings_Loop の読取 ---
+  inst COMPOSITE_READ_BOOLEAN settings_ch2_read (channel=2)
+    : composite="Settings Loop" -> out=Settings_Loop_B2
+  inst COMPOSITE_READ_BOOLEAN settings_ch3_read (channel=3)
+    : composite="Settings Loop" -> out=Settings_Loop_B3
+  inst COMPOSITE_READ_BOOLEAN settings_ch4_read (channel=4)
+    : composite="Settings Loop" -> out=Settings_Loop_B4
+  inst COMPOSITE_READ_BOOLEAN settings_ch6_read (channel=6)
+    : composite="Settings Loop" -> out=Settings_Loop_B6
+  inst COMPOSITE_READ_BOOLEAN settings_ch7_read (channel=7)
+    : composite="Settings Loop" -> out=Settings_Loop_B7
+  inst PULSE settings_ch7_rise_pulse (mode="rise") : a=Settings_Loop_B7 -> out=Settings_Loop_B7_rise
+  inst PULSE settings_ch7_fall_pulse (mode="fall") : a=Settings_Loop_B7 -> out=Settings_Loop_B7_fall
+  inst COMPOSITE_READ_BOOLEAN settings_ch8_read (channel=8)
+    : composite="Settings Loop" -> out=Settings_Loop_B8
+  inst PULSE settings_ch8_rise_pulse (mode="rise") : a=Settings_Loop_B8 -> out=Settings_Loop_B8_rise
+  inst PULSE settings_ch8_fall_pulse (mode="fall") : a=Settings_Loop_B8 -> out=Settings_Loop_B8_fall
+  inst COMPOSITE_READ_BOOLEAN settings_ch15_read (channel=15)
+    : composite="Settings Loop" -> out=Settings_Loop_B15
+  inst COMPOSITE_READ_BOOLEAN settings_ch16_read (channel=16)
+    : composite="Settings Loop" -> out=Settings_Loop_B16
+  inst COMPOSITE_READ_BOOLEAN settings_ch17_read (channel=17)
+    : composite="Settings Loop" -> out=Settings_Loop_B17
 
-  # --- Simple IF RX reads ---
-  inst COMPOSITE_READ_NUMBER simif_rx_ch1_num_read (channel=1) : composite="Simple Interface RX" -> out=simif_rx_ch1_num_read_out
-  inst COMPOSITE_READ_NUMBER simif_rx_ch2_num_read (channel=2) : composite="Simple Interface RX" -> out=simif_rx_ch2_num_read_out
-  inst COMPOSITE_READ_BOOLEAN simif_rx_ch1_bool_read (channel=1) : composite="Simple Interface RX" -> out=simif_rx_ch1_bool_read_out
+  # --- Simple_Interface_RX の読取 ---
+  inst COMPOSITE_READ_NUMBER simif_rx_ch1_num_read (channel=1)
+    : composite="Simple Interface RX" -> out=Simple_Interface_RX_N1
+  inst COMPOSITE_READ_NUMBER simif_rx_ch2_num_read (channel=2)
+    : composite="Simple Interface RX" -> out=Simple_Interface_RX_N2
+  inst COMPOSITE_READ_BOOLEAN simif_rx_ch1_bool_read (channel=1)
+    : composite="Simple Interface RX" -> out=Simple_Interface_RX_B1
 
-  # --- Extended commands RX and rolling stock reads ---
-  inst CONST_BOOL const_false_bool : -> out=const_false_bool_out
-  inst NOT const_true_not : a=const_false_bool_out -> out=const_true_not_out
-  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch1_read (channel=1) : composite="Extended Commands RX" -> out=ext_cmd_ch1_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch10_read (channel=10) : composite="Extended Commands RX" -> out=ext_cmd_ch10_read_out
-  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch32_read (channel=32) : composite="Extended Commands RX" -> out=ext_cmd_ch32_read_out
-  inst COMPOSITE_READ_BOOLEAN rolling_stock_ch2_read (channel=2) : composite="Rolling Stock Settings" -> out=rolling_stock_ch2_read_out
+  # --- Extended_Commands_RX と Rolling_Stock_Settings の読取 ---
+  inst CONST_BOOL const_false_bool : -> out=const_on
+  inst NOT const_true_not : a=const_on -> out=const_off
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch1_read (channel=1)
+    : composite="Extended Commands RX" -> out=Extended_Commands_RX_B1
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch10_read (channel=10)
+    : composite="Extended Commands RX" -> out=Extended_Commands_RX_B10
+  inst COMPOSITE_READ_BOOLEAN ext_cmd_ch32_read (channel=32)
+    : composite="Extended Commands RX" -> out=Extended_Commands_RX_B32
+  inst COMPOSITE_READ_BOOLEAN rolling_stock_ch2_read (channel=2)
+    : composite="Rolling Stock Settings" -> out=Rolling_Stock_Settings_B2
 
-  # --- Status composite ---
-  inst COMPOSITE_WRITE_BOOLEAN status_bool_write (count=13, offset=1) : in1=settings_ch4_read_out, in2=settings_ch3_read_out, in3=conductor_ch19_and_out, in4=conductor_ch20_and_out, in5=conductor_ch21_and_out, in6=settings_ch12_key_and_out, in7=settings_ch17_read_out, in8=settings_ch16_read_out, in10=crew_right_door_ok_out, in11=crew_left_door_ok_out, in12=ds_front_enable_out, in13=ds_back_enable_out -> out=status_bool_write_out
-  inst COMPOSITE_TO_NUMBER status_num : composite=status_bool_write_out -> out=status_num_out
+  # --- 状態信号のコンポジット ---
+  inst COMPOSITE_WRITE_BOOLEAN status_bool_write (count=13, offset=1)
+    : in1=Settings_Loop_B4, in2=Settings_Loop_B3, in3=Drive_Loop_B19_gated,
+      in4=Drive_Loop_B20_gated, in5=Drive_Loop_B21_gated, in6=Settings_Loop_B12_cab,
+      in7=Settings_Loop_B17, in8=Settings_Loop_B16, in10=door_right_open, in11=door_left_open,
+      in12=ds_front_ok, in13=ds_back_ok
+    -> out=status_bools
+  inst COMPOSITE_TO_NUMBER status_num : composite=status_bools -> out=status_number
 
-  # --- Monitor Status output ---
-  inst COMPOSITE_WRITE_BOOLEAN monitor_bool_write (count=16, offset=1) : in1=drive_ch1_read_out, in2=drive_headlight_read_out, in3=settings_ch6_read_out, in4=seat_latch_not_q, in5=mascon_key_and_fwd_out, in6=simif_rx_ch1_bool_read_out, in7=ds_ch4_bool_read_out, in8=const_true_not_out, in9=const_true_not_out, in10=const_true_not_out, in11=ext_cmd_ch1_read_out, in12=simif_rx_ch4_bool_read_out, in13=simif_rx_ch5_bool_read_out, in14=ext_cmd_ch10_read_out, in15=ext_cmd_ch32_read_out, in16=rolling_stock_ch2_read_out, inc="Extended Commands RX" -> out=monitor_bool_write_out
-  inst COMPOSITE_WRITE_NUMBER monitor_num_write (count=5, offset=9) : in1=simif_rx_ch1_num_read_out, in2=simif_rx_ch2_num_read_out, in3="Reverser Position", in4=formation_counter_out, in5=physics_speed_read_out, inc=monitor_bool_write_out -> out="Monitor Status"
+  # --- Monitor Status 出力 ---
+  inst COMPOSITE_WRITE_BOOLEAN monitor_bool_write (count=16, offset=1)
+    : in1=Drive_Loop_B1, in2=Drive_Loop_B4, in3=Settings_Loop_B6, in4=handle_emergency,
+      in5=cab_active, in6=Simple_Interface_RX_B1, in7=Drive_Support_B4, in8=const_off,
+      in9=const_off, in10=const_off, in11=Extended_Commands_RX_B1, in12=Simple_Interface_RX_B4,
+      in13=Simple_Interface_RX_B5, in14=Extended_Commands_RX_B10, in15=Extended_Commands_RX_B32,
+      in16=Rolling_Stock_Settings_B2, inc="Extended Commands RX"
+    -> out=monitor_bools
+  inst COMPOSITE_WRITE_NUMBER monitor_num_write (count=5, offset=9)
+    : in1=Simple_Interface_RX_N1, in2=Simple_Interface_RX_N2, in3="Reverser Position",
+      in4=formation_count, in5=speed, inc=monitor_bools
+    -> out="Monitor Status"
 
-  # --- Control Commands TX ---
-  inst COMPOSITE_WRITE_NUMBER tx_num_write (count=7, offset=1) : in1=brake_force_func_out, in2=power_limit_func_out, in6=ds_ch1_num_read_out, in7=status_num_out -> out=tx_num_write_out
-  inst COMPOSITE_WRITE_BOOLEAN tx_bool_write (count=32, offset=1) : in1=eb_flag_func_out, in2=buzzer_no_simif_func_out, in6=formation_fwd_thresh_out, in7=formation_back_flag_out, in9=settings_ch15_read_out, in10=settings_ch2_read_out, in11=drive_ch2_read_out, in16=reverser_fwd_thresh_out, in17=reverser_bck_thresh_out, in18=drive_ch14_not_out, in19=settings_ch7_rise_pulse_out, in20=settings_ch7_fall_pulse_out, in21=crew_warning_rise_pulse_out, in22=crew_warning_fall_pulse_out, in23=settings_ch8_rise_pulse_out, in24=settings_ch8_fall_pulse_out, in27=crew_right_door_ok_out, in28=crew_right_door_rel_out, in29=crew_left_door_ok_out, in30=crew_left_door_rel_out, in31=formation_not_fwd_delta_out, in32=mascon_key_and_fwd_out, inc=tx_num_write_out -> out="Control Commands TX"
+  # --- Control Commands TX 出力 ---
+  inst COMPOSITE_WRITE_NUMBER tx_num_write (count=7, offset=1)
+    : in1=brake_step, in2=power_notch, in6=Drive_Support_N1, in7=status_number -> out=tx_numbers
+  inst COMPOSITE_WRITE_BOOLEAN tx_bool_write (count=32, offset=1)
+    : in1=eb_request, in2=crew_buzzer_local, in6=formation_front, in7=formation_back_tx,
+      in9=Settings_Loop_B15, in10=Settings_Loop_B2, in11=Drive_Loop_B2, in16=reverser_fwd,
+      in17=reverser_back, in18=Drive_Loop_B14_n, in19=Settings_Loop_B7_rise,
+      in20=Settings_Loop_B7_fall, in21=departure_notice_rise, in22=departure_notice_fall,
+      in23=Settings_Loop_B8_rise, in24=Settings_Loop_B8_fall, in27=door_right_open,
+      in28=door_right_close, in29=door_left_open, in30=door_left_close, in31=formation_dec,
+      in32=cab_active, inc=tx_numbers
+    -> out="Control Commands TX"
 end
